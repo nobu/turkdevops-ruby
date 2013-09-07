@@ -2130,6 +2130,7 @@ bignum.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 bignum.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 bignum.$(OBJEXT): $(top_srcdir)/internal/bits.h
 bignum.$(OBJEXT): $(top_srcdir)/internal/class.h
+bignum.$(OBJEXT): $(top_srcdir)/internal/compar.h
 bignum.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 bignum.$(OBJEXT): $(top_srcdir)/internal/complex.h
 bignum.$(OBJEXT): $(top_srcdir)/internal/fixnum.h
@@ -2883,6 +2884,7 @@ compile.$(OBJEXT): $(top_srcdir)/internal/array.h
 compile.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 compile.$(OBJEXT): $(top_srcdir)/internal/bits.h
 compile.$(OBJEXT): $(top_srcdir)/internal/class.h
+compile.$(OBJEXT): $(top_srcdir)/internal/compar.h
 compile.$(OBJEXT): $(top_srcdir)/internal/compile.h
 compile.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 compile.$(OBJEXT): $(top_srcdir)/internal/complex.h
@@ -3110,6 +3112,7 @@ complex.$(OBJEXT): $(top_srcdir)/internal/array.h
 complex.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 complex.$(OBJEXT): $(top_srcdir)/internal/bits.h
 complex.$(OBJEXT): $(top_srcdir)/internal/class.h
+complex.$(OBJEXT): $(top_srcdir)/internal/compar.h
 complex.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 complex.$(OBJEXT): $(top_srcdir)/internal/complex.h
 complex.$(OBJEXT): $(top_srcdir)/internal/error.h
@@ -4955,6 +4958,7 @@ enumerator.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 enumerator.$(OBJEXT): $(top_srcdir)/internal/array.h
 enumerator.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 enumerator.$(OBJEXT): $(top_srcdir)/internal/bits.h
+enumerator.$(OBJEXT): $(top_srcdir)/internal/compar.h
 enumerator.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 enumerator.$(OBJEXT): $(top_srcdir)/internal/enumerator.h
 enumerator.$(OBJEXT): $(top_srcdir)/internal/error.h
@@ -5799,6 +5803,7 @@ gc.$(OBJEXT): $(top_srcdir)/internal/array.h
 gc.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 gc.$(OBJEXT): $(top_srcdir)/internal/bits.h
 gc.$(OBJEXT): $(top_srcdir)/internal/class.h
+gc.$(OBJEXT): $(top_srcdir)/internal/compar.h
 gc.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 gc.$(OBJEXT): $(top_srcdir)/internal/complex.h
 gc.$(OBJEXT): $(top_srcdir)/internal/cont.h
@@ -6775,6 +6780,7 @@ io.$(OBJEXT): $(top_srcdir)/internal/array.h
 io.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 io.$(OBJEXT): $(top_srcdir)/internal/bits.h
 io.$(OBJEXT): $(top_srcdir)/internal/class.h
+io.$(OBJEXT): $(top_srcdir)/internal/compar.h
 io.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 io.$(OBJEXT): $(top_srcdir)/internal/encoding.h
 io.$(OBJEXT): $(top_srcdir)/internal/error.h
@@ -9329,6 +9335,7 @@ numeric.$(OBJEXT): $(top_srcdir)/internal/array.h
 numeric.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 numeric.$(OBJEXT): $(top_srcdir)/internal/bits.h
 numeric.$(OBJEXT): $(top_srcdir)/internal/class.h
+numeric.$(OBJEXT): $(top_srcdir)/internal/compar.h
 numeric.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 numeric.$(OBJEXT): $(top_srcdir)/internal/complex.h
 numeric.$(OBJEXT): $(top_srcdir)/internal/enumerator.h
@@ -9527,6 +9534,7 @@ object.$(OBJEXT): $(top_srcdir)/internal/array.h
 object.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 object.$(OBJEXT): $(top_srcdir)/internal/bits.h
 object.$(OBJEXT): $(top_srcdir)/internal/class.h
+object.$(OBJEXT): $(top_srcdir)/internal/compar.h
 object.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 object.$(OBJEXT): $(top_srcdir)/internal/error.h
 object.$(OBJEXT): $(top_srcdir)/internal/eval.h
@@ -9912,6 +9920,7 @@ parse.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 parse.$(OBJEXT): $(top_srcdir)/internal/array.h
 parse.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 parse.$(OBJEXT): $(top_srcdir)/internal/bits.h
+parse.$(OBJEXT): $(top_srcdir)/internal/compar.h
 parse.$(OBJEXT): $(top_srcdir)/internal/compile.h
 parse.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 parse.$(OBJEXT): $(top_srcdir)/internal/complex.h
@@ -10579,6 +10588,7 @@ ractor.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 ractor.$(OBJEXT): $(top_srcdir)/internal/array.h
 ractor.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 ractor.$(OBJEXT): $(top_srcdir)/internal/bits.h
+ractor.$(OBJEXT): $(top_srcdir)/internal/compar.h
 ractor.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 ractor.$(OBJEXT): $(top_srcdir)/internal/complex.h
 ractor.$(OBJEXT): $(top_srcdir)/internal/error.h
@@ -10796,6 +10806,7 @@ random.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 random.$(OBJEXT): $(top_srcdir)/internal/array.h
 random.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 random.$(OBJEXT): $(top_srcdir)/internal/bits.h
+random.$(OBJEXT): $(top_srcdir)/internal/compar.h
 random.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 random.$(OBJEXT): $(top_srcdir)/internal/error.h
 random.$(OBJEXT): $(top_srcdir)/internal/fixnum.h
@@ -11173,6 +11184,7 @@ rational.$(OBJEXT): $(top_srcdir)/internal/array.h
 rational.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 rational.$(OBJEXT): $(top_srcdir)/internal/bits.h
 rational.$(OBJEXT): $(top_srcdir)/internal/class.h
+rational.$(OBJEXT): $(top_srcdir)/internal/compar.h
 rational.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 rational.$(OBJEXT): $(top_srcdir)/internal/complex.h
 rational.$(OBJEXT): $(top_srcdir)/internal/error.h
@@ -13299,6 +13311,7 @@ sprintf.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 sprintf.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 sprintf.$(OBJEXT): $(top_srcdir)/internal/bits.h
 sprintf.$(OBJEXT): $(top_srcdir)/internal/class.h
+sprintf.$(OBJEXT): $(top_srcdir)/internal/compar.h
 sprintf.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 sprintf.$(OBJEXT): $(top_srcdir)/internal/error.h
 sprintf.$(OBJEXT): $(top_srcdir)/internal/fixnum.h
