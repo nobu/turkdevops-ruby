@@ -1264,6 +1264,18 @@ class TestRipper::ParserEvents < Test::Unit::TestCase
     assert_equal true, thru_symbol_literal
   end
 
+  def test_time
+    thru_time = false
+    parse('2000_01_01T', :on_time) {thru_time = true}
+    assert_equal true, thru_time
+  end
+
+  def test_time_literal
+    thru_time_literal = false
+    parse('2000_01_01T', :on_time_literal) {thru_time_literal = true}
+    assert_equal true, thru_time_literal
+  end
+
   def test_top_const_field
     thru_top_const_field = false
     parse('::A=1', :on_top_const_field) {thru_top_const_field = true}

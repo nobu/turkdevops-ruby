@@ -819,6 +819,7 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %token <node> tINTEGER tFLOAT tRATIONAL tIMAGINARY tSTRING_CONTENT tCHAR
 %token <node> tNTH_REF tBACK_REF
 %token <num>  tREGEXP_END
+%token <val>  tTIME
 
 %type <node> singleton strings string string1 xstring regexp
 %type <node> string_contents xstring_contents regexp_contents string_content
@@ -845,6 +846,7 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %type <id>   fsym keyword_variable user_variable sym symbol operation operation2 operation3
 %type <id>   cname fname op f_rest_arg f_block_arg opt_f_block_arg f_norm_arg f_bad_arg
 %type <id>   f_kwrest f_label f_arg_asgn call_op call_op2 reswords relop dot_or_colon
+%type <val>  time simple_time
 %token END_OF_INPUT 0	"end-of-input"
 %token <id> '.'
 /* escaped chars, should be ignored otherwise */
@@ -3401,6 +3403,23 @@ literal		: numeric
 		    /*% ripper: symbol_literal!($1) %*/
 		    }
 		| dsym
+		| time
+		    {
+		    /*%%%*/
+			VALUE args = $1;
+			if (!NIL_P(args)) {
+			    long argc = RARRAY_LEN(args);
+			    const VALUE *argv = RARRAY_CONST_PTR(args);
+			    VALUE t = rb_funcallv(rb_cTime, SYM2ID(argv[0]), (int)argc-1, argv+1);
+			    $$ = NEW_LIT(t);
+			}
+			else {
+			    $$ = 0;
+			}
+		    /*%
+			$$ = dispatch1(time_literal, $1);
+		    %*/
+		    }
 		;
 
 strings		: string
@@ -3771,6 +3790,30 @@ simple_numeric	: tINTEGER
 		| tFLOAT
 		| tRATIONAL
 		| tIMAGINARY
+		;
+
+time		: simple_time
+		| tUMINUS_NUM simple_time   %prec tLOWEST
+		    {
+		    /*%%%*/
+			VALUE ary = $2;
+			if (!NIL_P(ary)) {
+			    rb_ary_store(ary, 1, negate_lit(RARRAY_CONST_PTR(ary)[1]));
+			}
+			$$ = ary;
+		    /*%
+		    %*/
+		    }
+		;
+
+simple_time	: tTIME
+		    {
+		    /*%%%*/
+			$$ = $1;
+		    /*%
+			$$ = dispatch1(time, $1);
+		    %*/
+		    }
 		;
 
 user_variable	: tIDENTIFIER
@@ -6220,6 +6263,7 @@ whole_match_p(struct parser_params *p, const char *eos, long len, int indent)
 
 #define NUM_SUFFIX_R   (1<<0)
 #define NUM_SUFFIX_I   (1<<1)
+#define NUM_SUFFIX_T   (1<<2)
 #define NUM_SUFFIX_ALL 3
 
 static int
@@ -6240,6 +6284,9 @@ number_literal_suffix(struct parser_params *p, int mask)
 	    result |= (mask & NUM_SUFFIX_R);
 	    mask &= ~NUM_SUFFIX_R;
 	    continue;
+	}
+	if (!result && (mask & NUM_SUFFIX_T) && c == 'T') {
+	    return NUM_SUFFIX_T;
 	}
 	if (!ISASCII(c) || ISALPHA(c) || c == '_') {
 	    p->lex.pcur = lastp;
@@ -6902,11 +6949,154 @@ no_digits(struct parser_params *p)
     return set_integer_literal(p, INT2FIX(0), 0);
 }
 
+static VALUE
+parse_time(struct parser_params *parser, const char *p, const char *pend)
+{
+    VALUE v, args[7];
+    int i, c1, c2, uc;
+    ID zone;
+
+    for (i = 0; p+i < pend && ISDIGIT(p[i]); ++i);
+    if (!(uc = (p+i < pend && p[i] == '_'))) {
+	if (i < 5) {
+	    yyerror("insufficient date");
+	    return Qnil;
+	}
+	newtok();
+	memcpy(tokspace(i - 4), p, i - 4);
+	tokfix();
+	args[1] = ULONG2NUM(ruby_strtoul(tok(), NULL, 10));
+	newtok();
+	memcpy(tokspace(2), p + i - 4, 2);
+	tokfix();
+	args[2] = ULONG2NUM(ruby_strtoul(tok(), NULL, 10));
+	newtok();
+	memcpy(tokspace(2), p + i - 2, 2);
+	tokfix();
+	args[3] = ULONG2NUM(ruby_strtoul(tok(), NULL, 10));
+	p += i;
+    }
+    else {
+	args[1] = ULONG2NUM(ruby_strtoul(p, NULL, 10));
+	p += i + 1;
+	for (i = 0; p+i < pend && ISDIGIT(p[i]); ++i);
+	if (!i) {
+	    lex_p = p;
+	    yyerror("no month in date");
+	    return Qnil;
+	}
+	newtok();
+	memcpy(tokspace(i), p, i);
+	tokfix();
+	args[2] = ULONG2NUM(ruby_strtoul(tok(), NULL, 10));
+	p += i;
+	if (!(p < pend && *p == '_') || !(p+1 < pend && ISDIGIT(p[1]))) {
+	    lex_p = p;
+	    yyerror("no day in date");
+	    return Qnil;
+	}
+	for (++p, i = 0; p+i < pend && ISDIGIT(p[i]); ++i);
+	newtok();
+	memcpy(tokspace(i), p, i);
+	tokfix();
+	args[3] = ULONG2NUM(ruby_strtoul(p, NULL, 10));
+	p += i;
+    }
+
+    if (!(p < pend && *p == 'T')) {
+	yyerror("invalid time");
+	return Qnil;
+    }
+    p++;
+
+    for (i = 4; i < 7 && p < pend; ++i) {
+	int last_uc = 0;
+	if (i > 4 && *p == '_') {
+	    if (!uc) goto trailing_uc;
+	    last_uc = 1;
+	    p++;
+	}
+	if (!ISDIGIT(c1 = p[0])) {
+	    if (last_uc) {
+		--p;
+		goto trailing_uc;
+	    }
+	    break;
+	}
+	if (i > 4 && uc && !last_uc) {
+	    lex_p = p;
+	    yyerror("`_' in time expected");
+	    while (p < pend && ISDIGIT(*p)) p++;
+	    lex_p = p;
+	    return Qnil;
+	}
+	if (!(p+1 < pend && ISDIGIT(c2 = p[1]))) {
+	    lex_p = p + 1;
+	    yyerror("odd digit in time");
+	    return Qnil;
+	}
+	newtok();
+	tokadd(c1);
+	tokadd(c2);
+	p += 2;
+	c1 = 0;
+	if (i < 6) {
+	    tokfix();
+	    args[i] = ULONG2NUM(ruby_strtoul(tok(), NULL, 10));
+	}
+	else if (!(p < pend && (c1 = *p) == '.')) {
+	    if (c1 == '_') goto trailing_uc;
+	    if (ISDIGIT(c1)) {
+		lex_p = p;
+		yyerror("trailing digit after time");
+		do ++p; while (p < pend && ISDIGIT(*p));
+		lex_p = p;
+		return Qnil;
+	    }
+	    tokfix();
+	    args[i] = ULONG2NUM(ruby_strtoul(tok(), NULL, 10));
+	}
+	else {
+	    tokadd('.');
+	    p++;
+	    while (p < pend && ISDIGIT(c1 = *p)) {
+		do {tokadd(c1);} while (++p < pend && ISDIGIT(c1 = *p));
+		if (!(p < pend && c1 == '_')) break;
+		p++;
+	    }
+	    if (c1 == '_') goto trailing_uc;
+	    tokfix();
+	    args[i] = parse_rational(parser, tok(), toklen(), 2);
+	}
+    }
+    if (c1 == '_') {
+      trailing_uc:
+	lex_p = p + 1;
+	yyerror("trailing `_' in time");
+	return Qnil;
+    }
+
+    if (c1 == 'z' || c1 == 'Z') {
+	p++;
+	CONST_ID(zone, "utc");
+    }
+    else {
+	CONST_ID(zone, "local");
+    }
+    args[0] = ID2SYM(zone);
+    lex_p = p;
+    v = rb_ary_tmp_new(i);
+    rb_ary_cat(v, args, i);
+    OBJ_FREEZE(v);
+    return v;
+}
+
 static enum yytokentype
 parse_numeric(struct parser_params *p, int c)
 {
     int is_float, seen_point, seen_e, nondigit;
     int suffix;
+    const char *const lastp = lex_p-1;
 
     is_float = seen_point = seen_e = nondigit = 0;
     SET_LEX_STATE(EXPR_END);
@@ -7019,7 +7209,11 @@ parse_numeric(struct parser_params *p, int c)
 		pushback(p, c);
 		tokfix(p);
 		if (nondigit) goto trailing_uc;
-		suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
+		suffix = number_literal_suffix(p, NUM_SUFFIX_ALL|NUM_SUFFIX_T);
+		if (suffix == NUM_SUFFIX_T) {
+		    yylval.val = parse_time(p, lastp, lex_pend);
+		    return tTIME;
+		}
 		return set_integer_literal(p, rb_cstr_to_inum(tok(p), 8, FALSE), suffix);
 	    }
 	    if (nondigit) {
@@ -7133,7 +7327,11 @@ parse_numeric(struct parser_params *p, int c)
 	}
 	return set_number_literal(p, v, type, suffix);
     }
-    suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
+    suffix = number_literal_suffix(p, NUM_SUFFIX_ALL|NUM_SUFFIX_T);
+    if (!nondigit && suffix == NUM_SUFFIX_T) {
+	yylval.val = parse_time(p, lastp, lex_pend);
+	return tTIME;
+    }
     return set_integer_literal(p, rb_cstr_to_inum(tok(p), 10, FALSE), suffix);
 }
 

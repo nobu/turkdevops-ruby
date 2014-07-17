@@ -564,4 +564,71 @@ class TestRubyLiteral < Test::Unit::TestCase
 
     assert_ruby_status(["--disable-gems", "--dump=parsetree"], "%I[foo bar]")
   end
+
+  date = %w[2014 07 16]
+  time = %w[14 39 45]
+  d = date.map {|s| s.to_i(10)}
+  begin
+    t = time.map {|s| s.to_i(10)}
+    [['', Time.local(*d, *t)], ['Z', Time.utc(*d, *t)]].each do |z, t0|
+      if time.size == 3
+      (date.join('')+'T'+time.join('')+".0001"+z).tap do |s|
+          define_method("test_time_nsec(#{s})") do
+            t = assert_nothing_raised(s) {break eval(s)}
+            assert_equal(t0 + 1r/10000, t, s)
+            assert_equal(!z.empty?, t.utc?, s)
+            assert_equal(100_000, t.nsec, s)
+          end
+        end
+      end
+
+      (date.join('')+'T'+time.join('')+z).tap do |s|
+        define_method("test_time(#{s})") do
+          t = assert_nothing_raised(s) {break eval(s)}
+          assert_equal(t0, t, s)
+          assert_equal(!z.empty?, t.utc?, s)
+        end
+      end
+
+      (date.join('_')+'T'+time.join('_')+z).tap do |s|
+        define_method("test_time(#{s})") do
+          t = assert_nothing_raised(s) {break eval(s)}
+          assert_equal(t0, t, s)
+          assert_equal(!z.empty?, t.utc?, s)
+        end
+      end
+
+      next unless time.size > 1
+
+      (date.join('')+'T'+time.join('_')+z).tap do |s|
+        define_method("test_time(#{s})") do
+          assert_raise(SyntaxError, s) {eval(s)}
+        end
+      end
+
+      (date.join('_')+'T'+time.join('')+z).tap do |s|
+        define_method("test_time(#{s})") do
+          assert_raise(SyntaxError, s) {eval(s)}
+        end
+      end
+
+      (date.join('')+'T_'+time.join('')+z).tap do |s|
+        define_method("test_time(#{s})") do
+          assert_raise(SyntaxError, s) {eval(s)}
+        end
+      end
+
+      (date.join('')+'_T'+time.join('')+z).tap do |s|
+        define_method("test_time(#{s})") do
+          assert_raise(SyntaxError, s) {eval(s)}
+        end
+      end
+
+      (date.join('')+'T'+time.join('')+'_'+z).tap do |s|
+        define_method("test_time(#{s})") do
+          assert_raise(SyntaxError, s) {eval(s)}
+        end
+      end
+    end
+  end while time.pop
 end
