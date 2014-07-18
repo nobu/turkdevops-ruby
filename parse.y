@@ -6952,7 +6952,7 @@ no_digits(struct parser_params *p)
 static VALUE
 parse_time(struct parser_params *parser, const char *p, const char *pend)
 {
-    VALUE v, args[7];
+    VALUE v, args[8];
     int i, c1, c2, uc;
     ID zone;
 
@@ -7024,6 +7024,7 @@ parse_time(struct parser_params *parser, const char *p, const char *pend)
 	    break;
 	}
 	if (i > 4 && uc && !last_uc) {
+	  uc_expected:
 	    lex_p = p;
 	    yyerror("`_' in time expected");
 	    while (p < pend && ISDIGIT(*p)) p++;
@@ -7047,6 +7048,7 @@ parse_time(struct parser_params *parser, const char *p, const char *pend)
 	else if (!(p < pend && (c1 = *p) == '.')) {
 	    if (c1 == '_') goto trailing_uc;
 	    if (ISDIGIT(c1)) {
+	      trailing_digit:
 		lex_p = p;
 		yyerror("trailing digit after time");
 		do ++p; while (p < pend && ISDIGIT(*p));
@@ -7079,6 +7081,28 @@ parse_time(struct parser_params *parser, const char *p, const char *pend)
     if (c1 == 'z' || c1 == 'Z') {
 	p++;
 	CONST_ID(zone, "utc");
+    }
+    else if (p+2 < pend && (c1 == '+' || c1 == '-') && ISDIGIT(p[1]) && ISDIGIT(p[2])) {
+	newtok();
+	memcpy(tokspace(3), p, 3);
+	p += 3;
+	if (uc && p < pend) {
+	    if ((c1 = *p) != '_') goto uc_expected;
+	    p++;
+	}
+	if (p+1 < pend && ISDIGIT(c1 = p[0]) && ISDIGIT(c2 = p[1])) {
+	    p += 2;
+	    if (p < pend) {
+		if (*p == '_') goto trailing_uc;
+		if (ISDIGIT(*p)) goto trailing_digit;
+	    }
+	    tokadd(':');
+	    tokadd(c1);
+	    tokadd(c2);
+	}
+	while (i < 7) args[i++] = Qnil;
+	args[i++] = rb_usascii_str_new(tok(), tokidx);
+	CONST_ID(zone, "new");
     }
     else {
 	CONST_ID(zone, "local");

@@ -570,23 +570,27 @@ class TestRubyLiteral < Test::Unit::TestCase
   d = date.map {|s| s.to_i(10)}
   begin
     t = time.map {|s| s.to_i(10)}
-    [['', Time.local(*d, *t)], ['Z', Time.utc(*d, *t)]].each do |z, t0|
+    a = (d+t+[nil]*3)[0..5]
+    [['', Time.local(*d, *t)], ['Z', Time.utc(*d, *t)],
+     ['-07_00', Time.new(*a, '-07:00')],
+     ['+09_00', Time.new(*a, '+09:00')],
+    ].each do |z, t0|
       if time.size == 3
-      (date.join('')+'T'+time.join('')+".0001"+z).tap do |s|
+      (date.join('')+'T'+time.join('')+".0001"+z.delete('_')).tap do |s|
           define_method("test_time_nsec(#{s})") do
             t = assert_nothing_raised(s) {break eval(s)}
             assert_equal(t0 + 1r/10000, t, s)
-            assert_equal(!z.empty?, t.utc?, s)
+            assert_equal(z == 'Z', t.utc?, s)
             assert_equal(100_000, t.nsec, s)
           end
         end
       end
 
-      (date.join('')+'T'+time.join('')+z).tap do |s|
+      (date.join('')+'T'+time.join('')+z.delete('_')).tap do |s|
         define_method("test_time(#{s})") do
           t = assert_nothing_raised(s) {break eval(s)}
           assert_equal(t0, t, s)
-          assert_equal(!z.empty?, t.utc?, s)
+          assert_equal(z == 'Z', t.utc?, s)
         end
       end
 
@@ -594,7 +598,7 @@ class TestRubyLiteral < Test::Unit::TestCase
         define_method("test_time(#{s})") do
           t = assert_nothing_raised(s) {break eval(s)}
           assert_equal(t0, t, s)
-          assert_equal(!z.empty?, t.utc?, s)
+          assert_equal(z == 'Z', t.utc?, s)
         end
       end
 
