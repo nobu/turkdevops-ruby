@@ -930,6 +930,58 @@ enum_group_by(VALUE obj)
 }
 
 static VALUE
+count_by_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, hash))
+{
+    VALUE group;
+    VALUE count;
+
+    ENUM_WANT_SVALUE();
+
+    group = rb_yield(i);
+    count = rb_hash_aref(hash, group);
+    if (NIL_P(count)) {
+	count = INT2FIX(1);
+    }
+    else if (FIXNUM_P(count) && count < INT2FIX(FIXNUM_MAX)) {
+	count += INT2FIX(1) & ~FIXNUM_FLAG;
+    }
+    else {
+	count = rb_big_plus(count, INT2FIX(1));
+    }
+    rb_hash_aset(hash, group, count);
+    return Qnil;
+}
+
+/*
+ *  call-seq:
+ *     enum.count_by { |obj| block } -> a_hash
+ *     enum.count_by                 -> an_enumerator
+ *
+ *  Counts the collection by result of the block.  Returns a hash where the
+ *  keys are the evaluated result from the block and the values are
+ *  numbers of elements in the collection that correspond to the key.
+ *
+ *  If no block is given an enumerator is returned.
+ *
+ *     (1..6).count_by { |i| i%3 }   #=> {0=>2, 1=>2, 2=>2}
+ *
+ */
+
+static VALUE
+enum_count_by(VALUE obj)
+{
+    VALUE hash;
+
+    RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
+
+    hash = rb_hash_new();
+    rb_block_call(obj, id_each, 0, 0, count_by_i, hash);
+    OBJ_INFECT(hash, obj);
+
+    return hash;
+}
+
+static VALUE
 first_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, params))
 {
     struct MEMO *memo = MEMO_CAST(params);
@@ -4038,6 +4090,7 @@ Init_Enumerable(void)
     rb_define_method(rb_mEnumerable, "reduce", enum_inject, -1);
     rb_define_method(rb_mEnumerable, "partition", enum_partition, 0);
     rb_define_method(rb_mEnumerable, "group_by", enum_group_by, 0);
+    rb_define_method(rb_mEnumerable, "count_by", enum_count_by, 0);
     rb_define_method(rb_mEnumerable, "first", enum_first, -1);
     rb_define_method(rb_mEnumerable, "all?", enum_all, -1);
     rb_define_method(rb_mEnumerable, "any?", enum_any, -1);

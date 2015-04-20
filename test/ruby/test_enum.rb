@@ -268,6 +268,15 @@ class TestEnumerable < Test::Unit::TestCase
     assert_equal(h, @obj.each_with_index.group_by(&cond))
   end
 
+  def test_count_by
+    h = {1 => 2, 2 => 2, 3 => 1}
+    assert_equal(h, @obj.count_by {|x| x })
+
+    h = {1 => 2, 2 => 2, 3 => 1}
+    cond = ->(x, i) { x }
+    assert_equal(h, @obj.each_with_index.count_by(&cond))
+  end
+
   def test_first
     assert_equal(1, @obj.first)
     assert_equal([1, 2, 3], @obj.first(3))
