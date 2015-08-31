@@ -313,6 +313,8 @@ struct parser_params {
 
     int max_numparam;
 
+    short math_ctype;
+
     struct lex_context ctxt;
 
     unsigned int command_start:1;
@@ -8038,6 +8040,16 @@ parser_encode_length(struct parser_params *p, const char *name, long len)
     return len;
 }
 
+#define enc_property_name_to_ctype(enc, name) \
+    ONIGENC_PROPERTY_NAME_TO_CTYPE(enc, (const OnigUChar *)name, (const OnigUChar *)name + strlen(name))
+
+static void
+parser_set_current_encoding(struct parser_params *p, rb_encoding *enc)
+{
+    p->enc = enc;
+    p->math_ctype = enc_property_name_to_ctype(enc, "Math");
+}
+
 static void
 parser_set_encode(struct parser_params *p, const char *name)
 {
@@ -8058,7 +8070,7 @@ parser_set_encode(struct parser_params *p, const char *name)
 	excargs[1] = rb_sprintf("%s is not ASCII compatible", rb_enc_name(enc));
 	goto error;
     }
-    p->enc = enc;
+    parser_set_current_encoding(p, enc);
 #ifndef RIPPER
     if (p->debug_lines) {
 	VALUE lines = p->debug_lines;
@@ -8404,7 +8416,7 @@ parser_prepare(struct parser_params *p)
 	if (p->lex.pend - p->lex.pcur >= 2 &&
 	    (unsigned char)p->lex.pcur[0] == 0xbb &&
 	    (unsigned char)p->lex.pcur[1] == 0xbf) {
-	    p->enc = rb_utf8_encoding();
+	    parser_set_current_encoding(p, rb_utf8_encoding());
 	    p->lex.pcur += 2;
 	    p->lex.pbeg = p->lex.pcur;
 	    return;
@@ -8414,7 +8426,7 @@ parser_prepare(struct parser_params *p)
 	return;
     }
     pushback(p, c);
-    p->enc = rb_enc_get(p->lex.lastline);
+    parser_set_current_encoding(p, rb_enc_get(p->lex.lastline));
 }
 
 #ifndef RIPPER
@@ -9092,11 +9104,29 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     const enum lex_state_e last_state = p->lex.state;
     ID ident;
 
-    do {
-	if (!ISASCII(c)) mb = ENC_CODERANGE_UNKNOWN;
+    if (!ISASCII(c) && p->math_ctype != -1) {
 	if (tokadd_mbchar(p, c) == -1) return 0;
 	c = nextc(p);
-    } while (parser_is_identchar(p));
+	mb = rb_enc_mbc_to_codepoint(tok(p), tok(p)+toklen(p), p->enc);
+	if (ONIGENC_IS_CODE_CTYPE(p->enc, mb, p->math_ctype)) {
+	    mb = ENC_CODERANGE_VALID;
+	}
+	else if (!parser_is_identchar(p)) {
+	    /* end of the identfier */
+	    mb = ENC_CODERANGE_VALID;
+	}
+	else {
+	    /* continuing the identfier */
+	    mb = ENC_CODERANGE_UNKNOWN;
+	}
+    }
+    if (mb != ENC_CODERANGE_VALID) {
+	do {
+	    if (!ISASCII(c)) mb = ENC_CODERANGE_UNKNOWN;
+	    if (tokadd_mbchar(p, c) == -1) return 0;
+	    c = nextc(p);
+	} while (parser_is_identchar(p));
+    }
     if ((c == '!' || c == '?') && !peek(p, '=')) {
 	result = tFID;
 	tokadd(p, c);
@@ -13067,7 +13097,7 @@ parser_initialize(struct parser_params *p)
 #endif
     p->debug_buffer = Qnil;
     p->debug_output = rb_ractor_stdout();
-    p->enc = rb_utf8_encoding();
+    parser_set_current_encoding(p, rb_utf8_encoding());
 }
 
 #ifdef RIPPER
