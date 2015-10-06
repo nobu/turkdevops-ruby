@@ -8375,7 +8375,8 @@ parse_qmark(struct parser_params *p, int space_seen)
 }
 
 static enum yytokentype
-parse_percent(struct parser_params *p, const int space_seen, const enum lex_state_e last_state)
+parse_percent(struct parser_params *p, const int space_seen, int cmd_state,
+	      const enum lex_state_e last_state)
 {
     register int c;
     const char *ptok = p->lex.pcur;
@@ -8383,6 +8384,7 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
     if (IS_BEG()) {
 	int term;
 	int paren;
+	int label;
 
 	c = nextc(p);
       quotation:
@@ -8411,11 +8413,13 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
 	p->lex.ptok = ptok-1;
 	switch (c) {
 	  case 'Q':
-	    p->lex.strterm = NEW_STRTERM(str_dquote, term, paren);
+	    label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+	    p->lex.strterm = NEW_STRTERM(str_dquote | label, term, paren);
 	    return tSTRING_BEG;
 
 	  case 'q':
-	    p->lex.strterm = NEW_STRTERM(str_squote, term, paren);
+	    label = (IS_LABEL_POSSIBLE() ? str_label : 0);
+	    p->lex.strterm = NEW_STRTERM(str_squote | label, term, paren);
 	    return tSTRING_BEG;
 
 	  case 'W':
@@ -9453,7 +9457,7 @@ parser_yylex(struct parser_params *p)
 	return '\\';
 
       case '%':
-	return parse_percent(p, space_seen, last_state);
+	return parse_percent(p, space_seen, cmd_state, last_state);
 
       case '$':
 	return parse_gvar(p, last_state);
