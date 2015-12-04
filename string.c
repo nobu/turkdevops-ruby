@@ -709,6 +709,15 @@ must_not_null(const char *ptr)
     }
 }
 
+static inline void
+must_not_broken(VALUE str)
+{
+    if (ENC_CODERANGE(str) == ENC_CODERANGE_BROKEN) {
+	rb_encoding *enc = rb_enc_get(str);
+	rb_raise(rb_eArgError, "invalid byte sequence in %s", rb_enc_name(enc));
+    }
+}
+
 static inline VALUE
 str_alloc(VALUE klass)
 {
@@ -10399,6 +10408,99 @@ rb_str_unicode_normalized_p(int argc, VALUE *argv, VALUE str)
     return unicode_normalize_common(argc, argv, str, id_normalized_p);
 }
 
+static VALUE
+str_squish(VALUE str)
+{
+    long i = 0, d = 0, s, len;
+    char *ptr, *end;
+    int c, n, sp = 0;
+    VALUE ret = Qnil;
+    rb_encoding *enc = STR_ENC_GET(str);
+
+    if (!str_independent(str))
+	str_make_independent(str);
+    RSTRING_GETMEM(str, ptr, len);
+    end = ptr + len;
+    s = len;
+    for (i = 0; i < len; i += n) {
+	c = rb_enc_codepoint_len(ptr + i, end, &n, enc);
+	if (rb_enc_isspace(c, enc)) {
+	    sp = 0;
+	    if (s < i) {
+		/* end of non-spaces */
+		if (d < s) {
+		    memmove(ptr + d, ptr + s, i - s);
+		}
+		d += i - s;
+		s = len;
+		if (d == i) sp = c;
+	    }
+	}
+	else if (s > i) {
+	    /* start of non-spaces */
+	    s = i;
+	    if (d > 0) {
+		if (sp != ' ') {
+		    ret = str;
+		    rb_enc_mbcput(' ', ptr + d, enc);
+		}
+		d += rb_enc_codelen(' ', enc);
+	    }
+	}
+    }
+    if (s < i) {
+	if (d < s) {
+	    memmove(ptr + d, ptr + s, i - s);
+	}
+	d += i - s;
+    }
+    if (d == i) return ret;
+    rb_str_set_len(str, d);
+    return str;
+}
+
+/*
+ *    str.squish -> str
+ *
+ *  Returns the string, first removing all whitespace on both ends of the
+ *  string, and then changing remaining consecutive whitespace groups into one
+ *  space each.
+ *
+ *  Note that it handles both ASCII and Unicode whitespace.
+ *
+ *     %{ Multi-line
+ *        string }.squish                   # => "Multi-line string"
+ *     " foo   bar    \n   \t   boo".squish # => "foo bar boo"
+ */
+static VALUE
+rb_str_squish(VALUE str)
+{
+    must_not_broken(str);
+    str_squish(str = rb_str_dup(str));
+    return str;
+}
+
+/*
+ *    str.squish! -> str
+ *
+ *  Performs a destructive squish. See String#squish.
+ *
+ *     str = " foo   bar    \n   \t   boo"
+ *     str.squish!                         # => "foo bar boo"
+ *     str                                 # => "foo bar boo"
+ *
+ *     str = "foo-bar boo"
+ *     str.squish!                         # => nil
+ *     str                                 # => "foo-bar boo"
+ *
+ */
+static VALUE
+rb_str_squish_bang(VALUE str)
+{
+    must_not_broken(str);
+    return str_squish(str);
+}
+
 /**********************************************************************
  * Document-class: Symbol
  *
@@ -11016,6 +11118,7 @@ Init_String(void)
     rb_define_method(rb_cString, "rstrip", rb_str_rstrip, 0);
     rb_define_method(rb_cString, "delete_prefix", rb_str_delete_prefix, 1);
     rb_define_method(rb_cString, "delete_suffix", rb_str_delete_suffix, 1);
+    rb_define_method(rb_cString, "squish", rb_str_squish, 0);
 
     rb_define_method(rb_cString, "sub!", rb_str_sub_bang, -1);
     rb_define_method(rb_cString, "gsub!", rb_str_gsub_bang, -1);
@@ -11026,6 +11129,7 @@ Init_String(void)
     rb_define_method(rb_cString, "rstrip!", rb_str_rstrip_bang, 0);
     rb_define_method(rb_cString, "delete_prefix!", rb_str_delete_prefix_bang, 1);
     rb_define_method(rb_cString, "delete_suffix!", rb_str_delete_suffix_bang, 1);
+    rb_define_method(rb_cString, "squish!", rb_str_squish_bang, 0);
 
     rb_define_method(rb_cString, "tr", rb_str_tr, 2);
     rb_define_method(rb_cString, "tr_s", rb_str_tr_s, 2);

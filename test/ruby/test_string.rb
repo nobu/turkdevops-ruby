@@ -3150,6 +3150,27 @@ CODE
     assert_not_predicate(data, :valid_encoding?)
     assert_predicate(data[100..-1], :valid_encoding?)
   end
+
+  def test_string_squish
+    original = %{\u205f\u3000 A string surrounded by various unicode spaces,
+      with tabs(\t\t), newlines(\n\n), unicode nextlines(\u0085\u0085) and many spaces(  ). \u00a0\u2007}
+
+    expected = "A string surrounded by various unicode spaces, " +
+      "with tabs( ), newlines( ), unicode nextlines( ) and many spaces( )."
+
+    # Make sure squish returns what we expect:
+    assert_equal expected, original.squish
+    # But doesn't modify the original string:
+    assert_not_equal expected, original
+
+    # Make sure squish! returns what we expect:
+    assert_equal expected, original.squish!
+    # And changes the original string:
+    assert_equal expected, original
+
+    assert_equal "foo bar", "foo bar".squish
+    assert_nil "foo bar".squish!
+  end
 end
 
 class TestString2 < TestString
