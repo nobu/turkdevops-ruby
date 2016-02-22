@@ -1357,6 +1357,13 @@ eval_string_with_scope(VALUE scope, VALUE src, VALUE file, int line)
     if (!iseq) {
 	rb_exc_raise(ec->errinfo);
     }
+    return vm_eval_iseq_in_scope(ec, iseq, scope);
+}
+
+static VALUE
+vm_eval_iseq_in_scope(rb_execution_context_t *ec, const rb_iseq_t *iseq, VALUE scope)
+{
+    rb_binding_t *bind = DATA_PTR(scope);
 
     vm_set_eval_stack(ec, iseq, NULL, &bind->block);
 

@@ -322,6 +322,7 @@ extern VALUE rb_vm_invoke_bmethod(rb_execution_context_t *ec, rb_proc_t *proc, V
                                   int argc, const VALUE *argv, VALUE block_handler,
                                   const rb_callable_method_entry_t *me);
 static VALUE vm_invoke_proc(rb_execution_context_t *ec, rb_proc_t *proc, VALUE self, int argc, const VALUE *argv, VALUE block_handler);
+static VALUE vm_eval_iseq_in_scope(rb_execution_context_t *ec, const rb_iseq_t *iseq, VALUE scope);
 
 #include "mjit.h"
 #include "vm_insnhelper.h"
@@ -2136,6 +2137,14 @@ rb_iseq_eval(const rb_iseq_t *iseq)
     vm_set_top_stack(ec, iseq);
     val = vm_exec(ec, TRUE);
     return val;
+}
+
+VALUE
+rb_iseq_eval_in_scope(const rb_iseq_t *iseq, VALUE scope)
+{
+    rb_execution_context_t *ec = GET_EC();
+    rb_check_typeddata(scope, &ruby_binding_data_type);
+    return vm_eval_iseq_in_scope(ec, iseq, scope);
 }
 
 VALUE
