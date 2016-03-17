@@ -3149,6 +3149,9 @@ insn_set_specialized_instruction(rb_iseq_t *iseq, INSN *iobj, int insn_id)
     return COMPILE_OK;
 }
 
+#define CALL_INFO_AT(insn) (struct rb_call_info *)OPERAND_AT(insn, 0)
+#define CI_ARGS_SIMPLE_P(ci) ((ci)->flag & VM_CALL_ARGS_SIMPLE)
+
 static int
 iseq_specialized_instruction(rb_iseq_t *iseq, INSN *iobj)
 {
@@ -3159,8 +3162,8 @@ iseq_specialized_instruction(rb_iseq_t *iseq, INSN *iobj)
 	 */
 	INSN *niobj = (INSN *)iobj->link.next;
 	if (IS_INSN_ID(niobj, send)) {
-	    struct rb_call_info *ci = (struct rb_call_info *)OPERAND_AT(niobj, 0);
-	    if ((ci->flag & VM_CALL_ARGS_SIMPLE) && ci->orig_argc == 0) {
+	    struct rb_call_info *ci = CALL_INFO_AT(niobj);
+	    if (CI_ARGS_SIMPLE_P(ci) && ci->orig_argc == 0) {
 		switch (ci->mid) {
 		  case idMax:
 		    iobj->insn_id = BIN(opt_newarray_max);
