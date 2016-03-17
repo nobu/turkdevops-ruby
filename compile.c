@@ -3198,6 +3198,23 @@ iseq_specialized_instruction(rb_iseq_t *iseq, INSN *iobj)
 		    break;
 		}
 		break;
+	      case 1:
+		switch (ci->mid) {
+		  case idAREF:
+		    {
+			VALUE *operands = niobj->operands;
+			niobj->operands = NULL;
+			operands[2] = operands[1];
+			operands[1] = operands[0];
+			operands[0] = str;
+			iobj->insn_id = BIN(opt_aref_with);
+			iobj->operand_size = 3;
+			iobj->operands = operands;
+		    }
+		    ELEM_REMOVE(&niobj->link);
+		    break;
+		}
+		break;
 	    }
 	}
     }
@@ -6316,24 +6333,6 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       }
       case NODE_CALL:
       case NODE_OPCALL:
-	/* optimization shortcut
-	 *   obj["literal"] -> opt_aref_with(obj, "literal")
-	 */
-	if (node->nd_mid == idAREF && !private_recv_p(node) && node->nd_args &&
-	    nd_type(node->nd_args) == NODE_ARRAY && node->nd_args->nd_alen == 1 &&
-	    nd_type(node->nd_args->nd_head) == NODE_STR &&
-	    ISEQ_COMPILE_DATA(iseq)->current_block == NULL &&
-	    ISEQ_COMPILE_DATA(iseq)->option->specialized_instruction) {
-	    VALUE str = freeze_literal(iseq, node->nd_args->nd_head->nd_lit);
-	    CHECK(COMPILE(ret, "recv", node->nd_recv));
-	    ADD_INSN3(ret, line, opt_aref_with, str,
-		      new_callinfo(iseq, idAREF, 1, 0, NULL, FALSE),
-		      NULL/* CALL_CACHE */);
-	    if (popped) {
-		ADD_INSN(ret, line, pop);
-	    }
-	    break;
-	}
       case NODE_QCALL:
       case NODE_FCALL:
       case NODE_VCALL:{		/* VCALL: variable or call */
