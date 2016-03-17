@@ -3178,6 +3178,30 @@ iseq_specialized_instruction(rb_iseq_t *iseq, INSN *iobj)
 	}
     }
 
+    if (IS_INSN_ID(iobj, putstring) ||
+	(IS_INSN_ID(iobj, putobject) && RB_TYPE_P(OPERAND_AT(iobj, 0), T_STRING))) {
+	INSN *niobj = (INSN *)iobj->link.next;
+	VALUE str = OPERAND_AT(iobj, 0);
+	struct rb_call_info *ci = 0;
+	if (niobj && IS_INSN_ID(niobj, send) &&
+	    CI_ARGS_SIMPLE_P(ci = CALL_INFO_AT(niobj))) {
+	    switch (ci->orig_argc) {
+	      case 0:
+		switch (ci->mid) {
+		  case idFreeze:
+		    iobj->insn_id = BIN(opt_str_freeze);
+		    ELEM_REMOVE(&niobj->link);
+		    break;
+		  case idUMinus:
+		    iobj->insn_id = BIN(opt_str_uminus);
+		    ELEM_REMOVE(&niobj->link);
+		    break;
+		}
+		break;
+	    }
+	}
+    }
+
     if (IS_INSN_ID(iobj, send)) {
 	struct rb_call_info *ci = (struct rb_call_info *)OPERAND_AT(iobj, 0);
 	const rb_iseq_t *blockiseq = (rb_iseq_t *)OPERAND_AT(iobj, 2);
@@ -6292,26 +6316,6 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       }
       case NODE_CALL:
       case NODE_OPCALL:
-	/* optimization shortcut
-	 *   "literal".freeze -> opt_str_freeze("literal")
-	 */
-	if (node->nd_recv && nd_type(node->nd_recv) == NODE_STR &&
-	    (node->nd_mid == idFreeze || node->nd_mid == idUMinus) &&
-	    node->nd_args == NULL &&
-	    ISEQ_COMPILE_DATA(iseq)->current_block == NULL &&
-	    ISEQ_COMPILE_DATA(iseq)->option->specialized_instruction) {
-	    VALUE str = freeze_literal(iseq, node->nd_recv->nd_lit);
-	    if (node->nd_mid == idUMinus) {
-		ADD_INSN1(ret, line, opt_str_uminus, str);
-	    }
-	    else {
-		ADD_INSN1(ret, line, opt_str_freeze, str);
-	    }
-	    if (popped) {
-		ADD_INSN(ret, line, pop);
-	    }
-	    break;
-	}
 	/* optimization shortcut
 	 *   obj["literal"] -> opt_aref_with(obj, "literal")
 	 */
