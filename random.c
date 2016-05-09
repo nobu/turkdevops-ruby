@@ -245,6 +245,7 @@ typedef struct {
     int (*left)(const rb_random_t *);
     int (*equal)(const rb_random_t *, const rb_random_t *);
     unsigned int (*genrand_int32)(rb_random_t *);
+    void (*bytes)(rb_random_t *, void *, size_t);
     void (*copy)(rb_random_t *, const rb_random_t *);
 } rb_random_interface_t;
 
@@ -257,6 +258,7 @@ typedef struct {
     static int prefix##_left(const rb_random_t *); \
     static int prefix##_equal(const rb_random_t *, const rb_random_t *); \
     static unsigned int prefix##_genrand_int32(rb_random_t *); \
+    static void prefix##_bytes(rb_random_t *, void *, size_t); \
     static void prefix##_copy(rb_random_t *, const rb_random_t *); \
     /* end */
 
@@ -266,6 +268,7 @@ typedef struct {
     prefix##_left, \
     prefix##_equal, \
     prefix##_genrand_int32, \
+    prefix##_bytes, \
     prefix##_copy, \
     /* end */
 
@@ -281,6 +284,7 @@ static rb_random_mt_t default_rand;
 static rb_random_mt_t *rand_mt_start(rb_random_mt_t *);
 static VALUE rand_init(const rb_random_interface_t *, rb_random_t *, VALUE vseed);
 static VALUE random_seed(void);
+static void rand_bytes_int32(const rb_random_interface_t *rng, rb_random_t *rnd, void *buf, size_t n);
 
 static rb_random_t *
 rand_start(rb_random_mt_t *r)
@@ -839,6 +843,12 @@ mt_genrand_int32(rb_random_t *rnd)
 }
 
 static void
+mt_bytes(rb_random_t *rnd, void *buf, size_t len)
+{
+    rand_bytes_int32(&random_mt_if, rnd, buf, len);
+}
+
+static void
 mt_copy(rb_random_t *rnd1, const rb_random_t *rnd2)
 {
     rb_random_mt_t *r1 = (rb_random_mt_t *)rnd1;
@@ -1261,12 +1271,17 @@ random_bytes(VALUE obj, VALUE len)
 static VALUE
 genrand_bytes(const rb_random_interface_t *rng, rb_random_t *rnd, long n)
 {
-    VALUE bytes;
-    char *ptr;
+    VALUE bytes = rb_str_new(0, n);
+    rng->bytes(rnd, RSTRING_PTR(bytes), n);
+    return bytes;
+}
+
+static void
+rand_bytes_int32(const rb_random_interface_t *rng, rb_random_t *rnd, void *buf, size_t n)
+{
+    char *ptr = buf;
     unsigned int r, i;
 
-    bytes = rb_str_new(0, n);
-    ptr = RSTRING_PTR(bytes);
     for (; n >= SIZEOF_INT32; n -= SIZEOF_INT32) {
 	r = rng->genrand_int32(rnd);
 	i = SIZEOF_INT32;
@@ -1282,7 +1297,6 @@ genrand_bytes(const rb_random_interface_t *rng, rb_random_t *rnd, long n)
 	    r >>= CHAR_BIT;
 	} while (--n);
     }
-    return bytes;
 }
 
 VALUE
