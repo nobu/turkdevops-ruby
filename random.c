@@ -240,7 +240,7 @@ typedef struct {
 } rb_random_t;
 
 typedef struct {
-    VALUE (*init)(const rb_random_t *, VALUE);
+    void (*init)(rb_random_t *, const uint32_t *, size_t);
     VALUE (*state)(const rb_random_t *);
     int (*left)(const rb_random_t *);
     int (*equal)(const rb_random_t *, const rb_random_t *);
@@ -252,13 +252,14 @@ typedef struct {
     ((const rb_random_interface_t *)RTYPEDDATA_TYPE(obj)->data)
 
 #define RB_RANDOM_INTERFACE_DECLARE(prefix) \
-    static VALUE prefix##_init(const rb_random_t *, VALUE); \
+    static void prefix##_init(rb_random_t *, const uint32_t *, size_t); \
     static VALUE prefix##_state(const rb_random_t *); \
     static int prefix##_left(const rb_random_t *); \
     static int prefix##_equal(const rb_random_t *, const rb_random_t *); \
     static unsigned int prefix##_genrand_int32(rb_random_t *); \
     static void prefix##_copy(rb_random_t *, const rb_random_t *); \
     /* end */
+
 #define RB_RANDOM_INTERFACE_DEFINE(prefix) \
     prefix##_init, \
     prefix##_state, \
@@ -277,18 +278,9 @@ typedef struct {
 
 static rb_random_mt_t default_rand;
 
-static VALUE rand_mt_init(struct MT *mt, VALUE vseed);
+static rb_random_mt_t *rand_mt_start(rb_random_mt_t *);
+static VALUE rand_init(const rb_random_interface_t *, rb_random_t *, VALUE vseed);
 static VALUE random_seed(void);
-
-static rb_random_mt_t *
-rand_mt_start(rb_random_mt_t *r)
-{
-    struct MT *mt = &r->mt;
-    if (!genrand_initialized(mt)) {
-	r->base.seed = rand_mt_init(mt, random_seed());
-    }
-    return r;
-}
 
 static rb_random_t *
 rand_start(rb_random_mt_t *r)
@@ -437,33 +429,27 @@ random_alloc(VALUE klass)
 }
 
 static VALUE
-rand_mt_init(struct MT *mt, VALUE seed)
+rand_init(const rb_random_interface_t *rng, rb_random_t *rnd, VALUE seed)
 {
-    uint32_t buf0[SIZEOF_LONG / SIZEOF_INT32 * 4], *buf = buf0;
+    uint32_t *buf = 0;
+    VALUE buf0;
     size_t len;
     int sign;
 
     len = rb_absint_numwords(seed, 32, NULL);
-    if (len > numberof(buf0))
-        buf = ALLOC_N(uint32_t, len);
+    buf = ALLOCV_N(uint32_t, buf0, len);
     sign = rb_integer_pack(seed, buf, len, sizeof(uint32_t), 0,
         INTEGER_PACK_LSWORD_FIRST|INTEGER_PACK_NATIVE_BYTE_ORDER);
-    if (sign < 0)
-        sign = -sign;
-    if (len == 0) {
-        buf[0] = 0;
-        len = 1;
-    }
-    if (len <= 1) {
-        init_genrand(mt, buf[0]);
-    }
-    else {
+    if (len > 1) {
+	if (sign < 0)
+	    sign = -sign;
         if (sign != 2 && buf[len-1] == 1) /* remove leading-zero-guard */
             len--;
-        init_by_array(mt, buf, (int)len);
     }
+    rng->init(rnd, buf, len);
     explicit_bzero(buf, len * sizeof(*buf));
-    if (buf != buf0) xfree(buf);
+    ALLOCV_END(buf0);
+    rnd->seed = seed;
     return seed;
 }
 
@@ -491,7 +477,7 @@ random_init(int argc, VALUE *argv, VALUE obj)
 	rb_check_copyable(obj, vseed);
 	vseed = rb_to_int(vseed);
     }
-    rnd->seed = rb_rand_if(obj)->init(rnd, vseed);
+    rand_init(rb_rand_if(obj), rnd, vseed);
     return obj;
 }
 
@@ -793,11 +779,29 @@ random_copy(VALUE obj, VALUE orig)
     return obj;
 }
 
-static VALUE
-mt_init(const rb_random_t *rnd, VALUE seed)
+static rb_random_mt_t *
+rand_mt_start(rb_random_mt_t *r)
+{
+    struct MT *mt = &r->mt;
+    if (!genrand_initialized(mt)) {
+	rand_init(&random_mt_if, &r->base, random_seed());
+    }
+    return r;
+}
+
+static void
+mt_init(rb_random_t *rnd, const uint32_t *buf, size_t len)
 {
     struct MT *mt = &((rb_random_mt_t *)rnd)->mt;
-    return rand_mt_init(mt, seed);
+    if (len == 0) {
+        init_genrand(mt, 0);
+    }
+    else if (len <= 1) {
+        init_genrand(mt, buf[0]);
+    }
+    else {
+        init_by_array(mt, buf, (int)len);
+    }
 }
 
 static VALUE
@@ -961,7 +965,7 @@ rb_f_srand(int argc, VALUE *argv, VALUE obj)
 	seed = rb_to_int(argv[0]);
     }
     old = r->base.seed;
-    r->base.seed = rand_mt_init(&r->mt, seed);
+    rand_init(&random_mt_if, &r->base, seed);
 
     return old;
 }
