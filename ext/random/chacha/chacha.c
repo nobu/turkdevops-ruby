@@ -19,21 +19,14 @@
 #define RSBUFSZ	(16*BLOCKSZ)
 
 typedef struct {
-    uint16_t rs_have;	     /* valid bytes at end of rs_buf */
-#if 0
-    uint16_t rs_count;	     /* bytes till reseed */
-#endif
-} rs_t;
-
-typedef struct {
     chacha_ctx rs_chacha;    /* chacha context for random keystream */
+    uint16_t rs_have;	     /* valid bytes at end of rs_buf */
     uint8_t rs_buf[RSBUFSZ];  /* keystream blocks */
-} rsx_t;
+} rs_t;
 
 typedef struct {
     rb_random_t base;
     rs_t rs;
-    rsx_t rsx;
 } rand_chacha_t;
 
 RB_RANDOM_INTERFACE_DECLARE(rs)
@@ -77,52 +70,49 @@ rs_alloc(VALUE klass)
 static void
 rs_init0(rb_random_t *rnd, const uint8_t *buf, size_t len)
 {
-    rsx_t *rsx = &((rand_chacha_t *)rnd)->rsx;
+    rs_t *rs = &((rand_chacha_t *)rnd)->rs;
 
     if (len < KEYSZ + IVSZ)
 	return;
 
-    chacha_keysetup(&rsx->rs_chacha, buf, KEYSZ * 8, 0);
-    chacha_ivsetup(&rsx->rs_chacha, buf + KEYSZ);
+    chacha_keysetup(&rs->rs_chacha, buf, KEYSZ * 8, 0);
+    chacha_ivsetup(&rs->rs_chacha, buf + KEYSZ);
 }
 
 static void
 rs_rekey(rb_random_t *rnd, const uint8_t *dat, size_t datlen)
 {
-    rsx_t *rsx = &((rand_chacha_t *)rnd)->rsx;
     rs_t *rs = &((rand_chacha_t *)rnd)->rs;
 
 #ifndef KEYSTREAM_ONLY
-    memset(rsx->rs_buf, 0, sizeof(rsx->rs_buf));
+    memset(rs->rs_buf, 0, sizeof(rs->rs_buf));
 #endif
     /* fill rs_buf with the keystream */
-    chacha_encrypt_bytes(&rsx->rs_chacha, rsx->rs_buf,
-			 rsx->rs_buf, sizeof(rsx->rs_buf));
+    chacha_encrypt_bytes(&rs->rs_chacha, rs->rs_buf,
+			 rs->rs_buf, sizeof(rs->rs_buf));
     /* mix in optional user provided data */
     if (dat) {
 	size_t i, m;
 
 	m = minimum(datlen, KEYSZ + IVSZ);
 	for (i = 0; i < m; i++)
-	    rsx->rs_buf[i] ^= dat[i];
+	    rs->rs_buf[i] ^= dat[i];
     }
     /* immediately reinit for backtracking resistance */
-    rs_init0(rnd, rsx->rs_buf, KEYSZ + IVSZ);
-    memset(rsx->rs_buf, 0, KEYSZ + IVSZ);
-    rs->rs_have = sizeof(rsx->rs_buf) - KEYSZ - IVSZ;
+    rs_init0(rnd, rs->rs_buf, KEYSZ + IVSZ);
+    memset(rs->rs_buf, 0, KEYSZ + IVSZ);
+    rs->rs_have = sizeof(rs->rs_buf) - KEYSZ - IVSZ;
 }
 
 static void
 rs_init(rb_random_t *rnd, const uint32_t *buf, size_t len)
 {
     rs_rekey(rnd, (const uint8_t *)buf, len * sizeof(*buf));
-    ((rand_chacha_t *)rnd)->rs.rs_have = 0;
 }
 
 static void
 rs_bytes(rb_random_t *rnd, void *p, size_t n)
 {
-    rsx_t *rsx = &((rand_chacha_t *)rnd)->rsx;
     rs_t *rs = &((rand_chacha_t *)rnd)->rs;
     uint8_t *buf = p;
     uint8_t *keystream;
@@ -131,7 +121,7 @@ rs_bytes(rb_random_t *rnd, void *p, size_t n)
     while (n > 0) {
 	if (rs->rs_have > 0) {
 	    m = minimum(n, rs->rs_have);
-	    keystream = rsx->rs_buf + sizeof(rsx->rs_buf)
+	    keystream = rs->rs_buf + sizeof(rs->rs_buf)
 		- rs->rs_have;
 	    memcpy(buf, keystream, m);
 	    memset(keystream, 0, m);
@@ -147,14 +137,13 @@ rs_bytes(rb_random_t *rnd, void *p, size_t n)
 static uint32_t
 rs_genrand_int32(rb_random_t *rnd)
 {
-    rsx_t *rsx = &((rand_chacha_t *)rnd)->rsx;
     rs_t *rs = &((rand_chacha_t *)rnd)->rs;
     uint8_t *keystream;
     uint32_t val;
 
     if (rs->rs_have < sizeof(val))
 	rs_rekey(rnd, NULL, 0);
-    keystream = rsx->rs_buf + sizeof(rsx->rs_buf) - rs->rs_have;
+    keystream = rs->rs_buf + sizeof(rs->rs_buf) - rs->rs_have;
     memcpy(&val, keystream, sizeof(val));
     memset(keystream, 0, sizeof(val));
     rs->rs_have -= sizeof(val);
@@ -164,7 +153,7 @@ rs_genrand_int32(rb_random_t *rnd)
 static VALUE
 rs_state(const rb_random_t *rnd)
 {
-    chacha_ctx *ctx = &((rand_chacha_t *)rnd)->rsx.rs_chacha;
+    chacha_ctx *ctx = &((rand_chacha_t *)rnd)->rs.rs_chacha;
     return rb_integer_unpack(ctx->input, numberof(ctx->input),
         sizeof(*ctx->input), 0,
         INTEGER_PACK_LSWORD_FIRST|INTEGER_PACK_NATIVE_BYTE_ORDER);
@@ -182,9 +171,9 @@ rs_equal(const rb_random_t *rnd1, const rb_random_t *rnd2)
 {
     const rand_chacha_t *r1 = (const rand_chacha_t *)rnd1;
     const rand_chacha_t *r2 = (const rand_chacha_t *)rnd2;
-    if (memcmp(r1->rsx.rs_chacha.input,
-	       r2->rsx.rs_chacha.input,
-	       sizeof(r1->rsx.rs_chacha.input)))
+    if (memcmp(r1->rs.rs_chacha.input,
+	       r2->rs.rs_chacha.input,
+	       sizeof(r1->rs.rs_chacha.input)))
 	return FALSE;
     if (r1->rs.rs_have != r2->rs.rs_have) return FALSE;
     return TRUE;
