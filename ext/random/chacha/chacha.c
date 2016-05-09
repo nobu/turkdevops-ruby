@@ -13,7 +13,7 @@
 # define TRUE 1
 #endif
 
-#define KEYSZ	32
+#define KEYSZ	(256/8)
 #define IVSZ	8
 #define BLOCKSZ	64
 #define RSBUFSZ	(16*BLOCKSZ)
