@@ -2,6 +2,8 @@
 #include "ccan/list/list.h"
 #include "coroutine/Stack.h"
 
+#include "constant.h"
+
 static VALUE rb_cMutex, rb_cQueue, rb_cSizedQueue, rb_cConditionVariable;
 static VALUE rb_eClosedQueueError;
 
@@ -1558,6 +1560,8 @@ define_thread_class(VALUE outer, const ID name, VALUE super)
 {
     VALUE klass = rb_define_class_id_under(outer, name, super);
     rb_const_set(rb_cObject, name, klass);
+    const VALUE sym = ID2SYM(name);
+    rb_mod_deprecate_constant(1, &sym, rb_cObject);
     return klass;
 }
 
