@@ -1,0 +1,3 @@
+blake2init.o: blake2init.c blake2b.h blake2s.h
+blake2b.o: blake2b.c blake2b.h
+blake2s.o: blake2s.c blake2s.h

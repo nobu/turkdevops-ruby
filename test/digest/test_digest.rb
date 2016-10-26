@@ -6,7 +6,7 @@ require 'test/unit'
 require 'tempfile'
 
 require 'digest'
-%w[digest/md5 digest/rmd160 digest/sha1 digest/sha2 digest/bubblebabble].each do |lib|
+%w[digest/md5 digest/rmd160 digest/sha1 digest/sha2 digest/blake2 digest/bubblebabble].each do |lib|
   begin
     require lib
   rescue LoadError
@@ -196,6 +196,34 @@ module TestDigest
       Data2 => "12a053384a9c0c88e405a06c27dcf49ada62eb2b",
     }
   end if defined?(Digest::RMD160)
+
+  if defined?(Digest::BLAKE2b)
+    class TestBLAKE2b < Test::Unit::TestCase
+      include TestDigest
+      ALGO = Digest::BLAKE2b
+      DATA = {
+        Data1 => %w[
+          ba 80 a5 3f 98 1c 4d 0d 6a 27 97 b6 9f 12 f6 e9
+          4c 21 2f 14 68 5a c4 b7 4b 12 bb 6f db ff a2 d1
+          7d 87 c5 39 2a ab 79 2d c2 52 d5 de 45 33 cc 95
+          18 d3 8a a8 db f1 92 5a b9 23 86 ed d4 00 99 23
+        ] * ''
+      }
+    end
+  end
+
+  if defined?(Digest::BLAKE2s)
+    class TestBLAKE2s < Test::Unit::TestCase
+      include TestDigest
+      ALGO = Digest::BLAKE2s
+      DATA = {
+        Data1 => %w[
+          50 8c 5e 8c 32 7c 14 e2 e1 a7 2b a3 4e eb 45 2f
+          37 45 8b 20 9e d6 3a 29 4d 99 9b 4c 86 67 59 82
+        ] * ''
+      }
+    end
+  end
 
   class TestBase < Test::Unit::TestCase
     def test_base
