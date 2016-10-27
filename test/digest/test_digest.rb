@@ -6,7 +6,7 @@ require 'test/unit'
 require 'tempfile'
 
 require 'digest'
-%w[digest/md5 digest/rmd160 digest/sha1 digest/sha2 digest/bubblebabble].each do |lib|
+%w[digest/md5 digest/rmd160 digest/sha1 digest/sha2 digest/sha3 digest/bubblebabble].each do |lib|
   begin
     require lib
   rescue LoadError
@@ -196,6 +196,52 @@ module TestDigest
       Data2 => "12a053384a9c0c88e405a06c27dcf49ada62eb2b",
     }
   end if defined?(Digest::RMD160)
+
+  class TestSHA3_224 < Test::Unit::TestCase
+    include TestDigest
+    ALGO = Digest::SHA3_224
+    DATA = {
+      "" => "6b4e03423667dbb73b6e15454f0eb1abd4597f9a1b078e3f5b5a6bc7",
+      Data1 => "e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf",
+      Data2 => "8a24108b154ada21c9fd5574494479ba5c7e7ab76ef264ead0fcce33",
+    }
+  end if defined?(Digest::SHA3_224)
+
+  class TestSHA3_256 < Test::Unit::TestCase
+    include TestDigest
+    ALGO = Digest::SHA3_256
+    DATA = {
+      "" => "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+      Data1 => "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
+      Data2 => "41c0dba2a9d6240849100376a8235e2c82e1b9998a999e21db32dd97496d3376",
+    }
+  end if defined?(Digest::SHA3_256)
+
+  class TestSHA3_384 < Test::Unit::TestCase
+    include TestDigest
+    ALGO = Digest::SHA3_384
+    DATA = {
+      "" => "0c63a75b845e4f7d01107d852e4c2485c51a50aaaa94fc61995e71bbee983a2a"\
+            "c3713831264adb47fb6bd1e058d5f004",
+      Data1 => "ec01498288516fc926459f58e2c6ad8df9b473cb0fc08c2596da7cf0e49be4b2"\
+               "98d88cea927ac7f539f1edf228376d25",
+      Data2 => "991c665755eb3a4b6bbdfb75c78a492e8c56a22c5c4d7e429bfdbc32b9d4ad5a"\
+               "a04a1f076e62fea19eef51acd0657c22",
+    }
+  end if defined?(Digest::SHA3_384)
+
+  class TestSHA3_512 < Test::Unit::TestCase
+    include TestDigest
+    ALGO = Digest::SHA3_512
+    DATA = {
+      "" => "a69f73cca23a9ac5c8b567dc185a756e97c982164fe25859e0d1dcc1475c80a6"\
+            "15b2123af1f5f94c11e3e9402c3ac558f500199d95b6d3e301758586281dcd26",
+      Data1 => "b751850b1a57168a5693cd924b6b096e08f621827444f70d884f5d0240d2712e"\
+               "10e116e9192af3c91a7ec57647e3934057340b4cf408d5a56592f8274eec53f0",
+      Data2 => "04a371e84ecfb5b8b77cb48610fca8182dd457ce6f326a0fd3d7ec2f1e91636d"\
+               "ee691fbe0c985302ba1b0d8dc78c086346b533b49c030d99a27daf1139d6e75e",
+    }
+  end if defined?(Digest::SHA3_512)
 
   class TestBase < Test::Unit::TestCase
     def test_base
