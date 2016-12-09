@@ -15,8 +15,9 @@ class TestRipper::ParserEvents < Test::Unit::TestCase
     assert_empty dispatched-tested
   end
 
-  def parse(str, nm = nil, &bl)
+  def parse(str, nm = nil, immediate_toplevel_statement: false, &bl)
     dp = DummyParser.new(str)
+    dp.immediate_toplevel_statement = immediate_toplevel_statement
     dp.hook(*nm, &bl) if nm
     dp.parse.to_s
   end
@@ -37,6 +38,15 @@ class TestRipper::ParserEvents < Test::Unit::TestCase
     thru_program = false
     assert_equal '[void()]', parse('', :on_program) {thru_program = true}
     assert_equal true, thru_program
+  end
+
+  def test_top_stmt
+    thru_top_stmt = false
+    result = parse('()', :on_top_stmt, immediate_toplevel_statement: true) {
+      thru_top_stmt = true
+    }
+    assert_equal '[top_stmt([void()])]', result
+    assert_equal true, thru_top_stmt
   end
 
   def test_stmts_new

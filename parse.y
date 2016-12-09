@@ -269,6 +269,8 @@ struct parser_params {
 #else
     /* Ripper only */
 
+    unsigned int immediate_toplevel_statement: 1;
+
     VALUE delayed;
     int delayed_line;
     int delayed_col;
@@ -965,9 +967,18 @@ top_stmts	: none
 		;
 
 top_stmt	: stmt
+		    {
+		    /*%%%*/
+			$$ = $1;
+		    /*% %*/
+		    /*% ripper: top_stmt!($$) %*/
+		    }
 		| keyword_BEGIN begin_block
 		    {
+		    /*%%%*/
 			$$ = $2;
+		    /*% %*/
+		    /*% ripper: top_stmt!($$) %*/
 		    }
 		;
 
@@ -7547,6 +7558,12 @@ parser_yylex(struct parser_params *p)
 	    }
 	    goto retry;
 	}
+#ifdef RIPPER
+	if (parser->immediate_toplevel_statement) {
+	    dispatch_scan_event('\n');
+	    goto normal_newline;
+	}
+#endif
 	while (1) {
 	    switch (c = nextc(p)) {
 	      case ' ': case '\t': case '\f': case '\r':
@@ -10777,6 +10794,37 @@ ripper_error_p(VALUE vparser)
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, p);
     return p->error_p ? Qtrue : Qfalse;
 }
+
+/*
+ *  call-seq:
+ *    ripper#immediate_toplevel_statement?   -> Boolean
+ *
+ *  Return true if immediate_toplevel_statement is enabled.
+ */
+static VALUE
+ripper_immediate_toplevel_statement_p(VALUE vparser)
+{
+    struct parser_params *parser;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
+    return parser->immediate_toplevel_statement ? Qtrue : Qfalse;
+}
+
+/*
+ *  call-seq:
+ *    ripper#immediate_toplevel_statement = flag  -> Boolean
+ *
+ *  Enable or disable immediate_toplevel_statement mode.
+ */
+static VALUE
+ripper_immediate_toplevel_statement_set(VALUE vparser, VALUE flag)
+{
+    struct parser_params *parser;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
+    parser->immediate_toplevel_statement = RTEST(flag);
+    return flag;
+}
 #endif
 
 /*
@@ -11360,6 +11408,8 @@ InitVM_ripper(void)
     rb_define_method(Ripper, "yydebug", rb_parser_get_yydebug, 0);
     rb_define_method(Ripper, "yydebug=", rb_parser_set_yydebug, 1);
     rb_define_method(Ripper, "error?", ripper_error_p, 0);
+    rb_define_method(Ripper, "immediate_toplevel_statement?", ripper_immediate_toplevel_statement_p, 0);
+    rb_define_method(Ripper, "immediate_toplevel_statement=", ripper_immediate_toplevel_statement_set, 1);
 #ifdef RIPPER_DEBUG
     rb_define_method(rb_mKernel, "assert_Qundef", ripper_assert_Qundef, 2);
     rb_define_method(rb_mKernel, "rawVALUE", ripper_value, 1);
