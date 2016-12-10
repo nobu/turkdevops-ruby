@@ -8563,6 +8563,19 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 		set_yylval_name(rb_intern2(tok(p), toklen(p)));
 		return kw->id[0];
 	    }
+#ifdef RIPPER
+	    switch (kw->id[0]) {
+	      case keyword_begin: case keyword_if: case keyword_unless:
+	      case keyword_while: case keyword_until: case keyword_case:
+	      case keyword_for: case keyword_class: case keyword_module:
+	      case keyword_def: case keyword_do:
+		++p->lex.paren_nest;
+		break;
+	      case keyword_end:
+		--p->lex.paren_nest;
+		break;
+	    }
+#endif
 	    if (IS_lex_state(EXPR_BEG)) {
 		p->command_start = TRUE;
 	    }
@@ -8571,7 +8584,12 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 		    p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE in the body of "-> do ... end" */
 		    return keyword_do_LAMBDA;
 		}
-		if (COND_P()) return keyword_do_cond;
+		if (COND_P()) {
+#ifdef RIPPER
+		    --p->lex.paren_nest;
+#endif
+		    return keyword_do_cond;
+		}
 		if (CMDARG_P() && !IS_lex_state_for(state, EXPR_CMDARG))
 		    return keyword_do_block;
 		return keyword_do;
@@ -12205,6 +12223,21 @@ ripper_error_p(VALUE vparser)
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, p);
     return p->error_p ? Qtrue : Qfalse;
 }
+
+/*
+ *  call-seq:
+ *    ripper#nesting_level   -> integer
+ *
+ *  Return nesting level.
+ */
+static VALUE
+ripper_nesting_level(VALUE vparser)
+{
+    struct parser_params *p;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, p);
+    return INT2NUM(p->lex.paren_nest);
+}
 #endif
 
 /*
@@ -12923,6 +12956,7 @@ InitVM_ripper(void)
     rb_define_method(Ripper, "debug_output", rb_parser_get_debug_output, 0);
     rb_define_method(Ripper, "debug_output=", rb_parser_set_debug_output, 1);
     rb_define_method(Ripper, "error?", ripper_error_p, 0);
+    rb_define_method(Ripper, "nesting_level", ripper_nesting_level, 0);
 #ifdef RIPPER_DEBUG
     rb_define_method(Ripper, "assert_Qundef", ripper_assert_Qundef, 2);
     rb_define_method(Ripper, "rawVALUE", ripper_value, 1);

@@ -60,21 +60,22 @@ class Ripper
       def nobits?(i) to_int.nobits?(i) end
     end
 
-    Elem = Struct.new(:pos, :event, :tok, :state, :message) do
-      def initialize(pos, event, tok, state, message = nil)
-        super(pos, event, tok, State.new(state), message)
+    Elem = Struct.new(:pos, :event, :tok, :state, :nesting_level, :message) do
+      def initialize(pos, event, tok, state, nesting_level, message = nil)
+        super(pos, event, tok, State.new(state), nesting_level, message)
       end
 
       def inspect
-        "#<#{self.class}: #{event}@#{pos[0]}:#{pos[1]}:#{state}: #{tok.inspect}#{": " if message}#{message}>"
+        "#<#{self.class}: #{event}@#{pos[0]}:#{pos[1]}:#{state}@#{nesting_level}: #{tok.inspect}#{": " if message}#{message}>"
       end
+      alias to_s inspect
 
       def pretty_print(q)
         q.group(2, "#<#{self.class}:", ">") {
           q.breakable
           q.text("#{event}@#{pos[0]}:#{pos[1]}")
           q.breakable
-          q.text(state)
+          q.text("#{state}@#{nesting_level}")
           q.breakable
           q.text("token: ")
           tok.pretty_print(q)
@@ -87,8 +88,8 @@ class Ripper
       end
 
       def to_a
-        a = super
-        a.pop unless a.last
+        a = [self.pos, self.event, self.tok, self.state]
+        a << self.message if self.message
         a
       end
     end
@@ -147,7 +148,7 @@ class Ripper
               e.event = :on_ignored_sp
               next
             end
-            ignored_sp << [i, Elem.new(e.pos.dup, :on_ignored_sp, tok[0, n], e.state)]
+            ignored_sp << [i, Elem.new(e.pos.dup, :on_ignored_sp, tok[0, n], e.state, e.nesting_level)]
             e.pos[1] += n
           end
         end
@@ -163,20 +164,20 @@ class Ripper
       buf = []
       @buf << buf
       @buf = buf
-      @buf.push Elem.new([lineno(), column()], __callee__, tok, state())
+      @buf.push Elem.new([lineno(), column()], __callee__, tok, state(), nesting_level())
     end
 
     def on_heredoc_end(tok)
-      @buf.push Elem.new([lineno(), column()], __callee__, tok, state())
+      @buf.push Elem.new([lineno(), column()], __callee__, tok, state(), nesting_level())
       @buf = @stack.pop
     end
 
     def _push_token(tok)
-      @buf.push Elem.new([lineno(), column()], __callee__, tok, state())
+      @buf.push Elem.new([lineno(), column()], __callee__, tok, state(), nesting_level())
     end
 
     def on_error(mesg)
-      @errors.push Elem.new([lineno(), column()], __callee__, token(), state(), mesg)
+      @errors.push Elem.new([lineno(), column()], __callee__, token(), state(), nesting_level(), mesg)
     end
     alias on_parse_error on_error
     alias compile_error on_error
