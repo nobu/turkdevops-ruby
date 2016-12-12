@@ -10914,6 +10914,21 @@ ripper_continue_p(VALUE vparser)
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
     return parser->continued_statement ? Qtrue : Qfalse;
 }
+
+/*
+ *  call-seq:
+ *    ripper#lex_state   -> string
+ *
+ *  Return lex state.
+ */
+static VALUE
+ripper_lex_state(VALUE vparser)
+{
+    struct parser_params *parser;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
+    return append_lex_state_name(lex_state, rb_str_new(0, 0));
+}
 #endif
 
 /*
@@ -11503,6 +11518,7 @@ InitVM_ripper(void)
     rb_define_method(Ripper, "eol?", ripper_eol_p, 0);
     rb_define_method(Ripper, "string?", ripper_string_p, 0);
     rb_define_method(Ripper, "continue?", ripper_continue_p, 0);
+    rb_define_method(Ripper, "lex_state", ripper_lex_state, 0);
 #ifdef RIPPER_DEBUG
     rb_define_method(rb_mKernel, "assert_Qundef", ripper_assert_Qundef, 2);
     rb_define_method(rb_mKernel, "rawVALUE", ripper_value, 1);
