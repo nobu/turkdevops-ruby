@@ -10868,6 +10868,30 @@ ripper_eol_p(VALUE vparser)
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
     return lex_eol_p() ? Qtrue : Qfalse;
 }
+
+/*
+ *  call-seq:
+ *    ripper#string?   -> string or nil
+ *
+ *  Return string type or nil.
+ */
+static VALUE
+ripper_string_p(VALUE vparser)
+{
+    struct parser_params *parser;
+    NODE *quote;
+    int func;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
+    if (!(quote = lex_strterm)) return Qnil;
+    if (nd_type(quote) == NODE_HEREDOC) return rb_str_new_cstr("=");
+    func = (int)quote->nd_func;
+    if (func & STR_FUNC_SYMBOL) return rb_str_new_cstr(":");
+    if (func & STR_FUNC_QWORDS) return rb_str_new_cstr("]");
+    if (func & STR_FUNC_REGEXP) return rb_str_new_cstr("/");
+    if (func & STR_FUNC_EXPAND) return rb_str_new_cstr("\"");
+    return rb_str_new_cstr("'");
+}
 #endif
 
 /*
@@ -11455,6 +11479,7 @@ InitVM_ripper(void)
     rb_define_method(Ripper, "immediate_toplevel_statement=", ripper_immediate_toplevel_statement_set, 1);
     rb_define_method(Ripper, "nesting_level", ripper_nesting_level, 0);
     rb_define_method(Ripper, "eol?", ripper_eol_p, 0);
+    rb_define_method(Ripper, "string?", ripper_string_p, 0);
 #ifdef RIPPER_DEBUG
     rb_define_method(rb_mKernel, "assert_Qundef", ripper_assert_Qundef, 2);
     rb_define_method(rb_mKernel, "rawVALUE", ripper_value, 1);
