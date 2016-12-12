@@ -10929,6 +10929,21 @@ ripper_lex_state(VALUE vparser)
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
     return append_lex_state_name(lex_state, rb_str_new(0, 0));
 }
+
+/*
+ *  call-seq:
+ *    ripper#lex_input   -> object
+ *
+ *  Return input object given to initialize.
+ */
+static VALUE
+ripper_lex_input(VALUE vparser)
+{
+    struct parser_params *parser;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
+    return lex_input;
+}
 #endif
 
 /*
@@ -11519,6 +11534,7 @@ InitVM_ripper(void)
     rb_define_method(Ripper, "string?", ripper_string_p, 0);
     rb_define_method(Ripper, "continue?", ripper_continue_p, 0);
     rb_define_method(Ripper, "lex_state", ripper_lex_state, 0);
+    rb_define_method(Ripper, "lex_input", ripper_lex_input, 0);
 #ifdef RIPPER_DEBUG
     rb_define_method(rb_mKernel, "assert_Qundef", ripper_assert_Qundef, 2);
     rb_define_method(rb_mKernel, "rawVALUE", ripper_value, 1);
