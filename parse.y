@@ -10853,6 +10853,21 @@ ripper_nesting_level(VALUE vparser)
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
     return INT2NUM(paren_nest);
 }
+
+/*
+ *  call-seq:
+ *    ripper#eol?   -> boolean
+ *
+ *  Return true if at eol.
+ */
+static VALUE
+ripper_eol_p(VALUE vparser)
+{
+    struct parser_params *parser;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
+    return lex_eol_p() ? Qtrue : Qfalse;
+}
 #endif
 
 /*
@@ -11439,6 +11454,7 @@ InitVM_ripper(void)
     rb_define_method(Ripper, "immediate_toplevel_statement?", ripper_immediate_toplevel_statement_p, 0);
     rb_define_method(Ripper, "immediate_toplevel_statement=", ripper_immediate_toplevel_statement_set, 1);
     rb_define_method(Ripper, "nesting_level", ripper_nesting_level, 0);
+    rb_define_method(Ripper, "eol?", ripper_eol_p, 0);
 #ifdef RIPPER_DEBUG
     rb_define_method(rb_mKernel, "assert_Qundef", ripper_assert_Qundef, 2);
     rb_define_method(rb_mKernel, "rawVALUE", ripper_value, 1);
