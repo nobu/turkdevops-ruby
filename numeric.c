@@ -3817,7 +3817,7 @@ rb_int_succ(VALUE num)
  *
  */
 
-static VALUE
+VALUE
 rb_int_pred(VALUE num)
 {
     if (FIXNUM_P(num)) {

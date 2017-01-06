@@ -770,7 +770,7 @@ rb_gmtime_r(const time_t *t, struct tm *result)
 #   define GMTIME(tm, result) rb_gmtime_r((tm), &(result))
 #endif
 
-static const int16_t common_year_yday_offset[] = {
+static const int16_t common_year_yday_offset[12] = {
     -1,
     -1 + 31,
     -1 + 31 + 28,
@@ -785,7 +785,7 @@ static const int16_t common_year_yday_offset[] = {
     -1 + 31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30
       /* 1    2    3    4    5    6    7    8    9    10   11 */
 };
-static const int16_t leap_year_yday_offset[] = {
+static const int16_t leap_year_yday_offset[12] = {
     -1,
     -1 + 31,
     -1 + 31 + 29,
@@ -801,10 +801,10 @@ static const int16_t leap_year_yday_offset[] = {
       /* 1    2    3    4    5    6    7    8    9    10   11 */
 };
 
-static const int8_t common_year_days_in_month[] = {
+static const int8_t common_year_days_in_month[365] = {
     31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
-static const int8_t leap_year_days_in_month[] = {
+static const int8_t leap_year_days_in_month[366] = {
     31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
 
@@ -829,11 +829,11 @@ static const int8_t leap_year_days_in_month[] = {
     (m),(m),(m),(m),(m),(m),(m),(m),(m),(m), \
     (m),(m),(m),(m),(m),(m),(m),(m),(m),(m), (m)
 
-static const uint8_t common_year_mon_of_yday[] = {
+static const uint8_t common_year_mon_of_yday[365] = {
     M31(1), M28(2), M31(3), M30(4), M31(5), M30(6),
     M31(7), M31(8), M30(9), M31(10), M30(11), M31(12)
 };
-static const uint8_t leap_year_mon_of_yday[] = {
+static const uint8_t leap_year_mon_of_yday[366] = {
     M31(1), M29(2), M31(3), M30(4), M31(5), M30(6),
     M31(7), M31(8), M30(9), M31(10), M30(11), M31(12)
 };
@@ -860,12 +860,12 @@ static const uint8_t leap_year_mon_of_yday[] = {
     10,11,12,13,14,15,16,17,18,19, \
     20,21,22,23,24,25,26,27,28,29,30,31
 
-static const uint8_t common_year_mday_of_yday[] = {
+static const uint8_t common_year_mday_of_yday[365] = {
   /*  1    2    3    4    5    6    7    8    9   10   11   12 */
     D31, D28, D31, D30, D31, D30, D31, D31, D30, D31, D30, D31
 };
-static const uint8_t leap_year_mday_of_yday[] = {
-    D31, D29, D31, D30, D31, D30, D31, D31, D30, D31, D30, D31
+static const uint8_t leap_year_mday_of_yday[366] = {
+    D31, D29, D31, D30, D31, D30, D31, D31, D30, D31, D30, D31,
 };
 
 #undef D28
@@ -2155,85 +2155,142 @@ invalid_utc_offset(VALUE zone)
 
 #define have_2digits(ptr) (ISDIGIT((ptr)[0]) && ISDIGIT((ptr)[1]))
 #define num_from_2digits(ptr) ((ptr)[0] * 10 + (ptr)[1] - '0' * 11)
+#define out_of_range(v, min, max) ((v) < (min) || (max) < (v))
+
+static inline size_t
+wordmatch_p(const char *str, size_t slen, const char *name, size_t nlen)
+{
+    if (nlen <= slen && STRNCASECMP(str, name, nlen) == 0 &&
+        (nlen == slen || !ISALPHA(str[nlen])))
+        return nlen;
+    return 0;
+}
+#define WORDMATCH_LIT(str, slen, lit) wordmatch_p(str, slen, lit, rb_strlen_lit(lit))
+
+static VALUE
+single_letter_tz(char c)
+{
+    if (c == 'Z') {
+        return UTC_ZONE;
+    }
+    size_t n;
+    /* Military Time Zone Names */
+    if (c >= 'A' && c <= 'I') {
+        n = (int)c - 'A' + 1;
+    }
+    /* No 'J' zone */
+    else if (c >= 'K' && c <= 'M') {
+        n = (int)c - 'A';
+    }
+    else if (c >= 'N' && c <= 'Y') {
+        n = 'M' - (int)c;
+    }
+    else {
+        return Qnil;
+    }
+    n *= 3600;
+    return INT2FIX(n);
+}
+
+static const char *
+utc_offset_scan(const char *s, size_t len, VALUE *offset)
+{
+    if (len == 1 && !NIL_P(*offset = single_letter_tz(s[0]))) {
+        return s + 1;
+    }
+    if (len < 3) return NULL;
+    if (WORDMATCH_LIT(s, len, "UTC")) {
+        const size_t wlen = rb_strlen_lit("UTC");
+        *offset = UTC_ZONE;
+        if (len == wlen) return s + wlen;
+        s += wlen;
+        len -= wlen;
+    }
+
+    int seconds = 0;
+    const bool plus = s[0] == '+';
+    /* +HH */
+    if (!plus && s[0] != '-') goto end;
+    if (!have_2digits(s+1)) goto end;
+    seconds += num_from_2digits(s+1);
+    if (out_of_range(seconds, 0, 23)) goto end;
+    seconds *= 3600;
+    s += 3;
+    len -= 3;
+
+    if (len < 2) goto end;
+    if (s[0] == ',' || s[0] == '.') {
+        /* fractional hour; subsecond offset is unsupported */
+        /* no over precision for offset; 10**-7 hour = 0.36
+         * milliseconds should be enough. */
+        const size_t max_digits = 7; /* 36 * 10**7 < 32-bit FIXNUM_MAX */
+
+        size_t n = len - 1;
+        if (n > max_digits) n = max_digits;
+        int ov;
+        unsigned long frac = ruby_scan_digits(s + 1, n, 10, &n, &ov);
+        ASSUME(n <= max_digits);
+        if (n <= 2) {
+            /* HH.nn or HH.n */
+            if (n == 1) frac *= 10;
+        }
+        else {
+            static const uint16_t p10[] = {10, 100, 1000, 10000, 10000};
+            STATIC_ASSERT(p10_size, numberof(p10) == max_digits-2);
+            if (n+1 < len && s[n+1] > ('5' - (char)(frac & 1)) && s[n+1] <= '9') {
+                /* round half to even */
+                ++frac;
+            }
+            frac /= p10[n - 3];
+        }
+        seconds += frac * 36;
+        for (s += n, len -= n; ++s, --len > 0 && ISDIGIT(s[0]);) continue;
+    }
+    else {
+        const int colon = s[0] == ':';
+
+        /* +HHMM or +HH:MM */
+        if (len < (size_t)colon + 2) goto end;
+        if (!have_2digits(s+colon)) goto end;
+        if (s[colon] > '5') goto end;
+        seconds += num_from_2digits(s+colon) * 60;
+        s += colon + 2;
+        len -= colon + 2;
+
+        /* +HHMMSS or +HH:MM:SS */
+        if (len < (size_t)colon + 2) goto end;
+        if (colon && s[0] != ':') goto end; /* +HH:MMSS is invalid */
+        if (!have_2digits(s+colon)) goto end;
+        if (s[colon] > '5') goto end; /* no leap second in UTC offset */
+        seconds += num_from_2digits(s+colon);
+        s += colon + 2;
+    }
+
+  end:
+    *offset = plus ? INT2FIX(seconds) : seconds ? INT2FIX(-seconds) : UTC_ZONE;
+    return s;
+}
 
 static VALUE
 utc_offset_arg(VALUE arg)
 {
     VALUE tmp;
     if (!NIL_P(tmp = rb_check_string_type(arg))) {
-        int n = 0;
-        const char *s = RSTRING_PTR(tmp), *min = NULL, *sec = NULL;
         if (!rb_enc_str_asciicompat_p(tmp)) {
-            goto invalid_utc_offset;
+            return Qnil;
         }
-        switch (RSTRING_LEN(tmp)) {
-          case 1:
-            if (s[0] == 'Z') {
-                return UTC_ZONE;
-            }
-            /* Military Time Zone Names */
-            if (s[0] >= 'A' && s[0] <= 'I') {
-                n = (int)s[0] - 'A' + 1;
-            }
-            /* No 'J' zone */
-            else if (s[0] >= 'K' && s[0] <= 'M') {
-                n = (int)s[0] - 'A';
-            }
-            else if (s[0] >= 'N' && s[0] <= 'Y') {
-                n = 'M' - (int)s[0];
-            }
-            else {
-                goto invalid_utc_offset;
-            }
-            n *= 3600;
-            return INT2FIX(n);
-          case 3:
-            if (STRNCASECMP("UTC", s, 3) == 0) {
-                return UTC_ZONE;
-            }
-            break; /* +HH */
-          case 7: /* +HHMMSS */
-            sec = s+5;
-            /* fallthrough */
-          case 5: /* +HHMM */
-            min = s+3;
-            break;
-          case 9: /* +HH:MM:SS */
-            if (s[6] != ':') goto invalid_utc_offset;
-            sec = s+7;
-            /* fallthrough */
-          case 6: /* +HH:MM */
-            if (s[3] != ':') goto invalid_utc_offset;
-            min = s+4;
-            break;
-          default:
-            goto invalid_utc_offset;
+        VALUE offset;
+        rb_str_locktmp(tmp);
+        const char *e = utc_offset_scan(RSTRING_PTR(tmp), RSTRING_LEN(tmp), &offset);
+        if (!e || e != RSTRING_END(tmp)) {
+            offset = Qnil;
         }
-        if (sec) {
-            if (!have_2digits(sec)) goto invalid_utc_offset;
-            if (sec[0] > '5') goto invalid_utc_offset;
-            n += num_from_2digits(sec);
-            ASSUME(min);
-        }
-        if (min) {
-            if (!have_2digits(min)) goto invalid_utc_offset;
-            if (min[0] > '5') goto invalid_utc_offset;
-            n += num_from_2digits(min) * 60;
-        }
-        if (s[0] != '+' && s[0] != '-') goto invalid_utc_offset;
-        if (!have_2digits(s+1)) goto invalid_utc_offset;
-        n += num_from_2digits(s+1) * 3600;
-        if (s[0] == '-') {
-            if (n == 0) return UTC_ZONE;
-            n = -n;
-        }
-        return INT2FIX(n);
+        rb_str_unlocktmp(tmp);
+        return offset;
     }
     else {
         return num_exact(arg);
     }
-  invalid_utc_offset:
-    return Qnil;
 }
 
 static void
@@ -2457,11 +2514,12 @@ time_init_args(rb_execution_context_t *ec, VALUE time, VALUE year, VALUE mon, VA
     return time_init_vtm(time, vtm, zone);
 }
 
+static VALUE time_init_vtm_zone(VALUE time, struct vtm vtm, VALUE zone, VALUE utc);
+
 static VALUE
 time_init_vtm(VALUE time, struct vtm vtm, VALUE zone)
 {
     VALUE utc = Qnil;
-    struct time_object *tobj;
 
     vtm.isdst = VTM_ISDST_INITVAL;
     vtm.utc_offset = Qnil;
@@ -2479,6 +2537,13 @@ time_init_vtm(VALUE time, struct vtm vtm, VALUE zone)
         else if (NIL_P(zone = find_timezone(time, arg)))
             invalid_utc_offset(arg);
     }
+    return time_init_vtm_zone(time, vtm, zone, utc);
+}
+
+static VALUE
+time_init_vtm_zone(VALUE time, struct vtm vtm, VALUE zone, VALUE utc)
+{
+    struct time_object *tobj;
 
     validate_vtm(&vtm);
 
@@ -2496,7 +2561,7 @@ time_init_vtm(VALUE time, struct vtm vtm, VALUE zone)
         }
         else if (NIL_P(vtm.utc_offset = utc_offset_arg(zone))) {
             if (NIL_P(zone = find_timezone(time, zone)) || !zone_timelocal(zone, time))
-                invalid_utc_offset(arg);
+                invalid_utc_offset(zone);
         }
     }
 
@@ -5327,6 +5392,645 @@ time_xmlschema(int argc, VALUE *argv, VALUE time)
     return str;
 }
 
+#ifndef SUPPORT_TIME_STRPTIME
+# define SUPPORT_TIME_STRPTIME 1
+#endif
+#if defined(SUPPORT_TIME_STRPTIME) && SUPPORT_TIME_STRPTIME
+static const char day_names[][10] = {
+    "Sunday",   "Monday", "Tuesday", "Wednesday",
+    "Thursday", "Friday", "Saturday",
+};
+
+static const char month_names[][10] = {
+    "January",   "February",     "March",        "April",
+    "May",       "June",         "July",         "August",
+    "September", "October",      "November",     "December",
+};
+
+static bool
+num_pattern_p(const char *s, const char *e)
+{
+    if (s >= e) return false;
+    if (isdigit(*s))
+        return true;
+    if (*s == '%' && ++s < e) {
+        if (*s == 'E' || *s == 'O')
+            if (++s >= e) return false;
+        if (strchr("CDdeFGgHIjkLlMmNQRrSsTUuVvWwXxYy", *s))
+            return true;
+    }
+    return false;
+}
+
+#define WIDTH_NUM_PATTERN(n) (num_pattern_p(format+1, format_end) ? (n) : (buf_end - buf))
+
+struct rb_strptime_values {
+#if 0
+    VALUE year, mon, mday, hour, min, sec, subsecx, seconds;
+    VALUE yday, wday, week, week_first, zone;
+#endif
+
+    struct vtm vtm;
+    VALUE seconds, century, cwyear;
+    uint8_t hour12, merid, year_2, cwyear_2, cwday, cweek, wnum[2];
+    struct {
+        bool year, subsecx, zone, yday, mon, mday, hour, min, sec, wday;
+        bool hour12, merid, seconds, century, year_2;
+        bool cwyear, cwyear_2, cwday, cweek, wnum[2];
+    } filled;
+};
+
+static bool
+scan_decimal(const char **buf_ptr, size_t buf_len,
+             ssize_t min_width, ssize_t max_width,
+             unsigned long min_value, unsigned long max_value,
+             unsigned long *result)
+{
+    int ov = 0;
+    size_t len, w = buf_len;
+    if (max_width > 0 && w > (size_t)max_width) w = max_width;
+    unsigned long ul = ruby_scan_digits(*buf_ptr, w, 10, &len, &ov);
+    if (min_width > 0 && len < (size_t)min_width) return false;
+    if (!len || ov || ul < min_value || ul > max_value) return false;
+    *buf_ptr += len;
+    *result = ul;
+    return true;
+}
+
+static VALUE
+scan_decimal_value(const char **buf_ptr, size_t buf_len,
+                   ssize_t min_width, ssize_t max_width, bool sign)
+{
+    size_t w = buf_len;
+    if (max_width > 0 && w > (size_t)max_width) w = max_width;
+    char *e;
+    VALUE val = rb_int_parse_cstr(*buf_ptr, w, &e, NULL, -1, sign ? RB_INT_PARSE_SIGN : 0);
+    if (min_width > 0 && e - *buf_ptr < min_width) return false;
+    if (NIL_P(val)) return Qnil;
+    *buf_ptr = e;
+    return val;
+}
+
+static const char *
+time_strptime0(const char **buf_ptr, size_t buf_len,
+               const char **format_ptr, size_t format_len,
+               rb_encoding *enc, struct rb_strptime_values *result)
+{
+    const char *format = *format_ptr, *format_end = format + format_len;
+    const char *buf = *buf_ptr, *buf_end = buf + buf_len;
+    int n;
+    struct vtm *const vtm = &result->vtm;
+
+#define set_vtm(mem, val) (vtm->mem = val, result->filled.mem = true)
+
+    while (format < format_end) {
+        unsigned int c = rb_enc_codepoint_len(format, format_end, &n, enc);
+        if (rb_enc_isspace(c, enc)) {
+          space:
+            format += n;
+            while (buf < buf_end &&
+                   rb_enc_isspace(rb_enc_codepoint_len(buf, buf_end, &n, enc), enc)) {
+                buf += n;
+            }
+            continue;
+        }
+        if (c != '%') {
+            int nb;
+          ordinal:
+            if (rb_enc_codepoint_len(buf, buf_end, &nb, enc) != c) goto fail;
+            format += n;
+            buf += nb;
+            continue;
+        }
+
+        if (format + 1 >= format_end) goto fail;
+        c = rb_enc_ascget(++format, format_end, &n, enc);
+        const char *conv_start = *buf_ptr = buf;
+      again:
+
+#define recur(fmt) do { \
+            const char *fmt_string = fmt; \
+            if (!(buf = time_strptime0(buf_ptr, buf_end - buf, \
+                                       &fmt_string, sizeof(fmt) - 1, \
+                                       enc, result))) \
+                goto fail; \
+        } while (0)
+#define scan_decimal(type, dest, mem, width, min, max) \
+        do { \
+            ssize_t w = (width); \
+            unsigned long ul; \
+            if (!scan_decimal(buf_ptr, buf_end - buf, \
+                              0, w, min, max, &ul)) { \
+                goto fail; \
+            } \
+            buf = *buf_ptr; \
+            dest->mem = (type)ul; \
+            result->filled.mem = true; \
+        } while (0)
+#define scan_decimal_value(dest, mem, min_width, max_width, sign) \
+        do { \
+            VALUE val = scan_decimal_value(buf_ptr, buf_end - buf, \
+                                           min_width, max_width, sign); \
+            if (NIL_P(val)) goto fail; \
+            buf = *buf_ptr; \
+            dest->mem = val; \
+            result->filled.mem = true; \
+        } while (0)
+#define scan_decimal_signed(dest, mem, min_width, max_width) \
+        scan_decimal_value(dest, mem, min_width, max_width, true)
+#define scan_decimal_unsigned(dest, mem, min_width, max_width) \
+        scan_decimal_value(dest, mem, min_width, max_width, false)
+
+        switch (c) {
+          case 'n': case 't': goto space;
+          case 'E':
+            if (format < format_end && format[1] && strchr("cCxXyY", format[1]))
+                goto again;
+            --format;
+            c = '%';
+            goto ordinal;
+          case 'O':
+            if (format < format_end && format[1] && strchr("deHImMSuUVwWy", format[1]))
+                goto again;
+            --format;
+            c = '%';
+            goto ordinal;
+
+          case 'A': case 'a':
+            for (int i = 0; i < numberof(day_names); ++i) {
+                size_t l = strlen(day_names[i]);
+                if ((buf + l <= buf_end && strncasecmp(day_names[i], buf, l) == 0) ||
+                    (buf + (l = 3) <= buf_end && strncasecmp(day_names[i], buf, l) == 0)) {
+                    set_vtm(wday, i);
+                    *buf_ptr = buf += l;
+                    goto matched;
+                }
+            }
+            goto fail;
+
+          case 'B': case 'b': case 'h':
+            for (int i = 0; i < numberof(month_names); ++i) {
+                size_t l = strlen(month_names[i]);
+                if ((buf + l <= buf_end && strncasecmp(month_names[i], buf, l) == 0) ||
+                    (buf + (l = 3) <= buf_end && strncasecmp(month_names[i], buf, l) == 0)) {
+                    set_vtm(mon, i + 1);
+                    *buf_ptr = buf += l;
+                    goto matched;
+                }
+            }
+            goto fail;
+
+          case 'Y':
+            scan_decimal_signed(vtm, year, 0, WIDTH_NUM_PATTERN(4));
+            break;
+          case 'G':
+            scan_decimal_signed(result, cwyear, 0, WIDTH_NUM_PATTERN(4));
+            break;
+          case 'C':
+            scan_decimal_signed(result, century, 0, WIDTH_NUM_PATTERN(2));
+            break;
+          case 'y':
+            scan_decimal(uint8_t, result, year_2, 2, 0, 99);
+            break;
+          case 'g':
+            scan_decimal(int, result, cwyear_2, 2, 0, 99);
+            break;
+          case 'j':
+            scan_decimal(int, vtm, yday, 3, 1, 366);
+            break;
+          case 'm':
+            scan_decimal(uint8_t, vtm, mon, 2, 1, 12);
+            break;
+          case 'd': case 'e':
+            scan_decimal(uint8_t, vtm, mday, (*buf == ' ' ? (++buf, 1) : 2), 1, 31);
+            break;
+          case 'H': case 'k':
+            scan_decimal(uint8_t, vtm, hour, (*buf == ' ' ? (++buf, 1) : 2), 0, 23);
+            break;
+          case 'I': case 'l':
+            scan_decimal(uint8_t, result, hour12, (*buf == ' ' ? (++buf, 1) : 2), 1, 12);
+            break;
+          case 'M':
+            scan_decimal(uint8_t, vtm, min, 2, 0, 59);
+            break;
+          case 'S':
+            scan_decimal(uint8_t, vtm, sec, 2, 0, 60);
+            break;
+          case 's':
+            scan_decimal_signed(result, seconds, 0, 0);
+            break;
+          case 'Q':             /* date library extension */
+            scan_decimal_signed(result, seconds, 0, 0);
+            divmodv(result->seconds, INT2FIX(1000), &result->seconds, &vtm->subsecx);
+            set_vtm(subsecx, rb_int_mul(vtm->subsecx, INT2FIX(TIME_SCALE / 1000)));
+            break;
+          case 'L':
+          case 'N':             /* ruby extension */
+            scan_decimal_unsigned(vtm, subsecx, 0, WIDTH_NUM_PATTERN(c == 'L' ? 3 : 9));
+            size_t w = buf - conv_start;
+            if (w > TIME_SCALE_NUMDIGITS) {
+                w -= TIME_SCALE_NUMDIGITS;
+                vtm->subsecx = rb_rational_new(vtm->subsecx, rb_int_positive_pow(10, w));
+            }
+            else if (w < TIME_SCALE_NUMDIGITS) {
+                w = TIME_SCALE_NUMDIGITS - w;
+                vtm->subsecx = rb_int_mul(vtm->subsecx, rb_int_positive_pow(10, w));
+            }
+            break;
+
+          case 'P':
+          case 'p':
+            if (buf + 2 > buf_end) goto fail;
+            int dot = buf[1] == '.';
+            if (dot && (buf + 4 > buf_end || buf[3] != '.')) goto fail;
+            switch (buf[dot + 1]) {
+              case 'M': case 'm': break;
+              default: goto fail;
+            }
+            switch (buf[0]) {
+              case 'A': case 'a': result->merid = 0; break;
+              case 'P': case 'p': result->merid = 12; break;
+              default: goto fail;
+            }
+            buf += dot * 2 + 2;
+            result->filled.merid = true;
+            break;
+
+          case 'U':
+          case 'W':
+            scan_decimal(uint8_t, result, wnum[c != 'U'], 2, 0, 53);
+            break;
+          case 'V':
+            scan_decimal(uint8_t, result, cweek, 2, 1, 53);
+            break;
+          case 'u':
+            scan_decimal(uint8_t, result, cwday, 1, 1, 7);
+            break;
+          case 'w':
+            scan_decimal(uint8_t, vtm, wday, 1, 0, 6);
+            break;
+
+          case 'c': recur("%a %b %e %H:%M:%S %Y"); break;
+          case 'D': case 'x': recur("%m/%d/%y"); break;
+          case 'F': recur("%Y-%m-%d"); break;
+          case 'R': recur("%H:%M"); break;
+          case 'r': recur("%I:%M:%S %p"); break;
+          case 'T': case 'X': recur("%H:%M:%S"); break;
+          case 'v': recur("%e-%b-%Y"); break;
+          case '+': recur("%a %b %e %H:%M:%S %Z %Y"); break;
+
+          case ':':
+            for (int i = 1; i < 3 && format + i < format_end; ++i) {
+                if (format[i] == 'z') {
+                    n += i;
+                    break;
+                }
+                if (format[i] != ':') goto ordinal;
+            }
+          case 'z':
+          case 'Z':
+            if (!(buf = utc_offset_scan(conv_start, buf_end - conv_start, &vtm->utc_offset))) {
+                goto fail;
+            }
+            if (vtm->utc_offset == UTC_ZONE) {
+                vtm->utc_offset = INT2FIX(0);
+                set_vtm(zone, UTC_ZONE);
+            }
+            else if (vtm->utc_offset == INT2FIX(0)) {
+                set_vtm(zone, Qnil);
+            }
+            else {
+                set_vtm(zone, rb_enc_str_new(conv_start, buf - conv_start, enc));
+            }
+            break;
+          default:
+            goto fail;
+        }
+      matched:
+        *format_ptr = ++format;
+        *buf_ptr = buf;
+    }
+    return buf;
+
+  fail:
+    *format_ptr = format;
+    return NULL;
+}
+
+static VALUE
+year_with_century(VALUE century, int year_2)
+{
+    VALUE year;
+    if (!NIL_P(century)) {
+        year = mulv(century, INT2FIX(100));
+        year = addv(year, INT2FIX(year_2));
+    }
+    else if (rb_block_given_p()) {
+        year = rb_yield(INT2FIX(year_2));
+    }
+    else if (year_2 < 69) {
+        year = INT2FIX(2000 + year_2);
+    }
+    else {
+        year = INT2FIX(1900 + year_2);
+    }
+    return year;
+}
+
+static bool
+split_yday(struct vtm *vtm, bool leap, int yday)
+{
+    if (yday-- < 1) return false;
+    if (leap) {
+        if (yday >= 366) return false;
+        vtm->mon = leap_year_mon_of_yday[yday];
+        vtm->mday = leap_year_mday_of_yday[yday];
+    }
+    else {
+        if (yday >= 365) return false;
+        vtm->mon = common_year_mon_of_yday[yday];
+        vtm->mday = common_year_mday_of_yday[yday];
+    }
+    return true;
+}
+
+static bool
+convert_cdays(struct rb_strptime_values *result, VALUE cwyear)
+{
+    if (NIL_P(cwyear)) return false;
+    if (!result->filled.cweek) return false;
+    int week = result->cweek;
+
+    int wday;
+    if (result->filled.cwday)
+        wday = result->cwday;
+    else if (result->filled.wday)
+        wday = (result->vtm.wday ? result->vtm.wday : 7);
+    else
+        wday = 1;
+
+    int year_mod400 = NUM2INT(modv(cwyear, INT2FIX(400)));
+    int wday1 = (calc_wday(year_mod400, 1, 1) + 6) % 7 + 1;
+    int yday = week * 7 - wday1 + wday + 1;
+    int nydays;
+    bool leap = false;
+    if (wday1 <= 4 && (yday -= 7) <= 0) {
+        /* the last week in the previous year */
+        result->vtm.year = rb_int_pred(cwyear);
+        leap = leap_year_p((year_mod400 + 399) % 400);
+        yday += leap ? 366 : 365;
+    }
+    else if (yday > (nydays = (leap = leap_year_p(year_mod400)) ? 366 : 365)) {
+        /* the first week in the next year */
+        result->vtm.year = rb_int_succ(cwyear);
+        yday -= nydays;
+        leap = leap_year_p((year_mod400 + 1) % 400);
+    }
+    return split_yday(&result->vtm, leap, yday);
+}
+
+static bool
+convert_weeknum(struct rb_strptime_values *result, VALUE year)
+{
+    int wnum_first;
+    do {
+        if (result->filled.wnum[wnum_first = 0]) break;
+        if (result->filled.wnum[wnum_first = 1]) break;
+        return false;
+    } while (0);
+    int week = result->wnum[wnum_first];
+    int year_mod400 = NUM2INT(modv(year, INT2FIX(400)));
+    int wday1 = calc_wday(year_mod400, 1, 1);
+    int wday = (result->filled.wday ? result->vtm.wday :
+                result->filled.cwday ? (result->cwday == 7 ? 0 : result->cwday) :
+                wnum_first);
+    int yday = week * 7 + wday - wday1 + 1;
+
+    if (yday <= 0) return false;
+    bool leap = leap_year_p(year_mod400);
+    if (yday > (leap ? 366 : 365)) return false;
+
+    return split_yday(&result->vtm, leap, yday);
+}
+
+static bool
+fixup_strptime(struct rb_strptime_values *result)
+{
+    struct vtm *vtm = &result->vtm;
+    VALUE year = vtm->year, cwyear = Qnil;
+    bool f = false;
+    if (result->filled.year) {
+        f = true;
+    }
+    else if (result->filled.year_2) {
+        VALUE century = result->filled.century ? result->century : Qnil;
+        year = year_with_century(century, result->year_2);
+        vtm->year = year;
+        f = true;
+    }
+    else if (result->filled.cwyear) {
+        vtm->year = cwyear = result->cwyear;
+        f = true;
+    }
+    else if (result->filled.cwyear_2) {
+        VALUE century = result->filled.century ? result->century : Qnil;
+        cwyear = year_with_century(century, result->cwyear_2);
+        vtm->year = cwyear;
+        f = true;
+    }
+    else if (result->filled.century) {
+        return false;
+    }
+
+    bool week_clear = f;
+    if (result->filled.yday) {
+        bool leap = leap_year_v_p(year);
+        if (!split_yday(vtm, leap, vtm->yday))
+            return false;
+        f = true;
+    }
+    else if (convert_cdays(result, cwyear)) {
+        f = true;
+        week_clear = false;
+    }
+    else if (convert_weeknum(result, year)) {
+        f = true;
+        week_clear = false;
+    }
+
+    if (f) vtm->yday = 0;
+    if (week_clear) vtm->wday = VTM_WDAY_INITVAL;
+    vtm->isdst = VTM_ISDST_INITVAL;
+
+#define fill(mem, ini) \
+    ((!f) ? (f = result->filled.mem) : \
+     (!result->filled.mem) ? (vtm->mem = ini, f = true) : \
+     false)
+
+    if (result->filled.hour) {
+        f = true;
+    }
+    else if (result->filled.hour12 && result->filled.merid) {
+        vtm->hour = result->hour12 + result->merid;
+        f = true;
+    }
+    else if (f) {
+        vtm->hour = 0;
+    }
+    fill(min, 0);
+    fill(sec, 0);
+    fill(subsecx, INT2FIX(0));
+
+    return true;
+}
+
+/*
+ * Takes a string representation of a Time and attempts to parse it
+ * based on the format of the string.
+ *
+ * Raises ArgumentError if the date or format is invalid.
+ *
+ * If the upper components of the given time are broken or missing,
+ * they are supplied with those of +self+.  For the lower components,
+ * the minimum values (1 or 0) are assumed if broken or missing.  For
+ * example:
+ *
+ *   # Suppose it is "Thu Nov 29 14:33:20 2001" now and
+ *   # your time zone is EST which is GMT-5.
+ *   now = Time.new(2001, 11, 29, 14, 33, 20, "-0500")
+ *   now.strptime("16:30", "%R")        #=> 2001-11-29 16:30:00 -0500
+ *   now.strptime("7/23", "%m/%d")      #=> 2001-07-23 00:00:00 -0500
+ *   now.strptime("Aug 31", "%b %d")    #=> 2001-08-31 00:00:00 -0500
+ *   now.strptime("Aug 2000", "%b %Y")  #=> 2000-08-01 00:00:00 -0500
+ *
+ * If a block is given, the year without a century described in +date+
+ * is converted by the block.  For example:
+ *
+ *   now.strptime(string, "%y") {|y| (y >= 69 ? y + 1900 : y + 2000)}
+ *
+ * Below is a list of the parsing options:
+ *
+ * %a :: The abbreviated weekday name ("Sun"), or the full weekday
+ *       name ("Sunday")
+ * %A :: Equivalent to %a
+ * %b :: The abbreviated month name ("Jan"), or The full month name
+ *       ("January")
+ * %B :: Equivalent to %b
+ * %c :: The preferred local date and time representation
+ * %C :: Century (20 in 2009)
+ * %d :: Day of the month, zero-padded (01..31) or blank-padded ( 1..31)
+ * %D :: \Date (%m/%d/%y)
+ * %e :: Equivalent to %d
+ * %F :: Equivalent to %Y-%m-%d (the ISO 8601 date format)
+ * %g :: The last two digits of the commercial year
+ * %G :: The week-based year according to ISO-8601 (week 1 starts on Monday
+ *       and includes January 4)
+ * %h :: Equivalent to %b
+ * %H :: Hour of the day, 24-hour clock (00..23), or blank-padded ( 0..23)
+ * %I :: Hour of the day, 12-hour clock (01..12), or blank-padded ( 0..12)
+ * %j :: Day of the year (001..366)
+ * %k :: Equivalent to %H
+ * %l :: Equivalent to %I
+ * %L :: Millisecond of the second (000..999)
+ * %m :: Month of the year (01..12)
+ * %M :: Minute of the hour (00..59)
+ * %n :: Equivalent to space
+ * %N :: Fractional seconds digits
+ * %p :: Meridian indicator ("AM", "PM", "am" or "pm")
+ * %P :: Equivalent to %p
+ * %r :: time, 12-hour (same as %I:%M:%S %p)
+ * %R :: time, 24-hour (%H:%M)
+ * %s :: Number of seconds since 1970-01-01 00:00:00 UTC.
+ * %S :: Second of the minute (00..60)
+ * %t :: Equivalent to space
+ * %T :: time, 24-hour (%H:%M:%S)
+ * %u :: Day of the week as a decimal, Monday being 1. (1..7)
+ * %U :: Week number of the current year, starting with the first Sunday as
+ *       the first day of the first week (00..53)
+ * %v :: VMS date (%e-%b-%Y)
+ * %V :: Week number of year according to ISO 8601 (01..53)
+ * %W :: Week  number  of the current year, starting with the first Monday
+ *       as the first day of the first week (00..53)
+ * %w :: Day of the week (Sunday is 0, 0..6)
+ * %x :: Equivalent to %F
+ * %X :: Equivalent to %T
+ * %y :: Year without a century (00..99)
+ * %Y :: Year which may include century, if provided
+ * %z :: \Time zone as hour offset from UTC (e.g. +0900)
+ * %Z :: \Time zone name
+ * %% :: Literal "%" character
+ * %+ :: date(1) (%a %b %e %H:%M:%S %Z %Y)
+ *
+ *     Time.at(0, in: "-0500").strptime("2000-10-31", "%Y-%m-%d") #=> 2000-10-31 00:00:00 -0500
+ */
+static VALUE
+time_strptime(VALUE time, VALUE str, VALUE format)
+{
+    struct time_object *tobj;
+    struct rb_strptime_values result = {0};
+    const char *buf, *bend, *fmt, *fend;
+    long blen, flen;
+    rb_encoding *enc;
+
+    GetTimeval(time, tobj);
+    MAKE_TM(time, tobj);
+    StringValue(str);
+    StringValue(format);
+    if (!rb_enc_str_asciicompat_p(str)) {
+        rb_raise(rb_eArgError, "string should have ASCII compatible encoding");
+    }
+    if (!rb_enc_str_asciicompat_p(format)) {
+        rb_raise(rb_eArgError, "format should have ASCII compatible encoding");
+    }
+    enc = rb_enc_compatible(str, format);
+    str = rb_str_new_frozen(str);
+    format = rb_str_new_frozen(format);
+    result.vtm = tobj->vtm;
+    RSTRING_GETMEM(str, buf, blen);
+    RSTRING_GETMEM(format, fmt, flen);
+    bend = buf + blen;
+    fend = fmt + flen;
+    if (!time_strptime0(&buf, blen, &fmt, flen, enc, &result)) {
+        rb_enc_raise(enc, rb_eArgError, "conversion for %%%.*s unmatch: %.*s",
+                     rb_enc_mbclen(fmt, fend, enc), fmt,
+                     rb_enc_mbclen(buf, bend, enc), buf);
+    }
+    if (buf < bend) {
+        rb_enc_raise(enc, rb_eArgError, "unconverted string: %.*s",
+                     rb_long2int(bend - buf), buf);
+    }
+    time = time_s_alloc(CLASS_OF(time));
+    tobj = RTYPEDDATA_GET_DATA(time);
+    if (result.filled.seconds) {
+        VALUE t = result.seconds;
+        bool neg = rb_int_negative_p(t);
+        t = mulv(t, INT2FIX(TIME_SCALE));
+        if (result.filled.subsecx && result.vtm.subsecx != INT2FIX(0)) {
+            t = (neg ? subv : addv)(t, result.vtm.subsecx);
+        }
+        time_set_timew(time, tobj, v2w(t));
+        VALUE off = result.vtm.utc_offset, zone = result.vtm.zone;
+        if (zone == UTC_ZONE) {
+            TZMODE_SET_UTC(tobj);
+        }
+        else if (FIXNUM_P(off) || !NIL_P(result.vtm.zone)) {
+            TZMODE_SET_FIXOFF(time, tobj, off);
+        }
+        else {
+            TZMODE_COPY(tobj, &result);
+        }
+    }
+    else {
+        if (!fixup_strptime(&result)) {
+            rb_raise(rb_eArgError, "no time information in %+"PRIsVALUE, str);
+        }
+        time_init_vtm_zone(time, result.vtm, result.vtm.utc_offset, result.vtm.zone);
+    }
+
+    return time;
+}
+#endif
+
 int ruby_marshal_write_long(long x, char *buf);
 
 enum {base_dump_size = 8};
@@ -5956,6 +6660,9 @@ Init_Time(void)
     rb_define_method(rb_cTime, "strftime", time_strftime, 1);
     rb_define_method(rb_cTime, "xmlschema", time_xmlschema, -1);
     rb_define_alias(rb_cTime, "iso8601", "xmlschema");
+#if defined(SUPPORT_TIME_STRPTIME) && SUPPORT_TIME_STRPTIME
+    rb_define_method(rb_cTime, "strptime", time_strptime, 2);
+#endif
 
     /* methods for marshaling */
     rb_define_private_method(rb_cTime, "_dump", time_dump, -1);

@@ -1515,4 +1515,133 @@ class TestTime < Test::Unit::TestCase
       assert_equal("-10000-01-01T00:00:00Z", Time.utc(-10000).__send__(method))
     end
   end
+
+  def test_strptime
+    t0 = Time.at(0)
+    t = t0.strptime("28/Aug/2005:06:54:20 +0000", "%d/%b/%Y:%T %z")
+    assert_equal(Time.new(2005, 8, 28, 06, 54, 20, "+0000"), t)
+    assert_equal(t0, t0.strptime("", ""))
+  end
+
+  def test_strptime_s_z
+    t2000 = Time.utc(2000)
+
+    assert_equal(Time.at(1).localtime, t2000.strptime("1", "%s"))
+    assert_not_predicate(t2000.strptime("0", "%s"), :utc?)
+
+    t = t2000.strptime("0 +0100", "%s %z")
+    assert_equal(0, t.to_r)
+    assert_equal(3600, t.utc_offset)
+
+    t = t2000.strptime("0 UTC", "%s %z")
+    assert_equal(0, t.to_r)
+    assert_equal(0, t.utc_offset)
+    assert_predicate(t, :utc?)
+
+    t = t2000.strptime("+05:43:21", "%z")
+    assert_equal(5*3600+43*60+21, t.utc_offset)
+    t = t2000.strptime("+054321", "%z")
+    assert_equal(5*3600+43*60+21, t.utc_offset)
+    t = t2000.strptime("+05:43", "%z")
+    assert_equal(5*3600+43*60, t.utc_offset)
+    t = t2000.strptime("+0543", "%z")
+    assert_equal(5*3600+43*60, t.utc_offset)
+    t = t2000.strptime("+05", "%z")
+    assert_equal(5*3600, t.utc_offset)
+
+    t = t2000.strptime("-05:43:21", "%z")
+    assert_equal(-5*3600-43*60-21, t.utc_offset)
+    t = t2000.strptime("-054321", "%z")
+    assert_equal(-5*3600-43*60-21, t.utc_offset)
+    t = t2000.strptime("-05:43", "%z")
+    assert_equal(-5*3600-43*60, t.utc_offset)
+    t = t2000.strptime("-0543", "%z")
+    assert_equal(-5*3600-43*60, t.utc_offset)
+    t = t2000.strptime("-05", "%z")
+    assert_equal(-5*3600, t.utc_offset)
+
+    assert_raise(ArgumentError) {t2000.strptime("+05:4321", "%z")}
+    assert_raise(ArgumentError) {t2000.strptime("+0543:21", "%z")}
+    assert_raise(ArgumentError) {t2000.strptime("+6543", "%z")}
+  end
+
+  def test_strptime_s_N
+    t0 = Time.at(0)
+    assert_equal(Time.at(1, 500000), t0.strptime("1.5", "%s.%N"))
+    assert_equal(Time.at(-2, 500000), t0.strptime("-1.5", "%s.%N"))
+    t = t0.strptime("1.000000000001", "%s.%N")
+    assert_equal(1, t.to_i)
+    assert_equal(Rational("0.000000000001"), t.subsec)
+    t = t0.strptime("-1.000000000001", "%s.%N")
+    assert_equal(-2, t.to_i)
+    assert_equal(1-Rational("0.000000000001"), t.subsec)
+  end
+
+  def test_strptime_Ymd_z
+    t0 = Time.at(0)
+    t = t0.strptime("20010203 -0200", "%Y%m%d %z")
+    assert_equal(2001, t.year)
+    assert_equal(2, t.mon)
+    assert_equal(3, t.day)
+    assert_equal(0, t.hour)
+    assert_equal(0, t.min)
+    assert_equal(0, t.sec)
+    assert_equal(-7200, t.utc_offset)
+    t = t0.strptime("20010203 UTC", "%Y%m%d %z")
+    assert_equal(2001, t.year)
+    assert_equal(2, t.mon)
+    assert_equal(3, t.day)
+    assert_equal(0, t.hour)
+    assert_equal(0, t.min)
+    assert_equal(0, t.sec)
+    assert_equal(0, t.utc_offset)
+    assert_equal(true, t.utc?)
+  end
+
+  def test_strptime_j
+    t0 = Time.at(0)
+    t = t0.strptime("2018-365", "%Y-%j")
+    assert_equal(2018, t.year)
+    assert_equal(12, t.mon)
+    assert_equal(31, t.day)
+    assert_equal(0, t.hour)
+    assert_equal(0, t.min)
+    assert_equal(0, t.sec)
+    t = t0.strptime("2018-091", "%Y-%j")
+    assert_equal(2018, t.year)
+    assert_equal(4, t.mon)
+    assert_equal(1, t.day)
+  end
+
+  def test_strptime_p
+    t0 = Time.at(0)
+    t = t0.strptime("3am", "%I%p")
+    assert_equal(3, t.hour)
+    t = t0.strptime("3pm", "%I%p")
+    assert_equal(15, t.hour)
+    t = t0.strptime("3a.m.", "%I%p")
+    assert_equal(3, t.hour)
+    t = t0.strptime("3p.m.", "%I%p")
+    assert_equal(15, t.hour)
+    t = t0.strptime("3AM", "%I%p")
+    assert_equal(3, t.hour)
+    t = t0.strptime("3PM", "%I%p")
+    assert_equal(15, t.hour)
+    t = t0.strptime("3A.M.", "%I%p")
+    assert_equal(3, t.hour)
+    t = t0.strptime("3P.M.", "%I%p")
+    assert_equal(15, t.hour)
+  end
+
+  def test_strptime_wuvg
+    t0 = Time.at(0)
+    assert_equal(Time.local(2019, 1, 30), t0.strptime("3 4 2019", "%w %W %Y"))
+    assert_equal(Time.local(2019, 2, 7), t0.strptime("4 5 2019", "%u %U %Y"))
+    assert_equal(Time.local(2019, 1, 28), t0.strptime("4 2019", "%W %Y"))
+    assert_equal(Time.local(2019, 2, 3), t0.strptime("5 2019", "%U %Y"))
+    assert_equal(Time.local(2019, 1, 1), t0.strptime("1 2 2019", "%V %w %G"))
+    assert_equal(Time.local(2016, 1, 1), t0.strptime("53 5 15", "%V %w %g"))
+    assert_equal(Time.local(2018, 12, 31), t0.strptime("1 2019", "%V %G"))
+    assert_equal(Time.local(2015, 12, 28), t0.strptime("53 15", "%V %g"))
+  end
 end
