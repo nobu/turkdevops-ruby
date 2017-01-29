@@ -83,6 +83,7 @@ enum lex_state_bits {
     EXPR_LABEL_bit,		/* flag bit, label is allowed. */
     EXPR_LABELED_bit,		/* flag bit, just after a label. */
     EXPR_FITEM_bit,		/* symbol literal as FNAME. */
+    EXPR_CONT_bit,
     EXPR_MAX_STATE
 };
 /* examine combinations */
@@ -101,6 +102,7 @@ enum lex_state_e {
     DEF_EXPR(LABEL),
     DEF_EXPR(LABELED),
     DEF_EXPR(FITEM),
+    DEF_EXPR(CONT),
     EXPR_VALUE = EXPR_BEG,
     EXPR_BEG_ANY  =  (EXPR_BEG | EXPR_MID | EXPR_CLASS),
     EXPR_ARG_ANY  =  (EXPR_ARG | EXPR_CMDARG),
@@ -270,7 +272,6 @@ struct parser_params {
     /* Ripper only */
 
     unsigned int immediate_toplevel_statement: 1;
-    unsigned int continued_statement: 1;
 
     VALUE delayed;
     int delayed_line;
@@ -636,8 +637,9 @@ static void ripper_error(struct parser_params *p);
 #define ID2VAL(id) STATIC_ID2SYM(id)
 #define TOKEN2VAL(t) ID2VAL(TOKEN2ID(t))
 #define KWD2EID(t, v) ripper_new_yylval(p, keyword_##t, get_value(v), 0)
-#define SET_CONTINUED(ls) (parser->continued_statement = IS_lex_state_for(ls, EXPR_BEG|EXPR_FNAME|EXPR_DOT))
-#define CLEAR_CONTINUED() (parser->continued_statement = 0)
+#define LEX_CONTINUED_P(ls) \
+    IS_lex_state_for(ls, EXPR_BEG|EXPR_FNAME|EXPR_DOT| \
+		     EXPR_CLASS|EXPR_LABELED|EXPR_FITEM)
 
 #define params_new(pars, opts, rest, pars2, kws, kwrest, blk) \
         dispatch7(params, (pars), (opts), (rest), (pars2), (kws), (kwrest), (blk))
@@ -3752,7 +3754,7 @@ backref		: tNTH_REF
 
 superclass	: '<'
 		    {
-			SET_LEX_STATE(EXPR_BEG);
+			SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 			p->command_start = TRUE;
 		    }
 		  expr_value term
@@ -3770,7 +3772,6 @@ superclass	: '<'
 
 f_arglist	: '(' f_args rparen
 		    {
-			CLEAR_CONTINUED();
 		    /*%%%*/
 			$$ = $2;
 		    /*% %*/
@@ -4184,7 +4185,7 @@ singleton	: var_ref
 			value_expr($1);
 			$$ = $1;
 		    }
-		| '(' {SET_LEX_STATE(EXPR_BEG);} expr rparen
+		| '(' {SET_LEX_STATE(EXPR_BEG | EXPR_CONT);} expr rparen
 		    {
 		    /*%%%*/
 			switch (nd_type($3)) {
@@ -7191,7 +7192,7 @@ parse_percent(struct parser_params *p, const int space_seen, const enum lex_stat
     }
     if ((c = nextc(p)) == '=') {
 	set_yylval_id('%');
-	SET_LEX_STATE(EXPR_BEG);
+	SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	return tOP_ASGN;
     }
     if (IS_SPCARG(c) || (IS_lex_state(EXPR_FITEM) && c == 's')) {
@@ -7415,7 +7416,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 
     if (IS_LABEL_POSSIBLE()) {
 	if (IS_LABEL_SUFFIX(0)) {
-	    SET_LEX_STATE(EXPR_ARG|EXPR_LABELED);
+	    SET_LEX_STATE(EXPR_ARG|EXPR_LABELED|EXPR_CONT);
 	    nextc(p);
 	    set_yylval_name(TOK_INTERN());
 	    return tLABEL;
@@ -7436,11 +7437,9 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 	      case keyword_for: case keyword_class: case keyword_module:
 	      case keyword_def:
 		++paren_nest;
-		SET_CONTINUED(lex_state);
 		break;
 	      case keyword_end:
 		--paren_nest;
-		CLEAR_CONTINUED();
 		break;
 	    }
 #endif
@@ -7465,7 +7464,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 		return kw->id[0];
 	    else {
 		if (kw->id[0] != kw->id[1])
-		    SET_LEX_STATE(EXPR_BEG | EXPR_LABEL);
+		    SET_LEX_STATE(EXPR_BEG | EXPR_LABEL | EXPR_CONT);
 		return kw->id[1];
 	    }
 	}
@@ -7479,7 +7478,7 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 	    SET_LEX_STATE(EXPR_ARG);
 	}
     }
-    else if (p->lex.state == EXPR_FNAME) {
+    else if ((p->lex_state & ~EXPR_CONT) == EXPR_FNAME) {
 	SET_LEX_STATE(EXPR_ENDFN);
     }
     else {
@@ -7579,7 +7578,6 @@ parser_yylex(struct parser_params *p)
 	}
 #ifdef RIPPER
 	if (parser->immediate_toplevel_statement) {
-	    SET_CONTINUED(last_state);
 	    dispatch_scan_event('\n');
 	    goto normal_newline;
 	}
@@ -7627,7 +7625,7 @@ parser_yylex(struct parser_params *p)
 	if ((c = nextc(p)) == '*') {
 	    if ((c = nextc(p)) == '=') {
 		set_yylval_id(idPow);
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
@@ -7645,7 +7643,7 @@ parser_yylex(struct parser_params *p)
 	else {
 	    if (c == '=') {
                 set_yylval_id('*');
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
@@ -7660,7 +7658,7 @@ parser_yylex(struct parser_params *p)
 		c = warn_balanced('*', "*", "argument prefix");
 	    }
 	}
-	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+	SET_LEX_STATE((IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG) | EXPR_CONT);
 	return c;
 
       case '!':
@@ -7672,7 +7670,7 @@ parser_yylex(struct parser_params *p)
 	    }
 	}
 	else {
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	}
 	if (c == '=') {
 	    return tNEQ;
@@ -7747,7 +7745,7 @@ parser_yylex(struct parser_params *p)
 	else {
 	    if (IS_lex_state(EXPR_CLASS))
 		p->command_start = TRUE;
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	}
 	if (c == '=') {
 	    if ((c = nextc(p)) == '>') {
@@ -7759,7 +7757,7 @@ parser_yylex(struct parser_params *p)
 	if (c == '<') {
 	    if ((c = nextc(p)) == '=') {
 		set_yylval_id(idLTLT);
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
@@ -7776,7 +7774,7 @@ parser_yylex(struct parser_params *p)
 	if (c == '>') {
 	    if ((c = nextc(p)) == '=') {
 		set_yylval_id(idGTGT);
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
@@ -7818,7 +7816,7 @@ parser_yylex(struct parser_params *p)
 	    SET_LEX_STATE(EXPR_BEG);
 	    if ((c = nextc(p)) == '=') {
                 set_yylval_id(idANDOP);
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
@@ -7826,7 +7824,7 @@ parser_yylex(struct parser_params *p)
 	}
 	else if (c == '=') {
             set_yylval_id('&');
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return tOP_ASGN;
 	}
 	else if (c == '.') {
@@ -7858,7 +7856,7 @@ parser_yylex(struct parser_params *p)
 	    SET_LEX_STATE(EXPR_BEG);
 	    if ((c = nextc(p)) == '=') {
                 set_yylval_id(idOROP);
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
@@ -7866,7 +7864,7 @@ parser_yylex(struct parser_params *p)
 	}
 	if (c == '=') {
             set_yylval_id('|');
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return tOP_ASGN;
 	}
 	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
@@ -7885,25 +7883,25 @@ parser_yylex(struct parser_params *p)
 	}
 	if (c == '=') {
             set_yylval_id('+');
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return tOP_ASGN;
 	}
 	if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '+'))) {
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    pushback(p, c);
 	    if (c != -1 && ISDIGIT(c)) {
 		return parse_numeric(p, '+');
 	    }
 	    return tUPLUS;
 	}
-	SET_LEX_STATE(EXPR_BEG);
+	SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	pushback(p, c);
 	return warn_balanced('+', "+", "unary operator");
 
       case '-':
 	c = nextc(p);
 	if (IS_AFTER_OPERATOR()) {
-	    SET_LEX_STATE(EXPR_ARG);
+	    SET_LEX_STATE(EXPR_ARG | EXPR_CONT);
 	    if (c == '@') {
 		return tUMINUS;
 	    }
@@ -7912,27 +7910,27 @@ parser_yylex(struct parser_params *p)
 	}
 	if (c == '=') {
             set_yylval_id('-');
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return tOP_ASGN;
 	}
 	if (c == '>') {
-	    SET_LEX_STATE(EXPR_ENDFN);
+	    SET_LEX_STATE(EXPR_ENDFN | EXPR_CONT);
 	    return tLAMBDA;
 	}
 	if (IS_BEG() || (IS_SPCARG(c) && arg_ambiguous(p, '-'))) {
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    pushback(p, c);
 	    if (c != -1 && ISDIGIT(c)) {
 		return tUMINUS_NUM;
 	    }
 	    return tUMINUS;
 	}
-	SET_LEX_STATE(EXPR_BEG);
+	SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	pushback(p, c);
 	return warn_balanced('-', "-", "unary operator");
 
       case '.':
-	SET_LEX_STATE(EXPR_BEG);
+	SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	if ((c = nextc(p)) == '.') {
 	    if ((c = nextc(p)) == '.') {
 		return tDOT3;
@@ -7945,7 +7943,7 @@ parser_yylex(struct parser_params *p)
 	    yyerror0("no .<digit> floating literal anymore; put 0 before dot");
 	}
 	set_yylval_id('.');
-	SET_LEX_STATE(EXPR_DOT);
+	SET_LEX_STATE(EXPR_DOT | EXPR_CONT);
 	return '.';
 
       case '0': case '1': case '2': case '3': case '4':
@@ -7978,17 +7976,17 @@ parser_yylex(struct parser_params *p)
 	c = nextc(p);
 	if (c == ':') {
 	    if (IS_BEG() || IS_lex_state(EXPR_CLASS) || IS_SPCARG(-1)) {
-		SET_LEX_STATE(EXPR_BEG);
+		SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 		return tCOLON3;
 	    }
 	    set_yylval_id(idCOLON2);
-	    SET_LEX_STATE(EXPR_DOT);
+	    SET_LEX_STATE(EXPR_DOT | EXPR_CONT);
 	    return tCOLON2;
 	}
 	if (IS_END() || ISSPACE(c) || c == '#') {
 	    pushback(p, c);
 	    c = warn_balanced(':', ":", "symbol literal");
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return c;
 	}
 	switch (c) {
@@ -8012,7 +8010,7 @@ parser_yylex(struct parser_params *p)
 	}
 	if ((c = nextc(p)) == '=') {
             set_yylval_id('/');
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return tOP_ASGN;
 	}
 	pushback(p, c);
@@ -8021,16 +8019,16 @@ parser_yylex(struct parser_params *p)
 	    p->lex.strterm = NEW_STRTERM(str_regexp, '/', 0);
 	    return tREGEXP_BEG;
 	}
-	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+	SET_LEX_STATE((IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG) | EXPR_CONT);
 	return warn_balanced('/', "/", "regexp literal");
 
       case '^':
 	if ((c = nextc(p)) == '=') {
             set_yylval_id('^');
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	    return tOP_ASGN;
 	}
-	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG);
+	SET_LEX_STATE((IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG) | EXPR_CONT);
 	pushback(p, c);
 	return '^';
 
@@ -8040,7 +8038,7 @@ parser_yylex(struct parser_params *p)
 	return ';';
 
       case ',':
-	SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+	SET_LEX_STATE(EXPR_BEG | EXPR_LABEL | EXPR_CONT);
 	return ',';
 
       case '~':
@@ -8051,7 +8049,7 @@ parser_yylex(struct parser_params *p)
 	    SET_LEX_STATE(EXPR_ARG);
 	}
 	else {
-	    SET_LEX_STATE(EXPR_BEG);
+	    SET_LEX_STATE(EXPR_BEG | EXPR_CONT);
 	}
 	return '~';
 
@@ -8072,7 +8070,7 @@ parser_yylex(struct parser_params *p)
 	p->lex.paren_nest++;
 	COND_PUSH(0);
 	CMDARG_PUSH(0);
-	SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+	SET_LEX_STATE(EXPR_BEG | EXPR_LABEL | EXPR_CONT);
 	return c;
 
       case '[':
@@ -8096,7 +8094,7 @@ parser_yylex(struct parser_params *p)
 	else if (IS_ARG() && (space_seen || IS_lex_state(EXPR_LABELED))) {
 	    c = tLBRACK;
 	}
-	SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
+	SET_LEX_STATE(EXPR_BEG | EXPR_LABEL | EXPR_CONT);
 	COND_PUSH(0);
 	CMDARG_PUSH(0);
 	return c;
@@ -8843,10 +8841,10 @@ new_regexp(struct parser_params *p, VALUE re, VALUE opt, const YYLTYPE *loc)
 #endif /* !RIPPER */
 
 #ifndef RIPPER
-static const char rb_parser_lex_state_names[][13] = {
+static const char rb_parser_lex_state_names[EXPR_MAX_STATE][13] = {
     "EXPR_BEG",    "EXPR_END",    "EXPR_ENDARG", "EXPR_ENDFN",  "EXPR_ARG",
     "EXPR_CMDARG", "EXPR_MID",    "EXPR_FNAME",  "EXPR_DOT",    "EXPR_CLASS",
-    "EXPR_LABEL",  "EXPR_LABELED","EXPR_FITEM",
+    "EXPR_LABEL",  "EXPR_LABELED","EXPR_FITEM",  "EXPR_CONT",
 };
 
 static VALUE
@@ -10912,7 +10910,7 @@ ripper_continue_p(VALUE vparser)
     struct parser_params *parser;
 
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, parser);
-    return parser->continued_statement ? Qtrue : Qfalse;
+    return IS_lex_state(EXPR_CONT) ? Qtrue : Qfalse;
 }
 
 /*
