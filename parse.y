@@ -380,6 +380,7 @@ static NODE *splat_array(NODE*);
 
 static NODE *call_bin_op(struct parser_params*,NODE*,ID,NODE*,const YYLTYPE*,const YYLTYPE*);
 static NODE *call_uni_op(struct parser_params*,NODE*,ID,const YYLTYPE*,const YYLTYPE*);
+static NODE *new_cmpseq(struct parser_params*,NODE*,ID,NODE*,const YYLTYPE*,const YYLTYPE*);
 static NODE *new_qcall(struct parser_params* p, ID atype, NODE *recv, ID mid, NODE *args, const YYLTYPE *op_loc, const YYLTYPE *loc);
 static NODE *new_command_qcall(struct parser_params* p, ID atype, NODE *recv, ID mid, NODE *args, NODE *block, const YYLTYPE *op_loc, const YYLTYPE *loc);
 static NODE *method_add_block(struct parser_params*p, NODE *m, NODE *b, const YYLTYPE *loc) {b->nd_iter = m; b->nd_loc = *loc; return b;}
@@ -2048,8 +2049,10 @@ rel_expr	: arg relop arg   %prec '>'
 		    }
 		| rel_expr relop arg   %prec '>'
 		    {
-			rb_warning1("comparison '%s' after comparison", WARN_ID($2));
-			$$ = call_bin_op(p, $1, $2, $3, &@2, &@$);
+		    /*%%%*/
+			$$ = new_cmpseq(p, $1, $2, $3, &@2, &@$);
+		    /*% %*/
+		    /*% ripper: binary!($1, $2, $3) %*/
 		    }
 		;
 
@@ -8569,6 +8572,25 @@ new_evstr(struct parser_params *p, NODE *node, const YYLTYPE *loc)
 	}
     }
     return NEW_EVSTR(head, loc);
+}
+
+static NODE *
+new_cmpseq(struct parser_params *p, NODE *left, ID id, NODE *right,
+	   const YYLTYPE *op_loc, const YYLTYPE *loc)
+{
+    NODE *seq = left;
+    value_expr(right);
+    if (nd_type(seq) == NODE_OPCALL) {
+	seq = left->nd_args;
+	nd_set_type(seq, NODE_CMPSEQ);
+	nd_set_type(left, NODE_CMPSEQ);
+	left->nd_next = seq->nd_head;
+	seq->nd_head = seq->nd_next = left;
+    }
+    left = seq->nd_next;
+    seq->nd_next = left->nd_next = NEW_CMPSEQ(left->nd_next, id, right, loc);
+    nd_set_line(seq, op_loc->beg_pos.lineno);
+    return seq;
 }
 
 static NODE *

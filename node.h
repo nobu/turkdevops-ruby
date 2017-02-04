@@ -220,6 +220,8 @@ enum node_type {
 #define NODE_ATTRASGN    NODE_ATTRASGN
     NODE_LAMBDA,
 #define NODE_LAMBDA      NODE_LAMBDA
+    NODE_CMPSEQ,
+#define NODE_CMPSEQ      NODE_CMPSEQ
     NODE_LAST
 #define NODE_LAST        NODE_LAST
 };
@@ -467,6 +469,7 @@ typedef struct RNode {
 #define NEW_PREEXE(b,loc) NEW_SCOPE(b,loc)
 #define NEW_POSTEXE(b,loc) NEW_NODE(NODE_POSTEXE,0,b,0,loc)
 #define NEW_ATTRASGN(r,m,a,loc) NEW_NODE(NODE_ATTRASGN,r,m,a,loc)
+#define NEW_CMPSEQ(l,o,r,loc) NEW_NODE(NODE_CMPSEQ,l,o,r,loc)
 
 #define NODE_SPECIAL_REQUIRED_KEYWORD ((NODE *)-1)
 #define NODE_REQUIRED_KEYWORD_P(node) ((node)->nd_value == NODE_SPECIAL_REQUIRED_KEYWORD)
