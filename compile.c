@@ -3674,6 +3674,47 @@ compile_flip_flop(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const nod
 }
 
 static int
+compile_cmpseq(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node,
+	       LABEL *then_label, LABEL *else_label)
+{
+    NODE *end = node->nd_next;
+    int line = nd_line(end);
+    LABEL *end_label = NEW_LABEL(line);
+    node = node->nd_head;
+    if (!then_label) {
+	ADD_INSN(ret, line, putnil);
+    }
+    CHECK(COMPILE(ret, "left", node->nd_head));
+    do {
+	ID mid = node->nd_mid;
+	node = node->nd_next;
+	CHECK(COMPILE(ret, "mid", node->nd_head));
+	line = nd_line(node);
+	ADD_INSN(ret, line, swap);
+	ADD_INSN1(ret, line, topn, INT2FIX(1));
+	ADD_SEND(ret, line, mid, INT2FIX(1));
+	if (!else_label) ADD_INSN1(ret, line, setn, INT2FIX(2));
+	ADD_INSNL(ret, line, branchunless, end_label);
+    } while (node != end);
+    CHECK(COMPILE(ret, "right", node->nd_next));
+    line = nd_line(node);
+    ADD_SEND(ret, line, node->nd_mid, INT2FIX(1));
+    if (then_label) {
+	ADD_INSNL(ret, line, branchif, then_label);
+	ADD_INSNL(ret, line, jump, else_label);
+    }
+    else {
+	ADD_INSN(ret, line, swap);
+    }
+    ADD_LABEL(ret, end_label);
+    ADD_INSN(ret, line, pop);
+    if (else_label) {
+	ADD_INSNL(ret, line, jump, else_label);
+    }
+    return COMPILE_OK;
+}
+
+static int
 compile_branch_condition(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *cond,
 			 LABEL *then_label, LABEL *else_label)
 {
@@ -3721,6 +3762,9 @@ compile_branch_condition(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *co
       case NODE_DEFINED:
 	CHECK(compile_defined_expr(iseq, ret, cond, Qfalse));
 	goto branch;
+      case NODE_CMPSEQ:
+	CHECK(compile_cmpseq(iseq, ret, cond, then_label, else_label));
+	break;
       default:
 	CHECK(COMPILE(ret, "branch condition", cond));
       branch:
@@ -7408,6 +7452,11 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
 	}
 	break;
       }
+
+      case NODE_CMPSEQ:
+	CHECK(compile_cmpseq(iseq, ret, node, NULL, NULL));
+	break;
+
       default:
 	UNKNOWN_NODE("iseq_compile_each", node, COMPILE_NG);
       ng:
