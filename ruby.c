@@ -1554,6 +1554,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
     rb_ast_t *ast = 0;
     VALUE parser;
     VALUE script_name;
+    VALUE script_realpath = Qnil;
     const rb_iseq_t *iseq;
     rb_encoding *enc, *lenc;
 #if UTF8_PATH
@@ -1703,10 +1704,19 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
     script_name = opt->script_name;
     rb_enc_associate(opt->script_name,
 		     IF_UTF8_PATH(uenc = rb_utf8_encoding(), lenc));
+    if (!opt->e_script && strcmp(opt->script, "-")) {
+        script_realpath = rb_realpath_internal(Qnil, opt->script_name, 0);
+        if (!ENCODING_GET(script_realpath)) { /* ASCII-8BIT */
+            rb_enc_copy(script_realpath, opt->script_name);
+        }
+    }
 #if UTF8_PATH
     if (uenc != lenc) {
 	opt->script_name = str_conv_enc(opt->script_name, uenc, lenc);
 	opt->script = RSTRING_PTR(opt->script_name);
+        if (!NIL_P(script_realpath)) {
+            script_realpath = str_conv_enc(script_realpath, uenc, lenc);
+        }
     }
 #endif
     rb_obj_freeze(opt->script_name);
@@ -1854,23 +1864,9 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
 	}
     }
 
-    {
-	VALUE path = Qnil;
-	if (!opt->e_script && strcmp(opt->script, "-")) {
-	    path = rb_realpath_internal(Qnil, script_name, 1);
-#if UTF8_PATH
-	    if (uenc != lenc) {
-		path = str_conv_enc(path, uenc, lenc);
-	    }
-#endif
-	    if (!ENCODING_GET(path)) { /* ASCII-8BIT */
-		rb_enc_copy(path, opt->script_name);
-	    }
-	}
-	base_block = toplevel_context(toplevel_binding);
-	iseq = rb_iseq_new_main(&ast->body, opt->script_name, path, vm_block_iseq(base_block));
-	rb_ast_dispose(ast);
-    }
+    base_block = toplevel_context(toplevel_binding);
+    iseq = rb_iseq_new_main(&ast->body, opt->script_name, script_realpath, vm_block_iseq(base_block));
+    rb_ast_dispose(ast);
 
     if (dump & DUMP_BIT(insns)) {
 	rb_io_write(rb_stdout, rb_iseq_disasm((const rb_iseq_t *)iseq));
