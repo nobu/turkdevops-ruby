@@ -4216,6 +4216,19 @@ realpath_rec(long *prefixlenp, VALUE *resolvedp, const char *unresolved, VALUE f
     return 0;
 }
 
+static rb_encoding *
+enc_adjust(VALUE *path1, VALUE *path2)
+{
+    rb_encoding *enc = rb_enc_check(*path1, *path2);
+    if (enc != rb_enc_get(*path1)) {
+	*path1 = rb_str_conv_enc(*path1, NULL, enc);
+    }
+    if (enc != rb_enc_get(*path2)) {
+	*path2 = rb_str_conv_enc(*path2, NULL, enc);
+    }
+    return enc;
+}
+
 static VALUE
 rb_check_realpath_emulate(VALUE basedir, VALUE path, enum rb_realpath_mode mode)
 {
@@ -4248,6 +4261,7 @@ rb_check_realpath_emulate(VALUE basedir, VALUE path, enum rb_realpath_mode mode)
     }
 
     if (!NIL_P(basedir)) {
+	enc = enc_adjust(&unresolved_path, &basedir);
 	RSTRING_GETMEM(basedir, ptr, len);
 	basedir_names = skipprefixroot(ptr, ptr + len, rb_enc_get(basedir));
         if (ptr != basedir_names) {
@@ -4257,6 +4271,7 @@ rb_check_realpath_emulate(VALUE basedir, VALUE path, enum rb_realpath_mode mode)
     }
 
     curdir = rb_dir_getwd_ospath();
+    enc = enc_adjust(&unresolved_path, &curdir);
     RSTRING_GETMEM(curdir, ptr, len);
     curdir_names = skipprefixroot(ptr, ptr + len, rb_enc_get(curdir));
     resolved = rb_str_subseq(curdir, 0, curdir_names - ptr);
