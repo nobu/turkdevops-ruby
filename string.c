@@ -9001,7 +9001,6 @@ rb_str_enumerate_chars(VALUE str, VALUE ary)
     const char *ptr;
     rb_encoding *enc;
 
-    str = rb_str_new_frozen(str);
     ptr = RSTRING_PTR(str);
     len = RSTRING_LEN(str);
     enc = rb_enc_get(str);
@@ -9009,13 +9008,17 @@ rb_str_enumerate_chars(VALUE str, VALUE ary)
     if (ENC_CODERANGE_CLEAN_P(ENC_CODERANGE(str))) {
 	for (i = 0; i < len; i += n) {
 	    n = rb_enc_fast_mbclen(ptr + i, ptr + len, enc);
-	    ENUM_ELEM(ary, rb_str_subseq(str, i, n));
+	    if (ENUM_ELEM(ary, rb_str_subseq(str, i, n))) {
+		str_mod_check(str, ptr, len);
+	    }
 	}
     }
     else {
 	for (i = 0; i < len; i += n) {
 	    n = rb_enc_mbclen(ptr + i, ptr + len, enc);
-	    ENUM_ELEM(ary, rb_str_subseq(str, i, n));
+	    if (ENUM_ELEM(ary, rb_str_subseq(str, i, n))) {
+		str_mod_check(str, ptr, len);
+	    }
 	}
     }
     RB_GC_GUARD(str);
@@ -9073,19 +9076,20 @@ rb_str_enumerate_codepoints(VALUE str, VALUE ary)
     unsigned int c;
     const char *ptr, *end;
     rb_encoding *enc;
+    long i, len;
 
     if (single_byte_optimizable(str))
 	return rb_str_enumerate_bytes(str, ary);
 
-    str = rb_str_new_frozen(str);
-    ptr = RSTRING_PTR(str);
-    end = RSTRING_END(str);
+    RSTRING_GETMEM(str, ptr, len);
+    end = ptr + len;
     enc = STR_ENC_GET(str);
 
-    while (ptr < end) {
-	c = rb_enc_codepoint_len(ptr, end, &n, enc);
-	ENUM_ELEM(ary, UINT2NUM(c));
-	ptr += n;
+    for (i = 0; i < len; i += n) {
+	c = rb_enc_codepoint_len(ptr+i, end, &n, enc);
+	if (ENUM_ELEM(ary, UINT2NUM(c))) {
+	    str_mod_check(str, ptr, len);
+	}
     }
     RB_GC_GUARD(str);
     if (ary)
@@ -9195,23 +9199,23 @@ rb_str_each_grapheme_cluster_size(VALUE str, VALUE args, VALUE eobj)
     size_t grapheme_cluster_count = 0;
     regex_t *reg_grapheme_cluster = NULL;
     rb_encoding *enc = rb_enc_from_index(ENCODING_GET(str));
-    const char *ptr, *end;
+    const char *ptr;
+    long i, slen;
 
     if (!rb_enc_unicode_p(enc)) {
 	return rb_str_length(str);
     }
 
     reg_grapheme_cluster = get_reg_grapheme_cluster(enc);
-    ptr = RSTRING_PTR(str);
-    end = RSTRING_END(str);
+    RSTRING_GETMEM(str, ptr, slen);
 
-    while (ptr < end) {
+    for (i = 0; i < slen;) {
+	const OnigUChar *optr = (const OnigUChar *)ptr;
 	OnigPosition len = onig_match(reg_grapheme_cluster,
-				      (const OnigUChar *)ptr, (const OnigUChar *)end,
-				      (const OnigUChar *)ptr, NULL, 0);
+				      optr+i, optr+slen, optr+i, NULL, 0);
 	if (len <= 0) break;
 	grapheme_cluster_count++;
-	ptr += len;
+	i += len;
     }
 
     return SIZET2NUM(grapheme_cluster_count);
@@ -9223,7 +9227,8 @@ rb_str_enumerate_grapheme_clusters(VALUE str, VALUE ary)
     VALUE orig = str;
     regex_t *reg_grapheme_cluster = NULL;
     rb_encoding *enc = rb_enc_from_index(ENCODING_GET(str));
-    const char *ptr0, *ptr, *end;
+    const char *ptr;
+    long i, slen;
 
     if (!rb_enc_unicode_p(enc)) {
 	return rb_str_enumerate_chars(str, ary);
@@ -9231,16 +9236,17 @@ rb_str_enumerate_grapheme_clusters(VALUE str, VALUE ary)
 
     if (!ary) str = rb_str_new_frozen(str);
     reg_grapheme_cluster = get_reg_grapheme_cluster(enc);
-    ptr0 = ptr = RSTRING_PTR(str);
-    end = RSTRING_END(str);
+    RSTRING_GETMEM(str, ptr, slen);
 
-    while (ptr < end) {
+    for (i = 0; i < slen;) {
+	const OnigUChar *optr = (const OnigUChar *)ptr;
 	OnigPosition len = onig_match(reg_grapheme_cluster,
-				      (const OnigUChar *)ptr, (const OnigUChar *)end,
-				      (const OnigUChar *)ptr, NULL, 0);
+				      optr+i, optr+slen, optr+i, NULL, 0);
 	if (len <= 0) break;
-        ENUM_ELEM(ary, rb_str_subseq(str, ptr-ptr0, len));
-	ptr += len;
+	if (ENUM_ELEM(ary, rb_str_subseq(str, i, len))) {
+	    str_mod_check(str, ptr, slen);
+	}
+	i += len;
     }
     RB_GC_GUARD(str);
     if (ary)
