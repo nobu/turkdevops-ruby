@@ -465,6 +465,11 @@ get_ppid(void)
 
 static VALUE rb_cProcessStatus;
 
+#define PST_EACH_MEMBERS(x) x(status) x(pid)
+#define PST_IDX_NAME(n) pst_idx_##n,
+enum {PST_EACH_MEMBERS(PST_IDX_NAME) pst_idx_max_};
+#undef PST_IDX_NAME
+
 VALUE
 rb_last_status_get(void)
 {
@@ -492,19 +497,31 @@ proc_s_last_status(VALUE mod)
     return rb_last_status_get();
 }
 
+VALUE
+rb_last_status_new(int status, rb_pid_t pid)
+{
+    VALUE last_status = rb_obj_alloc(rb_cProcessStatus);
+    RSTRUCT_SET(last_status, pst_idx_status, INT2FIX(status));
+    RSTRUCT_SET(last_status, pst_idx_pid, PIDT2NUM(pid));
+    return last_status;
+}
+
+VALUE
+rb_last_status_set0(VALUE st)
+{
+    return GET_THREAD()->last_status = st;
+}
+
 void
 rb_last_status_set(int status, rb_pid_t pid)
 {
-    rb_thread_t *th = GET_THREAD();
-    th->last_status = rb_obj_alloc(rb_cProcessStatus);
-    rb_ivar_set(th->last_status, id_status, INT2FIX(status));
-    rb_ivar_set(th->last_status, id_pid, PIDT2NUM(pid));
+    rb_last_status_set0(rb_last_status_new(status, pid));
 }
 
 void
 rb_last_status_clear(void)
 {
-    GET_THREAD()->last_status = Qnil;
+    rb_last_status_set0(Qnil);
 }
 
 /*
@@ -523,7 +540,7 @@ rb_last_status_clear(void)
 static VALUE
 pst_to_i(VALUE st)
 {
-    return rb_ivar_get(st, id_status);
+    return RSTRUCT_GET(st, pst_idx_status);
 }
 
 #define PST2INT(st) NUM2INT(pst_to_i(st))
@@ -542,7 +559,7 @@ pst_to_i(VALUE st)
 static VALUE
 pst_pid(VALUE st)
 {
-    return rb_attr_get(st, id_pid);
+    return RSTRUCT_GET(st, pst_idx_pid);
 }
 
 static VALUE pst_message_status(VALUE str, int status);
@@ -7667,8 +7684,13 @@ InitVM_process(void)
     rb_undef_method(CLASS_OF(rb_cWaiter), "new");
     rb_define_method(rb_cWaiter, "pid", detach_process_pid, 0);
 
-    rb_cProcessStatus = rb_define_class_under(rb_mProcess, "Status", rb_cObject);
-    rb_undef_method(CLASS_OF(rb_cProcessStatus), "new");
+#define PST_IDX_NAME(n) #n,
+    rb_cProcessStatus =
+	rb_struct_define_without_accessor_under(rb_mProcess, "Status", rb_cObject,
+						NULL,
+						PST_EACH_MEMBERS(PST_IDX_NAME)
+						NULL);
+#undef PST_IDX_NAME
 
     rb_define_method(rb_cProcessStatus, "==", pst_equal, 1);
     rb_define_method(rb_cProcessStatus, "&", pst_bitand, 1);
