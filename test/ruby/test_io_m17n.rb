@@ -2170,17 +2170,29 @@ EOT
     assert_nil(enc)
   end
 
+  def assert_bom_writing(encoding)
+    file = "test"
+    enc = nil
+    assert_nothing_raised(IOError) {
+      open(file, "w:bom|#{encoding.name}") {|f|
+        enc = f.external_encoding
+        f.print("a")
+        f.print("bc")
+      }
+    }
+    assert_equal(encoding, enc)
+    assert_equal("\u{feff}abc".encode(encoding).b, File.binread(file), encoding)
+  ensure
+    File.unlink(file)
+  end
+
   def test_bom_non_reading
     with_tmpdir {
-      enc = nil
-      assert_nothing_raised(IOError) {
-        open("test", "w:bom|utf-8") {|f|
-          enc = f.external_encoding
-          f.print("abc")
-        }
-      }
-      assert_equal(Encoding::UTF_8, enc)
-      assert_equal("abc", File.binread("test"))
+      assert_bom_writing(Encoding::UTF_8)
+      assert_bom_writing(Encoding::UTF_16BE)
+      assert_bom_writing(Encoding::UTF_16LE)
+      assert_bom_writing(Encoding::UTF_32BE)
+      assert_bom_writing(Encoding::UTF_32LE)
     }
   end
 

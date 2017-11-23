@@ -904,6 +904,49 @@ ruby_dup(int orig)
     return fd;
 }
 
+static const char *
+io_bom_header(rb_io_t *fptr, size_t *len)
+{
+    static const char bom_be[4] = {0, 0, 0xfe, 0xff};
+    static const char bom_le[4] = {0xff, 0xfe, 0, 0};
+    static const char bom_utf8[3] = {0xef, 0xbb, 0xbf};
+
+    if (!(fptr->mode & FMODE_SETENC_BY_BOM)) return NULL;
+    if (!fptr->encs.enc || fptr->wbuf.len) return NULL;
+    if (io_tell(fptr) != 0) return NULL;
+
+    /* pathological check */
+    if (!fptr->encs.enc || fptr->wbuf.len) return NULL;
+
+    /* not support writing BOM after rewinding */
+    fptr->mode &= ~FMODE_SETENC_BY_BOM;
+
+    switch (rb_enc_to_index(fptr->encs.enc)) {
+      default:
+	if (!rb_enc_unicode_p(fptr->encs.enc)) break;
+	/* fallthru */ /* assume UTF-8 variants */
+      case ENCINDEX_UTF_8:
+      case ENCINDEX_UTF8_MAC:
+	*len = 3;
+	return bom_utf8;
+      case ENCINDEX_UTF_16:
+      case ENCINDEX_UTF_16BE:
+	*len = 2;
+	return bom_be+2;
+      case ENCINDEX_UTF_16LE:
+	*len = 2;
+	return bom_le+0;
+      case ENCINDEX_UTF_32:
+      case ENCINDEX_UTF_32BE:
+	*len = 4;
+	return bom_be;
+      case ENCINDEX_UTF_32LE:
+	*len = 4;
+	return bom_le;
+    }
+    return NULL;
+}
+
 static VALUE
 io_alloc(VALUE klass)
 {
@@ -1450,6 +1493,11 @@ io_fwrite(VALUE str, rb_io_t *fptr, int nosync)
 
     tmp = rb_str_tmp_frozen_acquire(str);
     RSTRING_GETMEM(tmp, ptr, len);
+    {
+	size_t bomlen;
+	const char *bom = io_bom_header(fptr, &bomlen);
+	if (bom) io_binwrite(Qnil, bom, bomlen, fptr, nosync);
+    }
     n = io_binwrite(tmp, ptr, len, fptr, nosync);
     rb_str_tmp_frozen_release(str, tmp);
 
@@ -1618,6 +1666,12 @@ io_fwritev(int argc, VALUE *argv, rb_io_t *fptr)
 	/* iov[0] is reserved for buffer of fptr */
 	iov[i+1].iov_base = RSTRING_PTR(tmp);
 	iov[i+1].iov_len = RSTRING_LEN(tmp);
+    }
+    iov[0].iov_base = (void *)io_bom_header(fptr, &iov[0].iov_len);
+    if (iov[0].iov_base) {
+	/* no buffered data, iov[0] should not be used if no BOM */
+	--iov;
+	++iovcnt;
     }
 
     n = io_binwritev(iov, iovcnt, fptr);
