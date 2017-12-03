@@ -67,6 +67,12 @@ static const rb_data_type_t ifaddr_type = {
     {0, ifaddr_free, ifaddr_memsize,},
 };
 
+static inline VALUE
+new_ifaddr(rb_ifaddr_t *addr)
+{
+    return TypedData_Wrap_Struct(rb_cSockIfaddr, &ifaddr_type, addr);
+}
+
 static inline rb_ifaddr_t *
 check_ifaddr(VALUE self)
 {
@@ -111,7 +117,7 @@ rsock_getifaddrs(void)
     for (ifa = ifaddrs; ifa != NULL; ifa = ifa->ifa_next)
         numifaddrs++;
 
-    addr = TypedData_Wrap_Struct(rb_cSockIfaddr, &ifaddr_type, 0);
+    addr = new_ifaddr(0);
     root = xmalloc(offsetof(rb_ifaddr_root_t, ary) + numifaddrs * sizeof(rb_ifaddr_t));
     root->refcount = 0;
     root->numifaddrs = numifaddrs;
@@ -128,7 +134,7 @@ rsock_getifaddrs(void)
     result = rb_ary_new2(numifaddrs);
     rb_ary_push(result, addr);
     for (i = 1; i < numifaddrs; i++) {
-	addr = TypedData_Wrap_Struct(rb_cSockIfaddr, &ifaddr_type, &root->ary[i]);
+	addr = new_ifaddr(&root->ary[i]);
 	root->refcount++;
 	rb_ary_push(result, addr);
     }
