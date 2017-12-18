@@ -452,6 +452,11 @@ end.join
     assert_equal(Encoding.find("locale"), Errno::EINVAL.new.message.encoding)
   end
 
+  def test_errname
+    assert_equal(:EINVAL, Errno::EINVAL.errname)
+    assert_equal(:EINVAL, Errno::EINVAL.new.errname)
+  end
+
   def test_too_many_args_in_eval
     bug5720 = '[ruby-core:41520]'
     arg_string = (0...140000).to_a.join(", ")

@@ -884,7 +884,7 @@ VALUE rb_mErrno;
 static VALUE rb_eNOERROR;
 
 static ID id_cause, id_message, id_backtrace;
-static ID id_name, id_key, id_args, id_Errno, id_errno, id_i_path;
+static ID id_name, id_key, id_args, id_Errno, id_errno, id_errname, id_i_path;
 static ID id_receiver, id_iseq, id_local_variables;
 static ID id_private_call_p;
 #define id_bt idBt
@@ -1808,7 +1808,9 @@ set_syserr(int n, const char *name)
     st_data_t error;
 
     if (!st_lookup(syserr_tbl, n, &error)) {
-	error = rb_define_class_under(rb_mErrno, name, rb_eSystemCallError);
+	ID nid = rb_intern(name);
+	error = rb_define_class_id_under(rb_mErrno, nid, rb_eSystemCallError);
+	rb_ivar_set(error, id_errname, ID2SYM(nid));
 
 	/* capture nonblock errnos for WaitReadable/WaitWritable subclasses */
 	switch (n) {
@@ -1919,6 +1921,32 @@ static VALUE
 syserr_errno(VALUE self)
 {
     return rb_attr_get(self, id_errno);
+}
+
+/*
+ * call-seq:
+ *   system_call_error_class.errname   -> string
+ *
+ * Return this SystemCallError's error name.
+ */
+
+static VALUE
+syserr_s_errname(VALUE self)
+{
+    return rb_attr_get(self, id_errname);
+}
+
+/*
+ * call-seq:
+ *   system_call_error.errname   -> string
+ *
+ * Return this SystemCallError's error name.
+ */
+
+static VALUE
+syserr_errname(VALUE self)
+{
+    return rb_funcallv(rb_obj_class(self), id_errname, 0, 0);
 }
 
 /*
@@ -2411,6 +2439,8 @@ Init_Exception(void)
     rb_eSystemCallError = rb_define_class("SystemCallError", rb_eStandardError);
     rb_define_method(rb_eSystemCallError, "initialize", syserr_initialize, -1);
     rb_define_method(rb_eSystemCallError, "errno", syserr_errno, 0);
+    rb_define_method(rb_eSystemCallError, "errname", syserr_errname, 0);
+    rb_define_singleton_method(rb_eSystemCallError, "errname", syserr_s_errname, 0);
     rb_define_singleton_method(rb_eSystemCallError, "===", syserr_eqq, 1);
 
     rb_mErrno = rb_define_module("Errno");
@@ -2436,6 +2466,7 @@ Init_Exception(void)
     id_local_variables = rb_intern_const("local_variables");
     id_Errno = rb_intern_const("Errno");
     id_errno = rb_intern_const("errno");
+    id_errname = rb_intern_const("errname");
     id_i_path = rb_intern_const("@path");
     id_warn = rb_intern_const("warn");
     id_iseq = rb_make_internal_id();
