@@ -966,6 +966,76 @@ sigill(int sig SIGINFO_ARG)
 }
 #endif
 
+#if defined POSIX_SIGNAL && (defined SIGCHLD || defined SIGCLD)
+static st_table *child_process_table;
+#ifdef SIGCHLD
+# define sigchld SIGCHLD
+#else
+# define sigchld SIGCLD
+#endif
+
+static inline void
+ruby_sigblock(sigset_t *mask, int sig)
+{
+    sigemptyset(mask);
+    sigaddset(mask, sig);
+    ruby_sigunmask(SIG_BLOCK, mask, NULL);
+}
+
+#define BLOCK_SIGNAL(sig) do { \
+    sigset_t mask; ruby_sigblock(&mask, sig);
+
+#define UNBLOCK_SIGNAL() \
+    ruby_sigunmask(SIG_UNBLOCK, &mask, NULL); \
+    } while (0)
+
+void
+rb_register_child_process(rb_pid_t pid)
+{
+    BLOCK_SIGNAL(sigchld) {
+	if (!child_process_table) {
+	    child_process_table = st_init_numtable();
+	}
+	st_insert(child_process_table, (st_data_t)pid, 0);
+    } UNBLOCK_SIGNAL();
+}
+
+void
+rb_unregister_child_process(rb_pid_t pid)
+{
+    st_data_t key = (st_data_t)pid;
+    if (!child_process_table) return;
+    BLOCK_SIGNAL(sigchld) {
+	st_delete(child_process_table, &key, NULL);
+	if (!child_process_table->num_entries) {
+	    st_free_table(child_process_table);
+	    child_process_table = 0;
+	}
+    } UNBLOCK_SIGNAL();
+}
+
+static RETSIGTYPE
+sig_child(int sig, siginfo_t *info, void *ctx)
+{
+    if (child_process_table) {
+	if (st_lookup(child_process_table, (st_data_t)info->si_pid, NULL))
+	    return;
+    }
+    if (!GET_VM()->trap_list.cmd[sig]) return;
+    sighandler(sig);
+}
+#else
+void
+rb_register_child_process(rb_pid_t pid)
+{
+}
+
+void
+rb_unregister_child_process(rb_pid_t pid)
+{
+}
+#endif
+
 static void
 check_reserved_signal_(const char *name, size_t name_len)
 {
@@ -1141,6 +1211,16 @@ default_handler(int sig)
         func = sig_do_nothing;
         break;
 #endif
+#ifdef SIGCHLD
+      case SIGCHLD:
+#endif
+#ifdef SIGCLD
+      case SIGCLD:
+#endif
+#if defined SIGCHLD || defined SIGCLD
+	func = (sighandler_t)sig_child;
+	break;
+#endif
       default:
         func = SIG_DFL;
         break;
@@ -1184,6 +1264,12 @@ trap_handler(VALUE *cmd, int sig)
 		if (memcmp(cptr, "SIG_IGN", 7) == 0) {
 sig_ign:
                     func = SIG_IGN;
+#ifdef SIGCHLD
+		    if (sig == SIGCHLD) func = (sighandler_t)sig_child;
+#endif
+#ifdef SIGCLD
+		    if (sig == SIGCLD) func = (sighandler_t)sig_child;
+#endif
                     *cmd = Qtrue;
 		}
 		else if (memcmp(cptr, "SIG_DFL", 7) == 0) {
