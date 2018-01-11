@@ -407,6 +407,8 @@ static NODE *new_args(struct parser_params*,NODE*,NODE*,ID,NODE*,NODE*,const YYL
 static NODE *new_args_tail(struct parser_params*,NODE*,ID,ID,const YYLTYPE*);
 static NODE *new_kw_arg(struct parser_params *p, NODE *k, const YYLTYPE *loc);
 
+static NODE *new_for_arg(struct parser_params *p, ID *vid, NODE *var, const YYLTYPE *loc);
+
 static VALUE negate_lit(struct parser_params*, VALUE);
 static NODE *ret_args(struct parser_params*,NODE*);
 static NODE *arg_blk_pass(NODE*,NODE*);
@@ -2537,33 +2539,13 @@ primary		: literal
 			 *  #=>
 			 *  e.each{|x| a, = x}
 			 */
-			ID id = internal_id(p);
-			NODE *m = NEW_ARGS_AUX(0, 0, &NULL_LOC);
-			NODE *args, *scope, *internal_var = NEW_DVAR(id, &@2);
 			rb_imemo_tmpbuf_t *tmpbuf = new_tmpbuf();
 			ID *tbl = ALLOC_N(ID, 2);
-			tbl[0] = 1 /* length of local var table */; tbl[1] = id /* internal id */;
+			NODE *args;
+			tbl[0] = 1 /* length of local var table */;
 			tmpbuf->ptr = (VALUE *)tbl;
-
-			switch (nd_type($2)) {
-			  case NODE_LASGN:
-			  case NODE_DASGN:
-			  case NODE_DASGN_CURR: /* e.each {|internal_var| a = internal_var; ... } */
-			    $2->nd_value = internal_var;
-			    id = 0;
-			    m->nd_plen = 1;
-			    m->nd_next = $2;
-			    break;
-			  case NODE_MASGN: /* e.each {|*internal_var| a, b, c = (internal_var.length == 1 && Array === (tmp = internal_var[0]) ? tmp : internal_var); ... } */
-			    m->nd_next = node_assign(p, $2, NEW_FOR_MASGN(internal_var, &@2), &@2);
-			    break;
-			  default: /* e.each {|*internal_var| @a, B, c[1], d.attr = internal_val; ... } */
-			    m->nd_next = node_assign(p, NEW_MASGN(NEW_LIST($2, &@2), 0, &@2), internal_var, &@2);
-			}
-			/* {|*internal_id| <m> = internal_id; ... } */
-			args = new_args(p, m, 0, id, 0, new_args_tail(p, 0, 0, 0, &@2), &@2);
-			scope = NEW_NODE(NODE_SCOPE, tbl, $5, args, &@$);
-			$$ = NEW_FOR($4, scope, &@$);
+                        args = new_for_arg(p, &tbl[1], $2, &@2);
+			$$ = NEW_FOR($4, NEW_NODE(NODE_SCOPE, tbl, $5, args, &@$), &@$);
 			fixpos($$, $2);
 		    /*% %*/
 		    /*% ripper: for!($2, $4, $5) %*/
@@ -10007,6 +9989,40 @@ new_yield(struct parser_params *p, NODE *node, const YYLTYPE *loc)
     if (node) no_blockarg(p, node);
 
     return NEW_YIELD(node, loc);
+}
+
+static NODE *
+new_for_arg(struct parser_params *p, ID *vid, NODE *var, const YYLTYPE *loc)
+{
+    NODE *m = NEW_ARGS_AUX(0, 0, &NULL_LOC);
+    ID id = *vid = internal_id(p);
+    NODE *internal_var = NEW_DVAR(id, loc);
+    rb_imemo_tmpbuf_t *tmpbuf = new_tmpbuf();
+
+    switch (nd_type(var)) {
+      case NODE_LASGN:
+      case NODE_DASGN:
+      case NODE_DASGN_CURR:
+	/* e.each {|internal_var| a = internal_var; ... } */
+	var->nd_value = internal_var;
+	id = 0;
+	m->nd_plen = 1;
+	m->nd_next = var;
+	break;
+      case NODE_MASGN:
+	/* e.each {|*internal_var|
+	 *   a, b, c = (internal_var.length == 1 && Array === (tmp = internal_var[0]) ?
+	 *		tmp : internal_var)
+	 *   ...
+	 * } */
+	m->nd_next = node_assign(p, var, NEW_FOR_MASGN(internal_var, loc), loc);
+	break;
+      default: /* e.each {|*internal_var| @a, B, c[1], d.attr = internal_val; ... } */
+	m->nd_next = node_assign(p, NEW_MASGN(NEW_LIST(var, loc), 0, loc),
+				 internal_var, loc);
+    }
+    /* {|*internal_id| <m> = internal_id; ... } */
+    return new_args(p, m, 0, id, 0, new_args_tail(p, 0, 0, 0, loc), loc);
 }
 
 static VALUE
