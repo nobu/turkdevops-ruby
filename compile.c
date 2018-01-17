@@ -5380,9 +5380,7 @@ compile_for_masgn(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const nod
     ADD_INSN(ret, line, dup);
     ADD_INSN1(ret, line, putobject, INT2FIX(0));
     ADD_CALL(ret, line, idAREF, INT2FIX(1));
-    ADD_INSN1(ret, line, putobject, rb_cArray);
-    ADD_INSN(ret, line, swap);
-    ADD_CALL(ret, line, rb_intern("try_convert"), INT2FIX(1));
+    ADD_INSN2(ret, line, expandarray, INT2FIX(0), INT2FIX(0x05));
     ADD_INSN(ret, line, dup);
     ADD_INSNL(ret, line, branchunless, not_ary);
     ADD_INSN(ret, line, swap);

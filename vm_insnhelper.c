@@ -1258,8 +1258,14 @@ vm_expandarray(VALUE *sp, VALUE ary, rb_num_t num, int flag)
     const VALUE *ptr;
     rb_num_t len;
     const VALUE obj = ary;
+    int check_only = (flag & 0x04);
 
-    if (!RB_TYPE_P(ary, T_ARRAY) && NIL_P(ary = rb_check_array_type(ary))) {
+    if (!RB_TYPE_P(ary, T_ARRAY)) ary = rb_check_array_type(ary);
+    if (check_only) {
+        *base = ary;
+        return;
+    }
+    if (NIL_P(ary)) {
 	ary = obj;
 	ptr = &ary;
 	len = 1;

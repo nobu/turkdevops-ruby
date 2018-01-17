@@ -461,7 +461,7 @@ duparray
      if flags is non-zero, push the array of the rest elements.
      flag: 0x01 - rest args array
      flag: 0x02 - for postarg
-     flag: 0x04 - reverse?
+     flag: 0x04 - just check if an array with trying conversion
  */
 DEFINE_INSN
 expandarray
