@@ -6968,6 +6968,16 @@ no_digits(struct parser_params *p)
     yyerror0("numeric literal without digits");
     if (peek(p, '_')) nextc(p);
     /* dummy 0, for tUMINUS_NUM at numeric */
+    return 0;
+}
+
+static enum yytokentype
+trailing_uc(struct parser_params *p, int nondigit)
+{
+    char tmp[30];
+    literal_flush(p, p->lex.pcur - 1);
+    snprintf(tmp, sizeof(tmp), "trailing `%c' in number", nondigit);
+    yyerror0(tmp);
     return set_integer_literal(p, INT2FIX(0), 0);
 }
 
@@ -6985,29 +6995,30 @@ parse_numeric(struct parser_params *p, int c)
 	c = nextc(p);
     }
     if (c == '0') {
+# define SCAN_DIGITS(cond) \
+	do { \
+	    if (c == '_') { \
+		if (nondigit) break; \
+		nondigit = c; \
+		continue; \
+	    } \
+	    if (!(cond)) break; \
+	    nondigit = 0; \
+	    tokadd(p, c); \
+	} while ((c = nextc(p)) != -1)
+
 	int start = toklen(p);
 	c = nextc(p);
 	if (c == 'x' || c == 'X') {
 	    /* hexadecimal */
 	    c = nextc(p);
 	    if (c != -1 && ISXDIGIT(c)) {
-		do {
-		    if (c == '_') {
-			if (nondigit) break;
-			nondigit = c;
-			continue;
-		    }
-		    if (!ISXDIGIT(c)) break;
-		    nondigit = 0;
-		    tokadd(p, c);
-		} while ((c = nextc(p)) != -1);
+		SCAN_DIGITS(ISXDIGIT(c));
 	    }
 	    pushback(p, c);
 	    tokfix(p);
-	    if (toklen(p) == start) {
-		return no_digits(p);
-	    }
-	    else if (nondigit) goto trailing_uc;
+	    if (toklen(p) == start) return no_digits(p);
+	    if (nondigit) return trailing_uc(p, nondigit);
 	    suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
 	    return set_integer_literal(p, rb_cstr_to_inum(tok(p), 16, FALSE), suffix);
 	}
@@ -7015,23 +7026,12 @@ parse_numeric(struct parser_params *p, int c)
 	    /* binary */
 	    c = nextc(p);
 	    if (c == '0' || c == '1') {
-		do {
-		    if (c == '_') {
-			if (nondigit) break;
-			nondigit = c;
-			continue;
-		    }
-		    if (c != '0' && c != '1') break;
-		    nondigit = 0;
-		    tokadd(p, c);
-		} while ((c = nextc(p)) != -1);
+		SCAN_DIGITS(c == '0' || c == '1');
 	    }
 	    pushback(p, c);
 	    tokfix(p);
-	    if (toklen(p) == start) {
-		return no_digits(p);
-	    }
-	    else if (nondigit) goto trailing_uc;
+	    if (toklen(p) == start) return no_digits(p);
+	    if (nondigit) return trailing_uc(p, nondigit);
 	    suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
 	    return set_integer_literal(p, rb_cstr_to_inum(tok(p), 2, FALSE), suffix);
 	}
@@ -7039,23 +7039,12 @@ parse_numeric(struct parser_params *p, int c)
 	    /* decimal */
 	    c = nextc(p);
 	    if (c != -1 && ISDIGIT(c)) {
-		do {
-		    if (c == '_') {
-			if (nondigit) break;
-			nondigit = c;
-			continue;
-		    }
-		    if (!ISDIGIT(c)) break;
-		    nondigit = 0;
-		    tokadd(p, c);
-		} while ((c = nextc(p)) != -1);
+		SCAN_DIGITS(ISDIGIT(c));
 	    }
 	    pushback(p, c);
 	    tokfix(p);
-	    if (toklen(p) == start) {
-		return no_digits(p);
-	    }
-	    else if (nondigit) goto trailing_uc;
+	    if (toklen(p) == start) return no_digits(p);
+	    if (nondigit) return trailing_uc(p, nondigit);
 	    suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
 	    return set_integer_literal(p, rb_cstr_to_inum(tok(p), 10, FALSE), suffix);
 	}
@@ -7066,41 +7055,24 @@ parse_numeric(struct parser_params *p, int c)
 	if (c == 'o' || c == 'O') {
 	    /* prefixed octal */
 	    c = nextc(p);
-	    if (c == -1 || c == '_' || !ISDIGIT(c)) {
-		return no_digits(p);
-	    }
+	    goto octal_number;
 	}
-	if (c >= '0' && c <= '7') {
+	if (ISDIGIT(c)) {
 	    /* octal */
 	  octal_number:
-	    do {
-		if (c == '_') {
-		    if (nondigit) break;
-		    nondigit = c;
-		    continue;
-		}
-		if (c < '0' || c > '9') break;
-		if (c > '7') goto invalid_octal;
-		nondigit = 0;
-		tokadd(p, c);
-	    } while ((c = nextc(p)) != -1);
-	    if (toklen(p) > start) {
-		pushback(p, c);
-		tokfix(p);
-		if (nondigit) goto trailing_uc;
-		suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
-		return set_integer_literal(p, rb_cstr_to_inum(tok(p), 8, FALSE), suffix);
+	    SCAN_DIGITS(c >= '0' && c <= '7');
+	    pushback(p, c);
+	    tokfix(p);
+	    if (toklen(p) == start) return no_digits(p);
+	    if (nondigit) return trailing_uc(p, nondigit);
+	    if (c > '7' && c <= '9') {
+		yyerror0("Invalid octal digit");
+		return tINTEGER;
 	    }
-	    if (nondigit) {
-		pushback(p, c);
-		goto trailing_uc;
-	    }
+	    suffix = number_literal_suffix(p, NUM_SUFFIX_ALL);
+	    return set_integer_literal(p, rb_cstr_to_inum(tok(p), 8, FALSE), suffix);
 	}
-	if (c > '7' && c <= '9') {
-	  invalid_octal:
-	    yyerror0("Invalid octal digit");
-	}
-	else if (c == '.' || c == 'e' || c == 'E') {
+	if (c == '.' || c == 'e' || c == 'E') {
 	    tokadd(p, '0');
 	}
 	else {
@@ -7119,7 +7091,7 @@ parse_numeric(struct parser_params *p, int c)
 	    break;
 
 	  case '.':
-	    if (nondigit) goto trailing_uc;
+	    if (nondigit) return trailing_uc(p, nondigit);
 	    if (seen_point || seen_e) {
 		goto decode_num;
 	    }
@@ -7175,13 +7147,7 @@ parse_numeric(struct parser_params *p, int c)
 
   decode_num:
     pushback(p, c);
-    if (nondigit) {
-	char tmp[30];
-      trailing_uc:
-	literal_flush(p, p->lex.pcur - 1);
-	snprintf(tmp, sizeof(tmp), "trailing `%c' in number", nondigit);
-	yyerror0(tmp);
-    }
+    if (nondigit) return trailing_uc(p, nondigit);
     tokfix(p);
     if (is_float) {
 	enum yytokentype type = tFLOAT;
