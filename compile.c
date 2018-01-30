@@ -1920,8 +1920,30 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 			if (lobj->sp == -1) {
 			    lobj->sp = sp;
 			}
+#if 0
+			else if (lobj->sp != sp) {
+			    BADINSN_DUMP(anchor, list, lobj);
+			    COMPILE_ERROR(iseq, iobj->insn_info.line_no,
+					  "destination stack unmatch (%d->%d)", sp, lobj->sp);
+			    return -1;
+			}
+#endif
 		    }
 		}
+#if 0
+		if (IS_INSN_ID(iobj, leave) || IS_INSN_ID(iobj, jump)) {
+		    LINK_ELEMENT *n = list;
+		    while ((n = n->next) != 0) {
+			if (n->type == ISEQ_ELEMENT_LABEL) break;
+			if (n->type == ISEQ_ELEMENT_ADJUST) break;
+			if (n->type != ISEQ_ELEMENT_INSN) continue;
+			BADINSN_DUMP(anchor, list, 0);
+			COMPILE_ERROR(iseq, iobj->insn_info.line_no,
+				      "unreachable code");
+			return -1;
+		    }
+		}
+#endif
 		break;
 	    }
 	  case ISEQ_ELEMENT_LABEL:
@@ -2118,6 +2140,14 @@ iseq_set_sequence(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 			{
 			    /* label(destination position) */
 			    LABEL *lobj = (LABEL *)operands[j];
+#if 0
+			    if (lobj->sp != -1 && lobj->sp != sp) {
+				BADINSN_DUMP(anchor, list, lobj);
+				COMPILE_ERROR(iseq, iobj->insn_info.line_no,
+					      "destination stack unmatch (%d->%d)", sp, lobj->sp);
+				return -1;
+			    }
+#endif
 			    generated_iseq[code_index + 1 + j] = lobj->position - (code_index + len);
 			    break;
 			}
