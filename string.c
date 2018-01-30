@@ -7999,6 +7999,8 @@ chomp_newline(const char *p, const char *e, rb_encoding *enc)
     return e;
 }
 
+static VALUE sym_universal;
+
 static VALUE
 rb_str_enumerate_lines(int argc, VALUE *argv, VALUE str, VALUE ary)
 {
@@ -8007,16 +8009,20 @@ rb_str_enumerate_lines(int argc, VALUE *argv, VALUE str, VALUE ary)
     const char *ptr, *pend, *subptr, *subend, *rsptr, *hit, *adjusted;
     long pos, len, rslen;
     int rsnewline = 0;
+    int univnl = 0;
 
     if (rb_scan_args(argc, argv, "01:", &rs, &opts) == 0)
 	rs = rb_rs;
     if (!NIL_P(opts)) {
-	static ID keywords[1];
+	VALUE kwargs[2];
+	static ID keywords[2];
 	if (!keywords[0]) {
 	    keywords[0] = rb_intern_const("chomp");
+	    keywords[1] = rb_intern_const("newline");
 	}
-	rb_get_kwargs(opts, keywords, 0, 1, &chomp);
-	chomp = (chomp != Qundef && RTEST(chomp));
+	rb_get_kwargs(opts, keywords, 0, 2, kwargs);
+	chomp = (kwargs[0] != Qundef && RTEST(kwargs[0]));
+	univnl = (kwargs[1] == sym_universal);
     }
 
     if (NIL_P(rs)) {
@@ -8036,7 +8042,7 @@ rb_str_enumerate_lines(int argc, VALUE *argv, VALUE str, VALUE ary)
     StringValue(rs);
     rslen = RSTRING_LEN(rs);
 
-    if (rs == rb_default_rs)
+    if (rslen == 0 || rs == rb_default_rs)
 	enc = rb_enc_get(str);
     else
 	enc = rb_enc_check(str, rs);
@@ -8048,12 +8054,17 @@ rb_str_enumerate_lines(int argc, VALUE *argv, VALUE str, VALUE ary)
 	subend = subptr;
 	while (subend < pend) {
 	    do {
+		int lf;
 		if (rb_enc_ascget(subend, pend, &n, enc) != '\r')
 		    n = 0;
 		rslen = n + rb_enc_mbclen(subend + n, pend, enc);
-		if (rb_enc_is_newline(subend + n, pend, enc)) {
-		    if (eol == subend) break;
-		    subend += rslen;
+		lf = rb_enc_is_newline(subend + n, pend, enc);
+		if (lf || (univnl && n)) {
+		    if (eol == subend) {
+			if (!lf) rslen = n;
+			break;
+		    }
+		    subend += lf ? rslen : n;
 		    if (subptr) eol = subend;
 		}
 		else {
@@ -11114,6 +11125,8 @@ Init_String(void)
     mUnicodeNormalize          = rb_define_module("UnicodeNormalize");
     id_normalize               = rb_intern("normalize");
     id_normalized_p            = rb_intern("normalized?");
+
+    sym_universal = ID2SYM(rb_intern("universal"));
 
     rb_define_method(rb_cString, "unicode_normalize", rb_str_unicode_normalize, -1);
     rb_define_method(rb_cString, "unicode_normalize!", rb_str_unicode_normalize_bang, -1);
