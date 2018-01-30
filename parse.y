@@ -8492,9 +8492,8 @@ list_concat(NODE *head, NODE *tail)
 }
 
 static int
-literal_concat0(struct parser_params *p, VALUE head, VALUE tail)
+literal_compatible(struct parser_params *p, VALUE head, VALUE tail)
 {
-    if (NIL_P(tail)) return 1;
     if (!rb_enc_compatible(head, tail)) {
 	compile_error(p, "string literal encodings differ (%s / %s)",
 		      rb_enc_name(rb_enc_get(head)),
@@ -8503,7 +8502,32 @@ literal_concat0(struct parser_params *p, VALUE head, VALUE tail)
 	rb_str_resize(tail, 0);
 	return 0;
     }
+    return 1;
+}
+
+static int
+literal_concat0(struct parser_params *p, VALUE head, VALUE tail)
+{
+    if (NIL_P(tail)) return 1;
+    if (!literal_compatible(p, head, tail)) return 0;
     rb_str_buf_append(head, tail);
+    return 1;
+}
+
+static int
+literal_list_compatible(struct parser_params *p, NODE *head, VALUE tail)
+{
+    enum node_type htype;
+    if (rb_enc_str_coderange(tail) == ENC_CODERANGE_7BIT) return 1;
+    do {
+	htype = nd_type(head);
+	if (htype == NODE_STR || htype == NODE_DSTR) {
+	    VALUE lit = head->nd_lit;
+	    if (rb_enc_str_coderange(lit) != ENC_CODERANGE_7BIT) {
+		if (literal_compatible(p, lit, tail)) return 0;
+	    }
+	}
+    } while (htype == NODE_DSTR && (head = head->nd_next) != 0);
     return 1;
 }
 
@@ -8553,6 +8577,9 @@ literal_concat(struct parser_params *p, NODE *head, NODE *tail, const YYLTYPE *l
 	    }
 	    rb_discard_node(p, tail);
 	}
+	else if (!literal_list_compatible(p, head, tail->nd_lit)) {
+	    goto error;
+	}
 	else {
 	    list_append(p, head, tail);
 	}
@@ -8580,6 +8607,9 @@ literal_concat(struct parser_params *p, NODE *head, NODE *tail, const YYLTYPE *l
 		goto error;
 	    tail->nd_lit = Qnil;
 	    goto append;
+	}
+	else if (!literal_list_compatible(p, head, tail->nd_lit)) {
+	    goto error;
 	}
 	else {
 	    nd_set_type(tail, NODE_ARRAY);
