@@ -1858,10 +1858,9 @@ get_ivar_ic_value(rb_iseq_t *iseq,ID id)
      BADINSN_DUMP(anchor, list, NULL), \
      COMPILE_ERROR)
 
-static int
-fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
+static void
+set_label_used(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 {
-    int stack_max = 0, sp = 0, line = 0;
     LINK_ELEMENT *list;
 
     for (list = FIRST_ELEMENT(anchor); list; list = list->next) {
@@ -1870,8 +1869,17 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 	    lobj->set = TRUE;
 	}
     }
+}
 
-    for (list = FIRST_ELEMENT(anchor); list; list = list->next) {
+static int
+fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor, LINK_ELEMENT *list,
+	     const LINK_ELEMENT *const list_end,
+	     int sp, int *stack_max)
+{
+    int line = 0;
+    LABEL *lobj;
+
+    for (; list; list = list->next) {
 	switch (list->type) {
 	  case ISEQ_ELEMENT_INSN:
 	    {
@@ -1888,8 +1896,8 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 				  "argument stack underflow (%d)", sp);
 		    return -1;
 		}
-		if (sp > stack_max) {
-		    stack_max = sp;
+		if (sp > *stack_max) {
+		    *stack_max = sp;
 		}
 
 		line = iobj->insn_info.line_no;
@@ -1912,15 +1920,24 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 		for (j = 0; types[j]; j++) {
 		    if (types[j] == TS_OFFSET) {
 			/* label(destination position) */
-			LABEL *lobj = (LABEL *)operands[j];
+			lobj = (LABEL *)operands[j];
 			if (!lobj->set) {
+			  unknown_label:
 			    BADINSN_DUMP(anchor, list, NULL);
 			    COMPILE_ERROR(iseq, iobj->insn_info.line_no,
 					  "unknown label: "LABEL_FORMAT, lobj->label_no);
 			    return -1;
 			}
 			if (lobj->sp == -1) {
-			    lobj->sp = sp;
+			    if (fix_sp_depth(iseq, anchor, &lobj->link, NULL, sp, stack_max) < 0)
+				return -1;
+			}
+			else if (lobj->sp != sp) {
+			  sp_mismatch:
+			    BADINSN_DUMP(anchor, list, lobj);
+			    COMPILE_ERROR(iseq, iobj->insn_info.line_no,
+					  "label sp mismatch: %d expected but %d", sp, lobj->sp);
+			    return -1;
 			}
 #if 0
 			else if (lobj->sp != sp) {
@@ -1932,6 +1949,7 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 #endif
 		    }
 		}
+
 #if 0
 		if (IS_INSN_ID(iobj, leave) || IS_INSN_ID(iobj, jump)) {
 		    LINK_ELEMENT *n = list;
@@ -1946,16 +1964,29 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 		    }
 		}
 #endif
+
+		switch (insn) {
+		  case BIN(jump):
+		  case BIN(leave):
+		  case BIN(throw):
+		    goto end_of_exec;
+		}
+
 		break;
 	    }
 	  case ISEQ_ELEMENT_LABEL:
 	    {
-		LABEL *lobj = (LABEL *)list;
+		lobj = (LABEL *)list;
+		if (!lobj->set) goto unknown_label;
 		if (lobj->sp == -1) {
 		    lobj->sp = sp;
 		}
+		else if (lobj->sp != sp) {
+		    goto sp_mismatch;
+		}
 		else {
-		    sp = lobj->sp;
+		    /* already calculated */
+		    goto end_of_exec;
 		}
 		break;
 	    }
@@ -1968,8 +1999,14 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 	    {
 		ADJUST *adjust = (ADJUST *)list;
 		int orig_sp = sp;
+		LINK_ELEMENT *dest = &adjust->label->link;
 
-		sp = adjust->label ? adjust->label->sp : 0;
+		for (; sp = 0, dest && IS_LABEL(dest); dest = dest->next) {
+		    sp = ((LABEL *)dest)->sp;
+		    if (sp != -1) {
+			break;
+		    }
+		}
 		if (adjust->line_no != -1 && orig_sp - sp < 0) {
 		    BADINSN_DUMP(anchor, list, NULL);
 		    COMPILE_ERROR(iseq, adjust->line_no,
@@ -1985,7 +2022,8 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 	    return -1;
 	}
     }
-    return stack_max;
+  end_of_exec:
+    return sp;
 }
 
 static int
@@ -2032,9 +2070,11 @@ iseq_set_sequence(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
     long data = 0;
 
     int insn_num, code_index, insns_info_index, sp = 0;
-    int stack_max = fix_sp_depth(iseq, anchor);
+    int stack_max;
 
-    if (stack_max < 0) return COMPILE_NG;
+    set_label_used(iseq, anchor);
+    if (fix_sp_depth(iseq, anchor, FIRST_ELEMENT(anchor), NULL, 0, &stack_max) < 0)
+	return COMPILE_NG;
 
     /* fix label position */
     list = FIRST_ELEMENT(anchor);
@@ -5299,11 +5339,10 @@ compile_loop(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, in
 	tmp_label = NEW_LABEL(line);
 	ADD_INSNL(ret, line, jump, tmp_label);
     }
-    ADD_LABEL(ret, adjust_label);
-    ADD_INSN(ret, line, putnil);
     ADD_LABEL(ret, next_catch_label);
     ADD_INSN(ret, line, pop);
     ADD_INSNL(ret, line, jump, next_label);
+    ADD_LABEL(ret, adjust_label);
     if (tmp_label) ADD_LABEL(ret, tmp_label);
 
     ADD_LABEL(ret, redo_label);
