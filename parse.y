@@ -86,6 +86,7 @@ enum lex_state_bits {
     EXPR_LABEL_bit,		/* flag bit, label is allowed. */
     EXPR_LABELED_bit,		/* flag bit, just after a label. */
     EXPR_FITEM_bit,		/* symbol literal as FNAME. */
+    EXPR_BLOCK_bit,		/* beginning of block. */
     EXPR_MAX_STATE
 };
 /* examine combinations */
@@ -104,6 +105,7 @@ enum lex_state_e {
     DEF_EXPR(LABEL),
     DEF_EXPR(LABELED),
     DEF_EXPR(FITEM),
+    DEF_EXPR(BLOCK),
     EXPR_VALUE = EXPR_BEG,
     EXPR_BEG_ANY  =  (EXPR_BEG | EXPR_MID | EXPR_CLASS),
     EXPR_ARG_ANY  =  (EXPR_ARG | EXPR_CMDARG),
@@ -7989,7 +7991,8 @@ parser_yylex(struct parser_params *p)
 		return tOP_ASGN;
 	    }
 	    pushback(p, c);
-	    return tOROP;
+	    if (!IS_lex_state_for(last_state, EXPR_BLOCK))
+		return tOROP;
 	}
 	if (c == '=') {
             set_yylval_id('|');
@@ -8249,7 +8252,7 @@ parser_yylex(struct parser_params *p)
 	    c = tLBRACE;      /* hash */
 	COND_PUSH(0);
 	CMDARG_PUSH(0);
-	SET_LEX_STATE(c != tLBRACE ? EXPR_BEG : EXPR_BEG|EXPR_LABEL);
+	SET_LEX_STATE(EXPR_BEG|(c != tLBRACE ? EXPR_BLOCK : EXPR_LABEL));
 	if (c != tLBRACE) p->command_start = TRUE;
 	return c;
 

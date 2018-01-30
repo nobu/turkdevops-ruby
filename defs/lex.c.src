@@ -21,7 +21,7 @@ case, {keyword_case, keyword_case}, EXPR_VALUE
 class, {keyword_class, keyword_class}, EXPR_CLASS
 def, {keyword_def, keyword_def}, EXPR_FNAME
 defined?, {keyword_defined, keyword_defined}, EXPR_ARG
-do, {keyword_do, keyword_do}, EXPR_BEG
+do, {keyword_do, keyword_do}, EXPR_BEG|EXPR_BLOCK
 else, {keyword_else, keyword_else}, EXPR_BEG
 elsif, {keyword_elsif, keyword_elsif}, EXPR_VALUE
 end, {keyword_end, keyword_end}, EXPR_END
