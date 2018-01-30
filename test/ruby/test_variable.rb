@@ -124,6 +124,14 @@ class TestVariable < Test::Unit::TestCase
     }
   end
 
+  def test_special_global_variable_warning
+    %w[/ \\ ; ,].each do |v|
+      assert_warn(/\$#{Regexp.quote(v)} is deprecated/) do
+        eval("$#{v}")
+      end
+    end
+  end
+
   def test_constant_popped
     assert_nothing_raised {
       EnvUtil.suppress_warning {

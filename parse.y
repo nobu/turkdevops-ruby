@@ -521,6 +521,7 @@ void rb_parser_set_location_of_none(struct parser_params *p, YYLTYPE *yylloc);
 void rb_parser_set_location(struct parser_params *p, YYLTYPE *yylloc);
 RUBY_SYMBOL_EXPORT_END
 
+static void warn_deprecated_special_gvar(struct parser_params *p, VALUE gvname);
 static void parser_token_value_print(struct parser_params *p, enum yytokentype type, const YYSTYPE *valp);
 static ID formal_argument(struct parser_params*, ID);
 static ID shadowing_lvar(struct parser_params*,ID);
@@ -652,6 +653,7 @@ static void ripper_error(struct parser_params *p);
 #define ID2VAL(id) STATIC_ID2SYM(id)
 #define TOKEN2VAL(t) ID2VAL(TOKEN2ID(t))
 #define KWD2EID(t, v) ripper_new_yylval(p, keyword_##t, get_value(v), 0)
+#define IDVAL2NAME(v) v
 
 #define params_new(pars, opts, rest, pars2, kws, kwrest, blk) \
         dispatch7(params, (pars), (opts), (rest), (pars2), (kws), (kwrest), (blk))
@@ -684,6 +686,7 @@ static VALUE heredoc_dedent(struct parser_params*,VALUE);
 #define ID2VAL(id) ((VALUE)(id))
 #define TOKEN2VAL(t) ID2VAL(t)
 #define KWD2EID(t, v) keyword_##t
+#define IDVAL2NAME(v) rb_id2str(v)
 #endif /* RIPPER */
 
 #ifndef RIPPER
@@ -3727,6 +3730,7 @@ string_content	: tSTRING_CONTENT
 
 string_dvar	: tGVAR
 		    {
+			warn_deprecated_special_gvar(p, IDVAL2NAME($1));
 		    /*%%%*/
 			$$ = NEW_GVAR($1, &@$);
 		    /*% %*/
@@ -3795,6 +3799,10 @@ simple_numeric	: tINTEGER
 user_variable	: tIDENTIFIER
 		| tIVAR
 		| tGVAR
+		    {
+			warn_deprecated_special_gvar(p, IDVAL2NAME($1));
+			$$ = $1;
+		    }
 		| tCONSTANT
 		| tCVAR
 		;
@@ -6497,6 +6505,34 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
 }
 
 #include "lex.c"
+
+static void
+warn_deprecated_special_gvar(struct parser_params *p, VALUE gvname)
+{
+    const char *s;
+#ifndef RIPPER
+    if (e_option_supplied(p)) return;
+#endif
+    if (RSTRING_LEN(gvname) != 2) return;
+    s = RSTRING_PTR(gvname);
+    if (*s != '$') return;
+    switch (s[1]) {
+      case '/': 	/* $/: input record separator */
+      case '\\':	/* $\: output record separator */
+      case ';': 	/* $;: field separator */
+      case ',': 	/* $,: output field separator */
+	break;
+      default:
+	return;
+    }
+    rb_warn1("special global variable %.2s is deprecated",
+#ifndef RIPPER
+	     s
+#else
+	     gvname
+#endif
+	);
+}
 
 static int
 arg_ambiguous(struct parser_params *p, char c)
