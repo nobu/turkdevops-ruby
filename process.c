@@ -503,6 +503,7 @@ rb_last_status_new(int status, rb_pid_t pid)
     VALUE last_status = rb_obj_alloc(rb_cProcessStatus);
     RSTRUCT_SET(last_status, pst_idx_status, INT2FIX(status));
     RSTRUCT_SET(last_status, pst_idx_pid, PIDT2NUM(pid));
+    OBJ_FREEZE_RAW(last_status);
     return last_status;
 }
 
