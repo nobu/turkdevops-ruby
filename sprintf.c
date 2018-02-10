@@ -17,6 +17,7 @@
 #include "id.h"
 #include <math.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #ifdef HAVE_IEEEFP_H
 #include <ieeefp.h>
@@ -1304,6 +1305,73 @@ ruby_snprintf(char *str, size_t n, char const *fmt, ...)
     ret = ruby_do_vsnprintf(str, n, fmt, ap);
     va_end(ap);
     return ret;
+}
+
+static int
+ruby__xsvwrite(register rb_printf_buffer *fp, register struct __suio *uio)
+{
+    struct __siov *iov;
+    unsigned char *base = fp->_bf._base, *buf = fp->_p;
+    size_t n, len, size = fp->_bf._size;
+    ptrdiff_t off = buf - base;
+
+    if (uio->uio_resid == 0)
+	return 0;
+    len = uio->uio_resid;
+    size += len;
+    REALLOC_N(base, unsigned char, size);
+    fp->_bf._base = base;
+    fp->_bf._size = size;
+    buf = base + off;
+    for (iov = uio->uio_iov; len > 0; ++iov) {
+	MEMCPY(buf, iov->iov_base, char, n = iov->iov_len);
+	buf += n;
+	len -= n;
+    }
+    fp->_p = buf;
+    fp->_w = base + size - buf;
+    return 0;
+}
+
+ssize_t
+ruby_vasprintf(char **ret, const char *fmt, va_list ap)
+{
+    ssize_t n;
+    size_t size;
+    unsigned char *base, *end;
+    rb_printf_buffer f;
+
+    f._flags = __SWR | __SSTR;
+    *ret = NULL;
+    f._bf._base = f._p = NULL;
+    f._bf._size = f._w = 0;
+    f.vwrite = ruby__xsvwrite;
+    f.vextra = 0;
+    n = BSD_vfprintf(&f, fmt, ap);
+    if (n < 0) return n;
+    base = f._bf._base;
+    end = f._p;
+    size = f._bf._size;
+    if (!base) assert(n == 0);
+    assert(base + n == end);
+    assert(n + f._w == size);
+    if ((size_t)n + 1 != size) REALLOC_N(base, unsigned char, (size_t)n + 1);
+    base[n] = '\0';
+    f._bf._base = f._p = NULL;
+    *ret = (char *)base;
+    return n;
+}
+
+ssize_t
+ruby_asprintf(char **ret, char const *fmt, ...)
+{
+    ssize_t n;
+    va_list ap;
+
+    va_start(ap, fmt);
+    n = ruby_vasprintf(ret, fmt, ap);
+    va_end(ap);
+    return n;
 }
 
 typedef struct {
