@@ -1195,10 +1195,22 @@ child_result(struct ChildRecord *child, int mode)
     return child->pid;
 }
 
+typedef struct {
+    const char *const *env;
+    const char *curdir;
+    int fds[3];
+} rb_w32_spawn_opt_t;
+
+typedef struct {
+    const WCHAR *const *env;
+    const WCHAR *curdir;
+    HANDLE handles[3];
+} w32_spawn_wopt_t;
+
 /* License: Ruby's */
 static struct ChildRecord *
 CreateChild(const WCHAR *cmd, const WCHAR *prog, SECURITY_ATTRIBUTES *psa,
-	    HANDLE hInput, HANDLE hOutput, HANDLE hError, DWORD dwCreationFlags)
+	    const w32_spawn_wopt_t *opt, DWORD dwCreationFlags)
 {
     BOOL fRet;
     STARTUPINFOW aStartupInfo;
@@ -1228,26 +1240,27 @@ CreateChild(const WCHAR *cmd, const WCHAR *prog, SECURITY_ATTRIBUTES *psa,
     memset(&aProcessInformation, 0, sizeof(aProcessInformation));
     aStartupInfo.cb = sizeof(aStartupInfo);
     aStartupInfo.dwFlags = STARTF_USESTDHANDLES;
-    if (hInput) {
-	aStartupInfo.hStdInput  = hInput;
+    if (opt->handles && opt->handles[0]) {
+	aStartupInfo.hStdInput  = opt->handles[0];
     }
     else {
 	aStartupInfo.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
     }
-    if (hOutput) {
-	aStartupInfo.hStdOutput = hOutput;
+    if (opt->handles && opt->handles[1]) {
+	aStartupInfo.hStdOutput = opt->handles[1];
     }
     else {
 	aStartupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
     }
-    if (hError) {
-	aStartupInfo.hStdError = hError;
+    if (opt->handles && opt->handles[2]) {
+	aStartupInfo.hStdError = opt->handles[2];
     }
     else {
 	aStartupInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     }
 
     dwCreationFlags |= NORMAL_PRIORITY_CLASS;
+    if (opt->env) dwCreationFlags |= CREATE_UNICODE_ENVIRONMENT;
 
     if (lstrlenW(cmd) > 32767) {
 	child->pid = 0;		/* release the slot */
@@ -1256,8 +1269,13 @@ CreateChild(const WCHAR *cmd, const WCHAR *prog, SECURITY_ATTRIBUTES *psa,
     }
 
     RUBY_CRITICAL {
+	const WCHAR *env = NULL, *curdir = NULL;
+	if (opt) {
+	    env = opt->env;
+	    curdir = opt->curdir;
+	}
 	fRet = CreateProcessW(prog, (WCHAR *)cmd, psa, psa,
-			      psa->bInheritHandle, dwCreationFlags, NULL, NULL,
+			      psa->bInheritHandle, dwCreationFlags, env, curdir,
 			      &aStartupInfo, &aProcessInformation);
 	errno = map_errno(GetLastError());
     }
@@ -1298,9 +1316,57 @@ is_batch(const char *cmd)
 #define utf8_to_wstr(str, plen) mbstr_to_wstr(CP_UTF8, str, -1, plen)
 #define wstr_to_utf8(str, plen) wstr_to_mbstr(CP_UTF8, str, -1, plen)
 
+static int
+spawn_opt_conv(const rb_w32_spawn_opt_t *opt, w32_spawn_wopt_t *wopt, UINT cp)
+{
+    int e = 0;
+    size_t i;
+
+    wopt->curdir = NULL;
+    wopt->env = NULL;
+    for (i = 0; i < 3; ++i) {
+	int fd = opt->fds[i];
+	if (fd < 0) {
+	    wopt->handles[i] = NULL;
+	}
+	else if ((wopt->handles[i] = _get_osfhandle(fd)) == INVALID_HANDLE_VALUE) {
+	    return errno;
+	}
+    }
+    if (opt->curdir) {
+	if (!(wopt->curdir = mbstr_to_wstr(cp, opt->curdir, -1, NULL))) {
+	    return errno;
+	}
+    }
+    if (opt->env) {
+	WCHAR *wenv;
+	const char *const *ep;
+	size_t elen = 1, wn = 0;
+
+	for (ep = opt->env; *ep; ep++) {
+	    elen += MultiByteToWideChar(cp, 0, *ep, -1, NULL, 0);
+	}
+	wenv = malloc(elen * sizeof(WCHAR));
+	if (!wenv) {
+	    e = errno;
+	}
+	for (ep = opt->env; *ep; ep++) {
+	    wn += MultiByteToWideChar(cp, 0, *ep, -1, wenv + wn, elen - wn);
+	}
+	wenv[wn] = L'\0';
+	wopt->env = wenv;
+    }
+    if (e) {
+	free(wopt->curdir);
+	free(wopt->env);
+    }
+    return e;
+}
+
 /* License: Artistic or GPL */
 static rb_pid_t
-w32_spawn(int mode, const char *cmd, const char *prog, UINT cp)
+w32_spawn(int mode, const char *cmd, const char *prog,
+	  const rb_w32_spawn_opt_t *opt, UINT cp)
 {
     char fbuf[PATH_MAX];
     char *p = NULL;
@@ -1414,7 +1480,11 @@ w32_spawn(int mode, const char *cmd, const char *prog, UINT cp)
     if (v) ALLOCV_END(v);
 
     if (!e) {
-	ret = child_result(CreateChild(wcmd, wshell, NULL, NULL, NULL, NULL, 0), mode);
+	rb_w32_spawn_wopt_t wopt;
+	if (opt) e = spawn_opt_conv(opt, &wopt, cp);
+	if (e) {
+	    ret = child_result(CreateChild(wcmd, wshell, NULL, &wopt, 0), mode);
+	}
     }
     free(wshell);
     free(wcmd);
@@ -1439,7 +1509,8 @@ rb_w32_uspawn(int mode, const char *cmd, const char *prog)
 
 /* License: Artistic or GPL */
 static rb_pid_t
-w32_aspawn_flags(int mode, const char *prog, char *const *argv, DWORD flags, UINT cp)
+w32_aspawn(int mode, const char *prog, char *const *argv,
+	   const rb_w32_spawn_opt_t *opt, DWORD flags, UINT cp)
 {
     int c_switch = 0;
     size_t len;
@@ -1499,8 +1570,13 @@ w32_aspawn_flags(int mode, const char *prog, char *const *argv, DWORD flags, UIN
     if (!e && prog && !(wprog = mbstr_to_wstr(cp, prog, -1, NULL))) e = E2BIG;
 
     if (!e) {
-	ret = child_result(CreateChild(wcmd, wprog, NULL, NULL, NULL, NULL, flags), mode);
+	rb_w32_spawn_wopt_t wopt;
+	if (opt) e = spawn_opt_conv(opt, &wopt, cp);
+	if (!e) {
+	    ret = child_result(CreateChild(wcmd, wprog, NULL, &wopt, flags), mode);
+	}
     }
+    free(wenv);
     free(wprog);
     free(wcmd);
     if (e) errno = e;
@@ -1509,17 +1585,26 @@ w32_aspawn_flags(int mode, const char *prog, char *const *argv, DWORD flags, UIN
 
 /* License: Ruby's */
 rb_pid_t
+rb_w32_uaspawnex(int mode, const char *prog, char *const *argv,
+		 const char *const *env, const char *curdir,
+		 const int *stdfds, DWORD flags)
+{
+    return w32_aspawn(mode, prog, argv, env, curdir, stdfds, flags, CP_UTF8);
+}
+
+/* License: Ruby's */
+rb_pid_t
 rb_w32_aspawn_flags(int mode, const char *prog, char *const *argv, DWORD flags)
 {
     /* assume ACP */
-    return w32_aspawn_flags(mode, prog, argv, flags, filecp());
+    return w32_aspawn(mode, prog, argv, NULL, NULL, NULL, flags, filecp());
 }
 
 /* License: Ruby's */
 rb_pid_t
 rb_w32_uaspawn_flags(int mode, const char *prog, char *const *argv, DWORD flags)
 {
-    return w32_aspawn_flags(mode, prog, argv, flags, CP_UTF8);
+    return w32_aspawn(mode, prog, argv, NULL, NULL, NULL, flags, CP_UTF8);
 }
 
 /* License: Ruby's */
