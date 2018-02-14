@@ -3074,6 +3074,10 @@ CODE
 
     bar = %w(b a r).join('')
     assert_same(str, -bar, "uminus deduplicates [Feature #13077]")
+    bar = eval("# frozen_string_literal: true\n\"\#{bar}\"")
+    assert_not_same(str, bar, "new string for each dynamic string")
+    bar = eval("# frozen_string_literal: true\n-\"\#{bar}\"")
+    assert_same(str, bar, "uminus deduplicates [Bug #14475]")
   end
 
   def test_ord

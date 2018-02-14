@@ -2613,12 +2613,7 @@ str_uplus(VALUE str)
 static VALUE
 str_uminus(VALUE str)
 {
-    if (OBJ_FROZEN(str)) {
-	return str;
-    }
-    else {
-	return rb_fstring(str);
-    }
+    return rb_fstring(str);
 }
 
 RUBY_ALIAS_FUNCTION(rb_str_dup_frozen(VALUE str), rb_str_new_frozen, (str))
