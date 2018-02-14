@@ -207,12 +207,12 @@ static VALUE valid_class_serials;
 /* Ruby level interface module.  */
 VALUE rb_mMJIT;
 
-#ifdef _WIN32
+#if 0
 /* Linker option to enable libruby in the build directory. */
 static char *libruby_build;
+#endif
 /* Linker option to enable libruby in the directory after install. */
 static char *libruby_installed;
-#endif
 
 /* Return time in milliseconds as a double.  */
 static double
@@ -648,19 +648,19 @@ compile_c_to_so(const char *c_file, const char *so_file)
 #endif
         NULL, NULL, NULL};
     const char *libs[] = {
-#ifdef _WIN32
-# ifdef _MSC_VER
+#ifdef _MSC_VER
         LIBRUBYARG_SHARED,
         "-link",
         libruby_installed,
-        libruby_build,
-# else
+#else
         /* Look for ruby.dll.a in build and install directories. */
         libruby_installed,
-        libruby_build,
         /* Link to ruby.dll.a, because Windows DLLs don't allow unresolved symbols. */
         LIBRUBYARG_SHARED,
+# ifdef _WIN32
         "-lmsvcrt",
+# endif
+# ifdef __GNUC__
         "-lgcc",
 # endif
 #endif
@@ -1151,7 +1151,6 @@ init_header_filename(void)
         "/" MJIT_HEADER_INSTALL_DIR "/" RUBY_MJIT_HEADER_NAME;
     const size_t header_name_len = sizeof(header_name) - 1;
     char *p;
-#ifdef _WIN32
     static const char libpathflag[] =
 # ifdef _MSC_VER
         "-LIBPATH:"
@@ -1160,7 +1159,6 @@ init_header_filename(void)
 # endif
             ;
     const size_t libpathflag_len = sizeof(libpathflag) - 1;
-#endif
 
     basedir_val = rb_const_get(rb_cObject, rb_intern_const("TMP_RUBY_PREFIX"));
     basedir = StringValuePtr(basedir_val);
@@ -1180,17 +1178,19 @@ init_header_filename(void)
     }
     (void)close(fd);
 
-#ifdef _WIN32
+#if 0
     p = libruby_build = xmalloc(libpathflag_len + baselen + 1);
     p = append_str(p, libpathflag);
     p = append_str2(p, basedir, baselen);
     *p = '\0';
+#endif
 
     libruby_installed = xmalloc(libpathflag_len + baselen + rb_strlen_lit("/lib") + 1);
-    p = append_str2(libruby_installed, libruby_build, p - libruby_build);
+    p = libruby_installed;
+    p = append_str(p, libpathflag);
+    p = append_str2(p, basedir, baselen);
     p = append_lit(p, "/lib");
     *p = '\0';
-#endif
 }
 
 /* This is called after each fork in the child in to switch off MJIT

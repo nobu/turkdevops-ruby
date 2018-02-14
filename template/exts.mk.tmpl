@@ -102,6 +102,7 @@ end
 % RbConfig::MAKEFILE_CONFIG.keys.grep(/RM/) do |k|
 <%=k%> = <%=RbConfig::MAKEFILE_CONFIG[k]%>
 % end
+topdir = .
 
 all:
 static:

@@ -467,7 +467,7 @@ all: $(srcdir)/win32/Makefile.sub $(win_srcdir)/Makefile.sub $(srcdir)/common.mk
 prog: config
 
 ruby: $(PROGRAM)
-rubyw: $(WPROGRAM)
+rubyw: bin/$(WPROGRAM)
 stub: $(STUBPROGRAM)
 rubystub: $(STUBPROGRAM)
 
@@ -1027,7 +1027,7 @@ miniruby.rc:
 		@exit > $@
 
 !if "$(PROGRAM)" != ""
-$(PROGRAM):	$(MAINOBJ) $(LIBRUBY_SO) $(RUBY_INSTALL_NAME).res
+bin/$(PROGRAM):	$(MAINOBJ) $(LIBRUBY_SO) $(RUBY_INSTALL_NAME).res
 		$(ECHO) linking $(@:\=/)
 		$(Q) $(PURIFY) $(CC) $(MAINOBJ) $(RUBY_INSTALL_NAME).res \
 			$(OUTFLAG)$@ $(LIBRUBYARG) -link $(LDFLAGS) $(XLDFLAGS)
@@ -1037,7 +1037,7 @@ $(PROGRAM):	$(MAINOBJ) $(LIBRUBY_SO) $(RUBY_INSTALL_NAME).res
 !endif
 
 !if "$(WPROGRAM)" != ""
-$(WPROGRAM):	$(MAINOBJ) $(WINMAINOBJ) $(LIBRUBY_SO) $(RUBYW_INSTALL_NAME).res
+bin/$(WPROGRAM): $(MAINOBJ) $(WINMAINOBJ) $(LIBRUBY_SO) $(RUBYW_INSTALL_NAME).res
 		$(ECHO) linking $(@:\=/)
 		$(Q) $(PURIFY) $(CC) $(MAINOBJ) $(WINMAINOBJ) \
 			$(RUBYW_INSTALL_NAME).res $(OUTFLAG)$@ $(LIBRUBYARG) \
@@ -1057,16 +1057,19 @@ $(STUBPROGRAM):	rubystub.$(OBJEXT) $(LIBRUBY) $(LIBRUBY_SO) $(RUBY_INSTALL_NAME)
 		$(Q) $(LDSHARED_2)
 !endif
 
-$(LIBRUBY_A):	$(OBJS) $(INITOBJS)
+lib/$(LIBRUBY_A): $(OBJS) $(INITOBJS)
 		$(ECHO) linking static-library $(@:\=/)
+		$(Q) $(MAKEDIRS) $(@D)
 		$(Q) $(AR) $(ARFLAGS)$@ $(OBJS) $(INITOBJS)
 
-$(LIBRUBY):	$(RUBYDEF)
+lib/$(LIBRUBY): $(RUBYDEF)
 		$(ECHO) linking import-library $(@:\=/)
+		$(Q) $(MAKEDIRS) $(@D)
 		$(Q) $(AR) $(ARFLAGS)$@ -def:$(RUBYDEF)
 
-$(LIBRUBY_SO):	$(LIBRUBY_A) $(DLDOBJS) $(RUBYDEF) $(RUBY_SO_NAME).res
+$(DLLDIR)/$(LIBRUBY_SO): $(LIBRUBY_A) $(DLDOBJS) $(RUBYDEF) $(RUBY_SO_NAME).res
 		@echo $(DLDOBJS)
+		$(Q) $(MAKEDIRS) $(@D)
 		@-$(PRE_LIBRUBY_UPDATE)
 		$(ECHO) linking shared-library $(@:\=/)
 		$(Q) $(LDSHARED) $(MAINOBJ) $(DLDOBJS) $(LIBRUBY_A) \

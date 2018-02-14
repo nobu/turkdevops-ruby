@@ -47,8 +47,8 @@ insert_env_path(const char *envname, const char *paths, size_t size, int prepend
 int
 main(int argc, char **argv)
 {
-    static const char builddir[] = BUILDDIR;
-    static const char rubypath[] = BUILDDIR"/"STRINGIZE(RUBY_INSTALL_NAME);
+    static const char builddir[] = BUILDDIR"/lib";
+    static const char rubypath[] = BUILDDIR"/bin/"STRINGIZE(RUBY_INSTALL_NAME);
     static const char rubylib[] =
 	ABS_SRCDIR"/lib"
 	PATH_SEPARATOR

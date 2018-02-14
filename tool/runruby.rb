@@ -77,7 +77,7 @@ config = File.read(conffile)
 config.sub!(/^(\s*)RUBY_VERSION\b.*(\sor\s*)\n.*\n/, '')
 config = Module.new {module_eval(config, conffile)}::RbConfig::CONFIG
 
-ruby = File.join(archdir, config["RUBY_INSTALL_NAME"]+config['EXEEXT'])
+ruby = File.join(archdir, "bin", config["RUBY_INSTALL_NAME"]+config['EXEEXT'])
 unless File.exist?(ruby)
   abort "#{ruby} is not found.\nTry `make' first, then `make test', please.\n"
 end

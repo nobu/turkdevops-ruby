@@ -1,6 +1,6 @@
-bin: $(PROGRAM) $(WPROGRAM)
-lib: $(LIBRUBY)
-dll: $(LIBRUBY_SO)
+bin: bin/$(PROGRAM) bin/$(WPROGRAM)
+lib: lib/$(LIBRUBY)
+dll: $(DLLDIR)/$(LIBRUBY_SO)
 
 .SUFFIXES: .inc .h .c .y .i .$(DTRACE_EXT)
 
@@ -289,7 +289,7 @@ ext/extinit.c: $(srcdir)/template/extinit.c.tmpl
 	    $(srcdir)/template/extinit.c.tmpl $(EXTINITS)
 
 prog: program wprogram
-programs: $(PROGRAM) $(WPROGRAM)
+programs: bin/$(PROGRAM) bin/$(WPROGRAM)
 
 $(PREP): $(MKFILES)
 
@@ -317,22 +317,22 @@ Doxyfile: $(srcdir)/template/Doxyfile.tmpl $(PREP) $(srcdir)/tool/generic_erb.rb
 	$(Q) $(MINIRUBY) $(srcdir)/tool/generic_erb.rb -o $@ $(srcdir)/template/Doxyfile.tmpl \
 	--srcdir="$(srcdir)" --miniruby="$(MINIRUBY)"
 
-program: $(SHOWFLAGS) $(PROGRAM)
-wprogram: $(SHOWFLAGS) $(WPROGRAM)
+program: $(SHOWFLAGS) bin/$(PROGRAM)
+wprogram: $(SHOWFLAGS) bin/$(WPROGRAM)
 mini: PHONY miniruby$(EXEEXT)
 
-$(PROGRAM) $(WPROGRAM): $(LIBRUBY) $(MAINOBJ) $(OBJS) $(EXTOBJS) $(SETUP) $(PREP)
+bin/$(PROGRAM) bin/$(WPROGRAM): $(LIBRUBY) $(MAINOBJ) $(OBJS) $(EXTOBJS) $(SETUP) $(PREP)
 
-$(LIBRUBY_A):	$(LIBRUBY_A_OBJS) $(MAINOBJ) $(INITOBJS) $(ARCHFILE)
+lib/$(LIBRUBY_A):		$(LIBRUBY_A_OBJS) $(MAINOBJ) $(INITOBJS) $(ARCHFILE)
 
-$(LIBRUBY_SO):	$(OBJS) $(DLDOBJS) $(LIBRUBY_A) $(PREP) $(LIBRUBY_SO_UPDATE) $(BUILTIN_ENCOBJS)
+$(DLLDIR)/$(LIBRUBY_SO):	$(OBJS) $(DLDOBJS) lib/$(LIBRUBY_A) $(PREP) $(LIBRUBY_SO_UPDATE) $(BUILTIN_ENCOBJS)
 
 $(LIBRUBY_EXTS):
 	@exit > $@
 
-$(STATIC_RUBY)$(EXEEXT): $(MAINOBJ) $(DLDOBJS) $(EXTOBJS) $(LIBRUBY_A)
+bin/$(STATIC_RUBY)$(EXEEXT): $(MAINOBJ) $(DLDOBJS) $(EXTOBJS) lib/$(LIBRUBY_A)
 	$(Q)$(RM) $@
-	$(PURIFY) $(CC) $(MAINOBJ) $(DLDOBJS) $(EXTOBJS) $(LIBRUBY_A) $(MAINLIBS) $(EXTLIBS) $(LIBS) $(OUTFLAG)$@ $(LDFLAGS) $(XLDFLAGS)
+	$(PURIFY) $(CC) $(MAINOBJ) $(DLDOBJS) $(EXTOBJS) lib/$(LIBRUBY_A) $(MAINLIBS) $(EXTLIBS) $(LIBS) $(OUTFLAG)$@ $(LDFLAGS) $(XLDFLAGS)
 
 ruby.imp: $(COMMONOBJS)
 	$(Q)$(NM) -Pgp $(COMMONOBJS) | \
@@ -359,7 +359,7 @@ post-install-nodoc:: post-install-local post-install-ext
 
 install-local: pre-install-local do-install-local post-install-local
 pre-install-local:: pre-install-bin pre-install-lib pre-install-man
-do-install-local: $(PROGRAM) pre-install-local
+do-install-local: bin/$(PROGRAM) pre-install-local
 	$(INSTRUBY) --make="$(MAKE)" $(INSTRUBY_ARGS) --install=local
 post-install-local:: post-install-bin post-install-lib post-install-man
 
@@ -383,7 +383,7 @@ post-install-comm:: post-install-lib post-install-ext-comm post-install-man
 
 install-bin: pre-install-bin do-install-bin post-install-bin
 pre-install-bin:: install-prereq
-do-install-bin: $(PROGRAM) pre-install-bin
+do-install-bin: bin/$(PROGRAM) pre-install-bin
 	$(INSTRUBY) --make="$(MAKE)" $(INSTRUBY_ARGS) --install=bin
 post-install-bin::
 	@$(NULLCMD)
@@ -428,7 +428,7 @@ no-install: no-install-$(INSTALLDOC)
 what-where-all: no-install-all
 no-install-all: pre-no-install-all dont-install-all post-no-install-all
 pre-no-install-all:: pre-no-install-local pre-no-install-ext pre-no-install-doc
-dont-install-all: $(PROGRAM)
+dont-install-all: bin/$(PROGRAM)
 	$(INSTRUBY) -n --make="$(MAKE)" $(INSTRUBY_ARGS) --install=all --rdoc-output="$(RDOCOUT)"
 post-no-install-all:: post-no-install-local post-no-install-ext post-no-install-doc
 	@$(NULLCMD)
@@ -515,14 +515,14 @@ post-no-install-man::
 
 install-doc: rdoc pre-install-doc do-install-doc post-install-doc
 pre-install-doc:: install-prereq
-do-install-doc: $(PROGRAM) pre-install-doc
+do-install-doc: bin/$(PROGRAM) pre-install-doc
 	$(INSTRUBY) --make="$(MAKE)" $(INSTRUBY_ARGS) --install=rdoc --rdoc-output="$(RDOCOUT)"
 post-install-doc::
 	@$(NULLCMD)
 
 install-gem: pre-install-gem do-install-gem post-install-gem
 pre-install-gem:: pre-install-bin pre-install-lib pre-install-man
-do-install-gem: $(PROGRAM) pre-install-gem
+do-install-gem: bin/$(PROGRAM) pre-install-gem
 	$(INSTRUBY) --make="$(MAKE)" $(INSTRUBY_ARGS) --install=gem
 post-install-gem::
 	@$(NULLCMD)
@@ -569,7 +569,7 @@ clear-installed-list: PHONY
 clean: clean-ext clean-enc clean-golf clean-docs clean-extout clean-local clean-platform clean-spec
 clean-local:: clean-runnable
 	$(Q)$(RM) $(OBJS) $(MINIOBJS) $(MAINOBJ) $(LIBRUBY_A) $(LIBRUBY_SO) $(LIBRUBY) $(LIBRUBY_ALIASES)
-	$(Q)$(RM) $(PROGRAM) $(WPROGRAM) miniruby$(EXEEXT) dmyext.$(OBJEXT) dmyenc.$(OBJEXT) $(ARCHFILE) .*.time
+	$(Q)$(RM) bin/$(PROGRAM) bin/$(WPROGRAM) miniruby$(EXEEXT) dmyext.$(OBJEXT) dmyenc.$(OBJEXT) $(ARCHFILE) .*.time
 	$(Q)$(RM) y.tab.c y.output encdb.h transdb.h config.log rbconfig.rb $(ruby_pc) probes.h probes.$(OBJEXT) probes.stamp ruby-glommed.$(OBJEXT)
 	$(Q)$(RM) GNUmakefile.old Makefile.old $(arch)-fake.rb bisect.sh $(ENC_TRANS_D)
 	$(Q)$(RM) $(MJIT_HEADER) $(MJIT_HEADER:.h=)$(MJIT_HEADER_SUFFIX:%=*).h
@@ -578,7 +578,7 @@ clean-local:: clean-runnable
 	-$(Q) $(RMDIRS) $(MJIT_HEADER_INSTALL_DIR) 2> $(NULL) || exit 0
 	-$(Q) $(RMDIR) enc/jis enc/trans enc 2> $(NULL) || exit 0
 clean-runnable:: PHONY
-	$(Q)$(CHDIR) bin 2>$(NULL) && $(RM) $(PROGRAM) $(WPROGRAM) $(GORUBY)$(EXEEXT) bin/*.$(DLEXT) 2>$(NULL) || exit 0
+	$(Q)$(CHDIR) bin 2>$(NULL) && $(RM) $(PROGRAM) $(WPROGRAM) $(GORUBY)$(EXEEXT) *.$(DLEXT) 2>$(NULL) || exit 0
 	$(Q)$(CHDIR) lib 2>$(NULL) && $(RM) $(LIBRUBY_A) $(LIBRUBY) $(LIBRUBY_ALIASES) $(RUBY_BASE_NAME)/$(RUBY_PROGRAM_VERSION) $(RUBY_BASE_NAME)/vendor_ruby 2>$(NULL) || exit 0
 	$(Q)$(RMDIR) lib/$(RUBY_BASE_NAME) lib bin 2>$(NULL) || exit 0
 clean-ext:: PHONY
@@ -707,7 +707,7 @@ yes-btest: fake miniruby$(EXEEXT) PHONY
 btest-ruby: $(TEST_RUNNABLE)-btest-ruby
 no-btest-ruby: PHONY
 yes-btest-ruby: prog PHONY
-	$(Q)$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(srcdir)/lib $(RUN_OPTS)" -q $(OPTS) $(TESTOPTS)
+	$(Q)$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="bin/$(PROGRAM) -I$(srcdir)/lib $(RUN_OPTS)" -q $(OPTS) $(TESTOPTS)
 
 test-basic: $(TEST_RUNNABLE)-test-basic
 no-test-basic: PHONY
@@ -718,7 +718,7 @@ test-knownbugs: test-knownbug
 test-knownbug: $(TEST_RUNNABLE)-test-knownbug
 no-test-knownbug: PHONY
 yes-test-knownbug: prog PHONY
-	-$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(srcdir)/KNOWNBUGS.rb
+	-$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="bin/$(PROGRAM) $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(srcdir)/KNOWNBUGS.rb
 
 test-testframework: $(TEST_RUNNABLE)-test-testframework
 yes-test-testframework: prog PHONY
@@ -1085,7 +1085,7 @@ $(srcdir)/ext/socket/constdefs.c: $(srcdir)/ext/socket/depend
 run: fake miniruby$(EXEEXT) PHONY
 	$(BTESTRUBY) $(TESTRUN_SCRIPT) $(RUNOPT)
 
-runruby: $(PROGRAM) PHONY
+runruby: bin/$(PROGRAM) PHONY
 	$(RUNRUBY) $(TESTRUN_SCRIPT)
 
 parse: fake miniruby$(EXEEXT) PHONY
@@ -1139,7 +1139,7 @@ run.gdb:
 gdb: miniruby$(EXEEXT) run.gdb PHONY
 	gdb -x run.gdb --quiet --args $(MINIRUBY) $(TESTRUN_SCRIPT)
 
-gdb-ruby: $(PROGRAM) run.gdb PHONY
+gdb-ruby: bin/$(PROGRAM) run.gdb PHONY
 	$(Q) $(RUNRUBY_COMMAND) $(RUNRUBY_DEBUGGER) -- $(TESTRUN_SCRIPT)
 
 LLDB_INIT = command script import -r $(srcdir)/misc/lldb_cruby.py
@@ -1147,8 +1147,8 @@ LLDB_INIT = command script import -r $(srcdir)/misc/lldb_cruby.py
 lldb: miniruby$(EXEEXT) PHONY
 	lldb -o '$(LLDB_INIT)' miniruby$(EXEEXT) -- $(TESTRUN_SCRIPT)
 
-lldb-ruby: $(PROGRAM) PHONY
-	lldb $(enable_shared:yes=-o 'target modules add ${LIBRUBY_SO}') -o '$(LLDB_INIT)' $(PROGRAM) -- $(TESTRUN_SCRIPT)
+lldb-ruby: bin/$(PROGRAM) PHONY
+	lldb $(enable_shared:yes=-o 'target modules add ${LIBRUBY_SO}') -o '$(LLDB_INIT)' bin/$(PROGRAM) -- $(TESTRUN_SCRIPT)
 
 DISTPKGS = gzip,zip,all
 dist:
