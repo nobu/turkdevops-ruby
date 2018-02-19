@@ -207,12 +207,10 @@ static VALUE valid_class_serials;
 /* Ruby level interface module.  */
 VALUE rb_mMJIT;
 
-#ifdef _WIN32
 /* Linker option to enable libruby in the build directory. */
 static char *libruby_build;
 /* Linker option to enable libruby in the directory after install. */
 static char *libruby_installed;
-#endif
 
 /* Return time in milliseconds as a double.  */
 static double
@@ -581,6 +579,7 @@ static const char *const CC_DLDFLAGS_ARGS[] = {
 #endif
     NULL
 };
+static const char *const CC_LIBS_ARGS[] = {MJIT_LIBS NULL};
 
 #define CC_CODEFLAG_ARGS (mjit_opts.debug ? CC_DEBUG_ARGS : CC_OPTIMIZE_ARGS)
 /* Status of the precompiled header creation.  The status is
@@ -654,21 +653,13 @@ compile_c_to_so(const char *c_file, const char *so_file)
 #endif
         NULL, NULL, NULL};
     const char *libs[] = {
-#ifdef _WIN32
-# ifdef _MSC_VER
         MJIT_LIBS
+#ifdef _MSC_VER
         "-link",
-        libruby_installed,
-        libruby_build,
-# else
+#endif
         /* Look for ruby.dll.a in build and install directories. */
         libruby_installed,
         libruby_build,
-        MJIT_LIBS
-        "-lmsvcrt",
-        "-lgcc",
-# endif
-#endif
         NULL};
     char **args;
 #ifdef _MSC_VER
@@ -689,8 +680,8 @@ compile_c_to_so(const char *c_file, const char *so_file)
 # endif
     files[numberof(files)-3] = so_file;
 #endif
-    args = form_args(5, CC_LDSHARED_ARGS, CC_CODEFLAG_ARGS,
-                     files, libs, CC_DLDFLAGS_ARGS);
+    args = form_args(6, CC_LDSHARED_ARGS, CC_CODEFLAG_ARGS,
+                     CC_DLDFLAGS_ARGS, files, libs, CC_LIBS_ARGS);
     if (args == NULL)
         return FALSE;
 
@@ -1162,7 +1153,6 @@ init_header_filename(void)
         "/" MJIT_HEADER_INSTALL_DIR "/" RUBY_MJIT_HEADER_NAME;
     const size_t header_name_len = sizeof(header_name) - 1;
     char *p;
-#ifdef _WIN32
     static const char libpathflag[] =
 # ifdef _MSC_VER
         "-LIBPATH:"
@@ -1171,7 +1161,6 @@ init_header_filename(void)
 # endif
             ;
     const size_t libpathflag_len = sizeof(libpathflag) - 1;
-#endif
 
     basedir_val = rb_const_get(rb_cObject, rb_intern_const("TMP_RUBY_PREFIX"));
     basedir = StringValuePtr(basedir_val);
@@ -1191,7 +1180,6 @@ init_header_filename(void)
     }
     (void)close(fd);
 
-#ifdef _WIN32
     p = libruby_build = xmalloc(libpathflag_len + baselen + 1);
     p = append_str(p, libpathflag);
     p = append_str2(p, basedir, baselen);
@@ -1201,7 +1189,6 @@ init_header_filename(void)
     p = append_str2(libruby_installed, libruby_build, p - libruby_build);
     p = append_lit(p, "/lib");
     *p = '\0';
-#endif
 }
 
 /* This is called after each fork in the child in to switch off MJIT
