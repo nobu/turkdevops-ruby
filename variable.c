@@ -27,7 +27,7 @@ static ID autoload, classpath, tmp_classpath, classid;
 
 static void check_before_mod_set(VALUE, ID, VALUE, const char *);
 static void setup_const_entry(rb_const_entry_t *, VALUE, VALUE, rb_const_flag_t);
-static VALUE rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility);
+static VALUE rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility, VALUE *found_class);
 static st_table *generic_iv_tbl;
 static st_table *generic_iv_tbl_compat;
 
@@ -406,6 +406,7 @@ rb_path_to_class(VALUE pathname)
 		 QUOTE(pathname));
     }
     while (p < pend) {
+	VALUE found;
 	while (p < pend && *p != ':') p++;
 	id = rb_check_id_cstr(pbeg, p-pbeg, enc);
 	if (p < pend && p[0] == ':') {
@@ -418,7 +419,7 @@ rb_path_to_class(VALUE pathname)
 	    rb_raise(rb_eArgError, "undefined class/module % "PRIsVALUE,
 		     rb_str_subseq(pathname, 0, p-path));
 	}
-	c = rb_const_search(c, id, TRUE, FALSE, FALSE);
+	c = rb_const_search(c, id, TRUE, FALSE, FALSE, &found);
 	if (c == Qundef) goto undefined_class;
 	if (!RB_TYPE_P(c, T_MODULE) && !RB_TYPE_P(c, T_CLASS)) {
 	    rb_raise(rb_eTypeError, "%"PRIsVALUE" does not refer to class/module",
@@ -1794,6 +1795,14 @@ VALUE
 rb_mod_const_missing(VALUE klass, VALUE name)
 {
     rb_vm_pop_cfunc_frame();
+    if (RB_SYMBOL_P(name)) {
+	VALUE found;
+	VALUE c = rb_const_search(klass, SYM2ID(name), TRUE, FALSE, FALSE, &found);
+	if (c == Qundef && found != Qundef) {
+	    rb_name_err_raise("private constant %2$s::%1$s referenced",
+			      found_class, name);
+	}
+    }
     uninitialized_constant(klass, name);
 
     UNREACHABLE;
@@ -2235,13 +2244,15 @@ rb_const_warn_if_deprecated(const rb_const_entry_t *ce, VALUE klass, ID id)
 static VALUE
 rb_const_get_0(VALUE klass, ID id, int exclude, int recurse, int visibility)
 {
-    VALUE c = rb_const_search(klass, id, exclude, recurse, visibility);
+    VALUE found;
+    VALUE c = rb_const_search(klass, id, exclude, recurse, visibility, &found);
     if (c != Qundef) return c;
     return rb_const_missing(klass, ID2SYM(id));
 }
 
 static VALUE
-rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility)
+rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility,
+		VALUE *found)
 {
     VALUE value, tmp, av;
     rb_const_flag_t flag;
@@ -2255,8 +2266,8 @@ rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility)
 
 	while ((ce = rb_const_lookup(tmp, id))) {
 	    if (visibility && RB_CONST_PRIVATE_P(ce)) {
-		rb_name_err_raise("private constant %2$s::%1$s referenced",
-				  tmp, ID2SYM(id));
+		*found = tmp;
+		return Qundef;
 	    }
 	    rb_const_warn_if_deprecated(ce, tmp, id);
 	    value = ce->value;
@@ -2268,7 +2279,7 @@ rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility)
 		continue;
 	    }
 	    if (exclude && tmp == rb_cObject && klass != rb_cObject) {
-		return Qundef;
+		goto not_found;
 	    }
 	    return value;
 	}
@@ -2281,6 +2292,8 @@ rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility)
 	goto retry;
     }
 
+  not_found:
+    *found = Qundef;
     return Qundef;
 }
 
