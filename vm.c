@@ -2768,9 +2768,17 @@ core_hash_merge_kwd(int argc, VALUE *argv)
 }
 
 static VALUE
-mjit_enabled_p(void)
+mjit_enabled_p(VALUE klass)
 {
     return mjit_init_p ? Qtrue : Qfalse;
+}
+
+extern VALUE mjit_generate_source(VALUE iseqw, VALUE port);
+
+static VALUE
+mjit_generate_source_m(VALUE klass, VALUE iseqw, VALUE port)
+{
+    return mjit_generate_source(iseqw, port);
 }
 
 extern VALUE *rb_gc_stack_start;
@@ -2861,6 +2869,7 @@ Init_VM(void)
     /* RubyVM::MJIT */
     mjit = rb_define_module_under(rb_cRubyVM, "MJIT");
     rb_define_singleton_method(mjit, "enabled?", mjit_enabled_p, 0);
+    rb_define_singleton_method(mjit, "generate_source", mjit_generate_source_m, 2);
 
     /*
      * Document-class: Thread

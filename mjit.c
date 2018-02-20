@@ -73,6 +73,7 @@
 #define __EXTENSIONS__ 1
 #endif
 
+#include "ruby/io.h"
 #include "internal.h"
 #include "vm_core.h"
 #include "mjit.h"
@@ -82,6 +83,8 @@
 #include "ruby_assert.h"
 #include "ruby/util.h"
 #include "ruby/version.h"
+#include "ruby/thread.h"
+#include "iseq.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -1485,4 +1488,36 @@ mjit_valid_class_serial_p(rb_serial_t class_serial)
     found_p = st_lookup(RHASH_TBL_RAW(valid_class_serials), LONG2FIX(class_serial), NULL);
     CRITICAL_SECTION_FINISH(3, "in valid_class_serial_p");
     return found_p;
+}
+
+struct generate_source_args {
+    VALUE port;
+    FILE *f;
+    const rb_iseq_t *iseq;
+};
+
+static void *
+generate_source(void *p)
+{
+    struct generate_source_args *args = p;
+    int success = mjit_compile(args->f, args->iseq->body, "_mjit");
+    fflush(args->f);
+    fprintf(stderr, "generate_source: %d\n", success);
+    return success ? (void *)1 : (void *)0;
+}
+
+VALUE
+mjit_generate_source(VALUE iseqw, VALUE port)
+{
+    rb_io_t *fptr;
+    struct generate_source_args args;
+
+    args.iseq = rb_iseqw_to_iseq(iseqw);
+    args.port = rb_io_get_write_io(rb_io_get_io(port));
+    GetOpenFile(args.port, fptr);
+    args.f = rb_io_stdio_file(fptr);
+    if (!rb_thread_call_without_gvl(generate_source, &args, RUBY_UBF_IO, NULL)) {
+        rb_raise(rb_eRuntimeError, "failed");
+    }
+    return port;
 }
