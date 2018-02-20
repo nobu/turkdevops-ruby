@@ -20,13 +20,21 @@ typedef enum {
     CONST_VISIBILITY_MAX
 } rb_const_flag_t;
 
+#define RB_CONST_FLAG_PRIVATE_P(flag) \
+    (((flag) & CONST_VISIBILITY_MASK) == CONST_PRIVATE)
+#define RB_CONST_FLAG_PUBLIC_P(flag) \
+    (((flag) & CONST_VISIBILITY_MASK) == CONST_PUBLIC)
+
+#define RB_CONST_FLAG_DEPRECATED_P(flag) \
+    ((flag) & CONST_DEPRECATED)
+
 #define RB_CONST_PRIVATE_P(ce) \
-    (((ce)->flag & CONST_VISIBILITY_MASK) == CONST_PRIVATE)
+    RB_CONST_FLAG_PRIVATE_P((ce)->flag)
 #define RB_CONST_PUBLIC_P(ce) \
-    (((ce)->flag & CONST_VISIBILITY_MASK) == CONST_PUBLIC)
+    RB_CONST_FLAG_PUBLIC_P((ce)->flag)
 
 #define RB_CONST_DEPRECATED_P(ce) \
-    ((ce)->flag & CONST_DEPRECATED)
+    RB_CONST_FLAG_DEPRECATED_P((ce)->flag)
 
 typedef struct rb_const_entry_struct {
     rb_const_flag_t flag;

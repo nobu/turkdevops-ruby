@@ -2232,6 +2232,14 @@ rb_const_warn_if_deprecated(const rb_const_entry_t *ce, VALUE klass, ID id)
     }
 }
 
+NORETURN(static void rb_const_private(VALUE klass, ID id));
+static void
+rb_const_private(VALUE klass, ID id)
+{
+    rb_name_err_raise("private constant %2$s::%1$s referenced",
+		      klass, ID2SYM(id));
+}
+
 static VALUE
 rb_const_get_0(VALUE klass, ID id, int exclude, int recurse, int visibility)
 {
@@ -2246,39 +2254,29 @@ rb_const_search(VALUE klass, ID id, int exclude, int recurse, int visibility)
     VALUE value, tmp, av;
     rb_const_flag_t flag;
     int mod_retry = 0;
+    rb_const_entry_t *ce;
 
-    tmp = klass;
-  retry:
-    while (RTEST(tmp)) {
-	VALUE am = 0;
-	rb_const_entry_t *ce;
+    if (!(ce = rb_const_lookup(klass, id))) return Qundef;
+    value = ce->value;
+    flag = ce->flag;
+    if (visibility && RB_CONST_FLAG_PRIVATE_P(flag)) {
+	rb_const_private(klass, id);
+    }
+    rb_const_warn_if_deprecated(ce, klass, id);
+    if (value != Qundef) return value;
 
-	while ((ce = rb_const_lookup(tmp, id))) {
-	    if (visibility && RB_CONST_PRIVATE_P(ce)) {
-		rb_name_err_raise("private constant %2$s::%1$s referenced",
-				  tmp, ID2SYM(id));
-	    }
-	    rb_const_warn_if_deprecated(ce, tmp, id);
-	    value = ce->value;
-	    if (value == Qundef) {
-		if (am == tmp) break;
-		am = tmp;
-		if (rb_autoloading_value(tmp, id, &av, &flag)) return av;
-		rb_autoload_load(tmp, id);
-		continue;
-	    }
-	    if (exclude && tmp == rb_cObject && klass != rb_cObject) {
-		return Qundef;
-	    }
-	    return value;
-	}
-	if (!recurse) break;
-	tmp = RCLASS_SUPER(tmp);
+    if (!rb_autoloading_value(klass, id, &value, &flag)) {
+	if (!rb_autoload_load(klass, id)) return Qundef;
+	if (!(ce = rb_const_lookup(klass, id))) return Qundef;
+	value = ce->value;
+	flag = ce->flag;
+    }
+    if (visibility && RB_CONST_FLAG_PRIVATE_P(flag)) {
+	rb_const_private(klass, id);
     }
     if (!exclude && !mod_retry && BUILTIN_TYPE(klass) == T_MODULE) {
 	mod_retry = 1;
 	tmp = rb_cObject;
-	goto retry;
     }
 
     return Qundef;
