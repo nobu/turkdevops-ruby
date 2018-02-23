@@ -2053,7 +2053,9 @@ struct autoload_const_set_args {
     rb_const_flag_t flag;
 };
 
-static void const_tbl_update(struct autoload_const_set_args *);
+static rb_const_entry_t *const_tbl_update(struct autoload_const_set_args *);
+static rb_const_entry_t *rb_const_set_entry(VALUE klass, ID id, VALUE val);
+static rb_const_entry_t *rb_define_const_entry(VALUE klass, const char *name, VALUE val);
 
 static VALUE
 autoload_const_set(VALUE arg)
@@ -2579,6 +2581,12 @@ check_before_mod_set(VALUE klass, ID id, VALUE val, const char *dest)
 void
 rb_const_set(VALUE klass, ID id, VALUE val)
 {
+    rb_const_set_entry(klass, id, val);
+}
+
+static rb_const_entry_t *
+rb_const_set_entry(VALUE klass, ID id, VALUE val)
+{
     rb_const_entry_t *ce;
     struct rb_id_table *tbl = RCLASS_CONST_TBL(klass);
 
@@ -2601,7 +2609,7 @@ rb_const_set(VALUE klass, ID id, VALUE val)
 	args.id = id;
 	args.value = val;
 	args.flag = CONST_PUBLIC;
-	const_tbl_update(&args);
+	ce = const_tbl_update(&args);
     }
     /*
      * Resolve and cache class name immediately to resolve ambiguity
@@ -2630,6 +2638,7 @@ rb_const_set(VALUE klass, ID id, VALUE val)
 	    }
 	}
     }
+    return ce;
 }
 
 static struct autoload_data_i *
@@ -2647,7 +2656,7 @@ current_autoload_data(VALUE mod, ID id)
     return 0;
 }
 
-static void
+static rb_const_entry_t *
 const_tbl_update(struct autoload_const_set_args *args)
 {
     VALUE value;
@@ -2667,7 +2676,7 @@ const_tbl_update(struct autoload_const_set_args *args)
 		rb_clear_constant_cache();
 
 		ele->value = val; /* autoload_i is non-WB-protected */
-		return;
+		return ce;
 	    }
 	    /* otherwise, allow to override */
 	    autoload_delete(klass, id);
@@ -2686,15 +2695,15 @@ const_tbl_update(struct autoload_const_set_args *args)
 	    }
 	}
 	rb_clear_constant_cache();
-	setup_const_entry(ce, klass, val, visibility);
     }
     else {
 	rb_clear_constant_cache();
 
 	ce = ZALLOC(rb_const_entry_t);
 	rb_id_table_insert(tbl, id, (VALUE)ce);
-	setup_const_entry(ce, klass, val, visibility);
     }
+    setup_const_entry(ce, klass, val, visibility);
+    return ce;
 }
 
 static void
@@ -2709,12 +2718,18 @@ setup_const_entry(rb_const_entry_t *ce, VALUE klass, VALUE val,
 void
 rb_define_const(VALUE klass, const char *name, VALUE val)
 {
+    rb_define_const_entry(klass, name, val);
+}
+
+static rb_const_entry_t *
+rb_define_const_entry(VALUE klass, const char *name, VALUE val)
+{
     ID id = rb_intern(name);
 
     if (!rb_is_const_id(id)) {
 	rb_warn("rb_define_const: invalid name `%s' for constant", name);
     }
-    rb_const_set(klass, id, val);
+    return rb_const_set_entry(klass, id, val);
 }
 
 void
@@ -2785,6 +2800,12 @@ rb_deprecate_constant(VALUE mod, const char *name)
 			  mod, rb_fstring_new(name, len));
     }
     ce->flag |= CONST_DEPRECATED;
+}
+
+void
+rb_define_deprecated_constant(VALUE mod, const char *name, VALUE val)
+{
+    rb_define_const_entry(mod, name, val)->flag |= CONST_DEPRECATED;
 }
 
 /*
