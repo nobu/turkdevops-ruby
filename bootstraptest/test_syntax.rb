@@ -265,11 +265,15 @@ assert_equal %q{instance-variable}, %q{
   defined?(@a)
 }
 assert_equal %q{}, %q{
-  defined?(@@a)
+  class X
+    defined?(@@a)
+  end
 }
 assert_equal %q{class variable}, %q{
-  @@a = 1
-  defined?(@@a)
+  class X
+    @@a = 1
+    defined?(@@a)
+  end
 }
 assert_equal %q{}, %q{
   defined?($a)

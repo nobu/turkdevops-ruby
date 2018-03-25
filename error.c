@@ -1571,7 +1571,7 @@ rb_name_err_mesg_new(VALUE mesg, VALUE recv, VALUE method)
     return result;
 }
 
-VALUE
+MJIT_FUNC_EXPORTED VALUE
 rb_name_err_new(VALUE mesg, VALUE recv, VALUE method)
 {
     VALUE exc = rb_obj_alloc(rb_eNameError);

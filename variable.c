@@ -2863,9 +2863,9 @@ cvar_overtaken(VALUE front, VALUE target, ID id)
 	st_data_t did = (st_data_t)id;
 
 	if (RTEST(ruby_verbose)) {
-	    rb_warning("class variable % "PRIsVALUE" of %"PRIsVALUE" is overtaken by %"PRIsVALUE"",
-		       ID2SYM(id), rb_class_name(original_module(front)),
-		       rb_class_name(original_module(target)));
+	    rb_raise(rb_eNameError, "class variable % "PRIsVALUE" of %"PRIsVALUE" is overtaken by %"PRIsVALUE"",
+		     ID2SYM(id), rb_class_name(original_module(front)),
+		     rb_class_name(original_module(target)));
 	}
 	if (BUILTIN_TYPE(front) == T_CLASS) {
 	    st_delete(RCLASS_IV_TBL(front), &did, 0);

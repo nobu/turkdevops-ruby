@@ -274,22 +274,38 @@ describe "The defined? keyword for an expression" do
       defined?(!defined_specs_undefined_method).should be_nil
     end
 
-    it "returns nil for an expression with '!' and an unset class variable" do
-      -> {
-        @result = defined?(!@@defined_specs_undefined_class_variable)
-      }.should complain(/class variable access from toplevel/)
-      @result.should be_nil
+    ruby_version_is ""..."2.6" do
+      it "returns nil for an expression with '!' and an unset class variable" do
+        -> {
+          @result = defined?(!@@defined_specs_undefined_class_variable)
+        }.should complain(/class variable access from toplevel/)
+        @result.should be_nil
+      end
+    end
+
+    ruby_version_is "2.6" do
+      it "returns nil for an expression with '!' and an unset class variable" do
+        defined?(!@@defined_specs_undefined_class_variable).should be_nil
+      end
     end
 
     it "returns nil for an expression with 'not' and an undefined method" do
       defined?(not defined_specs_undefined_method).should be_nil
     end
 
-    it "returns nil for an expression with 'not' and an unset class variable" do
-      -> {
-        @result = defined?(not @@defined_specs_undefined_class_variable)
-      }.should complain(/class variable access from toplevel/)
-      @result.should be_nil
+    ruby_version_is ""..."2.6" do
+      it "returns nil for an expression with 'not' and an unset class variable" do
+        -> {
+          @result = defined?(not @@defined_specs_undefined_class_variable)
+        }.should complain(/class variable access from toplevel/)
+        @result.should be_nil
+      end
+    end
+
+    ruby_version_is "2.6" do
+      it "returns nil for an expression with 'not' and an unset class variable" do
+        defined?(not @@defined_specs_undefined_class_variable).should be_nil
+      end
     end
 
     it "does not propagate an exception raised by a method in a 'not' expression" do
@@ -906,18 +922,36 @@ describe "The defined? keyword for a variable scoped constant" do
     defined?($defined_specs_obj::A).should == "constant"
   end
 
-  it "returns nil if the class scoped constant is not defined" do
-    -> {
-      @@defined_specs_obj = DefinedSpecs::Basic
-      defined?(@@defined_specs_obj::Undefined).should be_nil
-    }.should complain(/class variable access from toplevel/)
+  ruby_version_is ""..."2.6" do
+    it "returns nil if the class scoped constant is not defined" do
+      -> {
+        @@defined_specs_obj = DefinedSpecs::Basic
+        defined?(@@defined_specs_obj::Undefined).should be_nil
+      }.should complain(/class variable access from toplevel/)
+    end
+
+    it "returns 'constant' if the constant is defined in the scope of the class variable" do
+      -> {
+        @@defined_specs_obj = DefinedSpecs::Basic
+        defined?(@@defined_specs_obj::A).should == "constant"
+      }.should complain(/class variable access from toplevel/)
+    end
   end
 
-  it "returns 'constant' if the constant is defined in the scope of the class variable" do
-    -> {
-      @@defined_specs_obj = DefinedSpecs::Basic
-      defined?(@@defined_specs_obj::A).should == "constant"
-    }.should complain(/class variable access from toplevel/)
+  ruby_version_is "2.6" do
+    it "returns nil if the class scoped constant is not defined" do
+      -> {
+        @@defined_specs_obj = DefinedSpecs::Basic
+        defined?(@@defined_specs_obj::Undefined).should be_nil
+      }.should raise_error(NameError, /class variable access from toplevel/)
+    end
+
+    it "returns 'constant' if the constant is defined in the scope of the class variable" do
+      -> {
+        @@defined_specs_obj = DefinedSpecs::Basic
+        defined?(@@defined_specs_obj::A).should == "constant"
+      }.should raise_error(NameError, /class variable access from toplevel/)
+    end
   end
 
   it "returns nil if the local scoped constant is not defined" do

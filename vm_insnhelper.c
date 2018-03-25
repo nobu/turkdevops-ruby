@@ -884,7 +884,7 @@ vm_get_ev_const(rb_execution_context_t *ec, VALUE orig_klass, ID id, int is_defi
 }
 
 static inline VALUE
-vm_get_cvar_base(const rb_cref_t *cref, rb_control_frame_t *cfp)
+vm_get_cvar_base(const rb_cref_t *cref, rb_control_frame_t *cfp, ID name)
 {
     VALUE klass;
 
@@ -898,7 +898,8 @@ vm_get_cvar_base(const rb_cref_t *cref, rb_control_frame_t *cfp)
 	cref = CREF_NEXT(cref);
     }
     if (!CREF_NEXT(cref)) {
-	rb_warn("class variable access from toplevel");
+	rb_name_err_raise("class variable access from toplevel",
+			  rb_cObject, ID2SYM(name));
     }
 
     klass = vm_get_iclass(cfp, CREF_CLASS(cref));
@@ -2843,8 +2844,9 @@ vm_defined(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp, rb_num_t op_
 	break;
       case DEFINED_CVAR: {
 	const rb_cref_t *cref = rb_vm_get_cref(GET_EP());
-	klass = vm_get_cvar_base(cref, GET_CFP());
-	if (rb_cvar_defined(klass, SYM2ID(obj))) {
+	ID name = SYM2ID(obj);
+	klass = vm_get_cvar_base(cref, GET_CFP(), name);
+	if (rb_cvar_defined(klass, name)) {
 	    expr_type = DEFINED_CVAR;
 	}
 	break;

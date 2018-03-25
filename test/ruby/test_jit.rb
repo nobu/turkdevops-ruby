@@ -63,7 +63,7 @@ class TestJIT < Test::Unit::TestCase
   end
 
   def test_compile_insn_classvariable
-    assert_compile_once("#{<<~"begin;"}\n#{<<~"end;"}", result_inspect: '1')
+    assert_compile_once("#{<<~"begin;"}\n#{<<~"end;"}", result_inspect: '1', wrap: ["class X", "end"])
     begin;
       @@foo = 1
       @@foo
@@ -532,13 +532,15 @@ class TestJIT < Test::Unit::TestCase
   private
 
   # The shortest way to test one proc
-  def assert_compile_once(script, result_inspect:)
+  def assert_compile_once(script, result_inspect:, wrap: nil)
     if script.match?(/\A\n.+\n\z/m)
       script = script.gsub(/^/, '  ')
     else
       script = " #{script} "
     end
-    assert_eval_with_jit("p proc {#{script}}.call", stdout: "#{result_inspect}\n", success_count: 1)
+    script = "p proc {#{script}}.call"
+    script = [wrap[0], script, wrap[1]].join("\n") if wrap
+    assert_eval_with_jit(script, stdout: "#{result_inspect}\n", success_count: 1)
   end
 
   # Shorthand for normal test cases

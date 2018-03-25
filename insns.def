@@ -224,7 +224,7 @@ getclassvariable
 ()
 (VALUE val)
 {
-    val = rb_cvar_get(vm_get_cvar_base(rb_vm_get_cref(GET_EP()), GET_CFP()), id);
+    val = rb_cvar_get(vm_get_cvar_base(rb_vm_get_cref(GET_EP()), GET_CFP(), id), id);
 }
 
 /* Set value of class variable id of klass as val. */
@@ -235,7 +235,7 @@ setclassvariable
 ()
 {
     vm_ensure_not_refinement_module(GET_SELF());
-    rb_cvar_set(vm_get_cvar_base(rb_vm_get_cref(GET_EP()), GET_CFP()), id, val);
+    rb_cvar_set(vm_get_cvar_base(rb_vm_get_cref(GET_EP()), GET_CFP(), id), id, val);
 }
 
 /* Get constant variable id. If klass is Qnil, constants
