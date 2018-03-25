@@ -30,6 +30,7 @@ os:
 before_install:
   - "CONFIG_FLAG="
   - "JOBS=-j`nproc`"
+  - "PREFIX=`mktemp -p "${TMPDIR}" -d ruby.XXXXXXXXXX`"
 
 before_script:
   - "echo JOBS=$JOBS"
@@ -52,7 +53,7 @@ before_script:
   - "chmod -R a-w ."
   - "chmod u+w build config_1st config_2nd"
   - "cd build"
-  - "../configure -C --disable-install-doc --prefix=/tmp/ruby-prefix --with-gcc=$CC $CONFIG_FLAG"
+  - "../configure -C --disable-install-doc --prefix=$PREFIX --with-gcc=$CC $CONFIG_FLAG"
   - "cp -pr config.cache config.status .ext/include ../config_1st"
   - "make reconfig"
   - "cp -pr config.cache config.status .ext/include ../config_2nd"
