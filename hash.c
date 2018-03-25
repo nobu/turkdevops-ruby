@@ -3229,6 +3229,76 @@ rb_hash_add_new_element(VALUE hash, VALUE key, VALUE val)
     return st_update(tbl, (st_data_t)key, add_new_i, (st_data_t)args);
 }
 
+typedef struct {
+    VALUE path;
+    VALUE seen;
+    VALUE key_filter;
+} traverse_values_args;
+
+static int
+traverse_values_i(VALUE key, VALUE val, VALUE arg)
+{
+    traverse_values_args *args = (traverse_values_args *)arg;
+    VALUE path = args->path, seen = args->seen, key_filter = args->key_filter;
+    long ary_len = (rb_ary_push(path, key), RARRAY_LEN(path));
+
+    if (!key_filter || RTEST(rb_funcallv(key_filter, idEqq, 1, &key))) {
+        key = rb_obj_reveal(rb_ary_subseq(path, 0L, ary_len), rb_cArray);
+        rb_yield_values(2, key, val);
+    }
+
+    if (RB_TYPE_P(val, T_HASH) && !rb_hash_add_new_element(seen, val, Qtrue)) {
+        unsigned long hash_size = RHASH_SIZE(seen);
+        rb_hash_foreach(val, traverse_values_i, arg);
+        if (RHASH_SIZE(seen) != hash_size) {
+            rb_raise(rb_eRuntimeError, "hash size %ld, expected %ld",
+                     RHASH_SIZE(seen), hash_size);
+        }
+        rb_hash_delete_entry(seen, val);
+    }
+
+    if (RARRAY_LEN(path) != ary_len) {
+        rb_raise(rb_eRuntimeError, "array size %ld, expected %ld",
+                 RARRAY_LEN(path), ary_len);
+    }
+    rb_ary_pop(path);
+
+    return ST_CONTINUE;
+}
+
+/*
+ * call-seq:
+ *   hsh.traverse_values([key: filter]) {|key, value, path| }
+ *
+ * Traverses values.
+ *
+ *   h = { x: 3, y: [1,2,3], z: { w: { a: 1000}} }
+ *   h.traverse_values(:a) {|path|break path}  #=> [:z, :w, :a]
+ *   h.traverse_values(:x) {|path|break path}  #=> [:x]
+ *   h.traverse_values(:k, &:to_a)             #=> nil
+ */
+static VALUE
+rb_hash_traverse_values(int argc, VALUE *argv, VALUE hash)
+{
+    traverse_values_args args;
+    VALUE opts;
+
+    RETURN_ENUMERATOR(hash, argc, argv);
+    rb_scan_args(argc, argv, "0:", &opts);
+    args.key_filter = 0;
+    if (!NIL_P(opts)) {
+        ID kwd[1];
+        CONST_ID(kwd[0], "key");
+        rb_get_kwargs(opts, kwd, 0, 1, &args.key_filter);
+        if (args.key_filter == Qundef) args.key_filter = 0;
+    }
+    args.path = rb_ary_tmp_new(0);
+    args.seen = rb_ident_hash_new();
+    rb_obj_hide(args.seen);
+    rb_hash_foreach(hash, traverse_values_i, (VALUE)&args);
+    return hash;
+}
+
 static int path_tainted = -1;
 
 static char **origenviron;
@@ -4724,6 +4794,8 @@ Init_Hash(void)
     rb_define_method(rb_cHash, "<", rb_hash_lt, 1);
     rb_define_method(rb_cHash, ">=", rb_hash_ge, 1);
     rb_define_method(rb_cHash, ">", rb_hash_gt, 1);
+
+    rb_define_method(rb_cHash, "traverse_values", rb_hash_traverse_values, -1);
 
     /* Document-class: ENV
      *
