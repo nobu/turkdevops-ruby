@@ -3834,6 +3834,11 @@ vm_opt_to_s(VALUE recv, int transient)
 	    return rb_usascii_str_new(0, 0);
 	}
     }
+    else if (RB_INTEGER_TYPE_P(recv)) {
+        if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, INTEGER_REDEFINED_OP_FLAG)) {
+            return rb_int2str(recv, 10);
+        }
+    }
     else if (RB_TYPE_P(recv, T_STRING)) {
 	if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, STRING_REDEFINED_OP_FLAG) &&
 	    RBASIC_CLASS(recv) == rb_cString) {

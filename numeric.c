@@ -3480,7 +3480,7 @@ int_to_s(int argc, VALUE *argv, VALUE x)
     return rb_int2str(x, base);
 }
 
-VALUE
+MJIT_FUNC_EXPORTED VALUE
 rb_int2str(VALUE x, int base)
 {
     if (FIXNUM_P(x)) {
