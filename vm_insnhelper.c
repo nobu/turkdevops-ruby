@@ -3825,6 +3825,7 @@ vm_opt_regexpmatch2(VALUE recv, VALUE obj)
     }
 }
 
+VALUE rb_float_to_s(VALUE flt);
 static VALUE
 vm_opt_to_s(VALUE recv, int transient)
 {
@@ -3837,6 +3838,11 @@ vm_opt_to_s(VALUE recv, int transient)
     else if (RB_INTEGER_TYPE_P(recv)) {
         if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, INTEGER_REDEFINED_OP_FLAG)) {
             return rb_int2str(recv, 10);
+        }
+    }
+    else if (RB_FLOAT_TYPE_P(recv)) {
+        if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, FLOAT_REDEFINED_OP_FLAG)) {
+            return rb_float_to_s(recv);
         }
     }
     else if (RB_TYPE_P(recv, T_STRING)) {

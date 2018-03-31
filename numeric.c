@@ -908,8 +908,8 @@ rb_float_new_in_heap(double d)
  *  the call may return +NaN+, +Infinity+, and +-Infinity+.
  */
 
-static VALUE
-flo_to_s(VALUE flt)
+MJIT_FUNC_EXPORTED VALUE
+rb_float_to_s(VALUE flt)
 {
     enum {decimal_mant = DBL_MANT_DIG-DBL_DIG};
     enum {float_dig = DBL_DIG+1};
@@ -5581,7 +5581,7 @@ Init_Numeric(void)
      */
     rb_define_const(rb_cFloat, "NAN", DBL2NUM(nan("")));
 
-    rb_define_method(rb_cFloat, "to_s", flo_to_s, 0);
+    rb_define_method(rb_cFloat, "to_s", rb_float_to_s, 0);
     rb_define_alias(rb_cFloat, "inspect", "to_s");
     rb_define_method(rb_cFloat, "coerce", flo_coerce, 1);
     rb_define_method(rb_cFloat, "-@", rb_float_uminus, 0);
