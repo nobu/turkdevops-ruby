@@ -1412,14 +1412,13 @@ opt_regexpmatch2
 /* optimized to_s */
 DEFINE_INSN
 opt_to_s
-(rb_num_t flags, CALL_INFO ci, CALL_CACHE cc)
+(CALL_INFO ci, CALL_CACHE cc)
 (VALUE recv)
 (VALUE val)
 {
-    val = vm_opt_to_s(recv, (int)(flags & 1));
+    val = vm_opt_to_s(recv, !!(ci->flag & VM_CALL_TRANSIENT));
 
     if (val == Qundef) {
-	ADD_PC(1);
 	DISPATCH_ORIGINAL_INSN(opt_send_without_block);
     }
 }

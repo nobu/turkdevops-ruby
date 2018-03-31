@@ -1016,6 +1016,7 @@ enum vm_call_flag_bits {
     VM_CALL_TAILCALL_bit,       /* located at tail position */
     VM_CALL_SUPER_bit,          /* super */
     VM_CALL_OPT_SEND_bit,       /* internal flag */
+    VM_CALL_TRANSIENT_bit,      /* internal flag */
     VM_CALL__END
 };
 
@@ -1030,6 +1031,7 @@ enum vm_call_flag_bits {
 #define VM_CALL_TAILCALL        (0x01 << VM_CALL_TAILCALL_bit)
 #define VM_CALL_SUPER           (0x01 << VM_CALL_SUPER_bit)
 #define VM_CALL_OPT_SEND        (0x01 << VM_CALL_OPT_SEND_bit)
+#define VM_CALL_TRANSIENT       (0x01 << VM_CALL_TRANSIENT_bit)
 
 enum vm_special_object_type {
     VM_SPECIAL_OBJECT_VMCORE = 1,
