@@ -3217,6 +3217,11 @@ iseq_specialized_instruction(rb_iseq_t *iseq, INSN *iobj)
 		  case idEmptyP: SP_INSN(empty_p);return COMPILE_OK;
 		  case idSucc:	 SP_INSN(succ);	  return COMPILE_OK;
 		  case idNot:	 SP_INSN(not);	  return COMPILE_OK;
+		  case idTo_s:
+		    SP_INSN(to_s);
+		    OPERAND_AT(iobj, 1) = OPERAND_AT(iobj, 0);
+		    OPERAND_AT(iobj, 0) = INT2FIX(0);
+		    return COMPILE_OK;
 		}
 		break;
 	      case 1:
@@ -5751,7 +5756,9 @@ compile_evstr(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, i
 	ADD_INSN1(ret, line, checktype, INT2FIX(T_STRING));
 	ADD_INSNL(ret, line, branchif, isstr);
 	ADD_INSN(ret, line, dup);
-	ADD_SEND_R(ret, line, idTo_s, INT2FIX(0), NULL, INT2FIX(flag), NULL);
+	ADD_INSN3(ret, line, opt_to_s, INT2FIX(1),
+		  new_callinfo(iseq, idTo_s, 0, flag, NULL, FALSE),
+		  Qnil /* CALL_CACHE */);
 	ADD_INSN(ret, line, tostring);
 	ADD_LABEL(ret, isstr);
     }

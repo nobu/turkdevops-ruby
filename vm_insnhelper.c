@@ -3825,6 +3825,24 @@ vm_opt_regexpmatch2(VALUE recv, VALUE obj)
     }
 }
 
+static VALUE
+vm_opt_to_s(VALUE recv, int transient)
+{
+    if (NIL_P(recv)) {
+	if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, NIL_REDEFINED_OP_FLAG)) {
+	    if (transient) return recv;
+	    return rb_usascii_str_new(0, 0);
+	}
+    }
+    else if (RB_TYPE_P(recv, T_STRING)) {
+	if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, STRING_REDEFINED_OP_FLAG) &&
+	    RBASIC_CLASS(recv) == rb_cString) {
+	    return recv;
+	}
+    }
+    return Qundef;
+}
+
 rb_event_flag_t rb_iseq_event_flags(const rb_iseq_t *iseq, size_t pos);
 
 NOINLINE(static void vm_trace(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp, const VALUE *pc));

@@ -1447,6 +1447,9 @@ rb_obj_as_string(VALUE obj)
 MJIT_FUNC_EXPORTED VALUE
 rb_obj_as_string_result(VALUE str, VALUE obj)
 {
+    if (str == obj) {
+	if (NIL_P(str)) return str;
+    }
     if (!RB_TYPE_P(str, T_STRING))
 	return rb_any_to_s(obj);
     if (!FL_TEST_RAW(str, RSTRING_FSTR) && FL_ABLE(obj))
@@ -2929,30 +2932,44 @@ rb_str_append(VALUE str, VALUE str2)
 
 #define MIN_PRE_ALLOC_SIZE 48
 
+#define nil_to_s() rb_usascii_str_new(0, 0)
+
 MJIT_FUNC_EXPORTED VALUE
 rb_str_concat_literals(size_t num, const VALUE *strary)
 {
     VALUE str;
-    size_t i, s;
+    size_t i, s = 0;
     long len = 1;
 
     if (UNLIKELY(!num)) return rb_str_new(0, 0);
-    if (UNLIKELY(num == 1)) return rb_str_resurrect(strary[0]);
+    if (UNLIKELY(num == 1)) {
+	if (NIL_P(strary[0])) return nil_to_s();
+	return rb_str_resurrect(strary[0]);
+    }
 
-    for (i = 0; i < num; ++i) { len += RSTRING_LEN(strary[i]); }
-    if (LIKELY(len < MIN_PRE_ALLOC_SIZE)) {
+    for (i = 0; i < num; ++i) {
+	if (NIL_P(strary[i])) continue;
+	len += RSTRING_LEN(strary[i]);
+    }
+    if (NIL_P(strary[0])) {
+	str = rb_str_buf_new(len);
+	rb_enc_associate_index(str, ENCINDEX_US_ASCII);
+    }
+    else if (LIKELY(len < MIN_PRE_ALLOC_SIZE)) {
 	str = rb_str_resurrect(strary[0]);
 	s = 1;
     }
     else {
 	str = rb_str_buf_new(len);
 	rb_enc_copy(str, strary[0]);
-	s = 0;
     }
 
     for (i = s; i < num; ++i) {
 	const VALUE v = strary[i];
-	int encidx = ENCODING_GET(v);
+	int encidx;
+
+	if (NIL_P(v)) continue;
+	encidx = ENCODING_GET(v);
 
 	rb_enc_cr_str_buf_cat(str, RSTRING_PTR(v), RSTRING_LEN(v),
 			      encidx, ENC_CODERANGE(v), NULL);

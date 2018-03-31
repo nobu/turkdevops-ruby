@@ -2732,6 +2732,7 @@ rb_reg_preprocess_dregexp(VALUE ary, int options)
         char *p, *end;
         rb_encoding *src_enc;
 
+	if (NIL_P(str)) continue;
 	src_enc = rb_enc_get(str);
 	if (options & ARG_ENCODING_NONE &&
 		src_enc != ascii8bit) {
