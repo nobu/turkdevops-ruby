@@ -1607,7 +1607,7 @@ vm_init_redefined_flag(void)
     OP(Max, MAX), (C(Array));
     OP(Min, MIN), (C(Array));
     OP(Call, CALL), (C(Proc));
-    OP(To_s, TO_S), (C(String), C(Integer), C(Float));
+    OP(To_s, TO_S), (C(String), C(Integer), C(Float), C(Symbol));
 #undef C
 #undef OP
 }

@@ -3845,6 +3845,12 @@ vm_opt_to_s(VALUE recv, int transient)
             return rb_float_to_s(recv);
         }
     }
+    else if (RB_SYMBOL_P(recv)) {
+        if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, SYMBOL_REDEFINED_OP_FLAG)) {
+            if (transient) return rb_sym2str(recv);
+            return rb_sym_to_s(recv);
+        }
+    }
     else if (RB_TYPE_P(recv, T_STRING)) {
 	if (BASIC_OP_UNREDEFINED_P(BOP_TO_S, STRING_REDEFINED_OP_FLAG) &&
 	    RBASIC_CLASS(recv) == rb_cString) {
