@@ -11,8 +11,12 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal(["bar", 424242], f1(str: "bar"))
     assert_equal(["foo", 111111], f1(num: 111111))
     assert_equal(["bar", 111111], f1(str: "bar", num: 111111))
-    assert_raise(ArgumentError) { f1(str: "bar", check: true) }
-    assert_raise(ArgumentError) { f1("string") }
+    e = assert_raise(ArgumentError) { f1(str: "bar", check: true) }
+    assert_same(self, e.receiver)
+    assert_equal(:f1, e.method_name)
+    e = assert_raise(ArgumentError) { f1("string") }
+    assert_same(self, e.receiver)
+    assert_equal(:f1, e.method_name)
   end
 
 
@@ -36,7 +40,9 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal(["foo", 111111, {}], f3(num: 111111))
     assert_equal(["bar", 111111, {}], f3(str: "bar", num: 111111))
     assert_equal(["bar", 424242, {:check=>true}], f3(str: "bar", check: true))
-    assert_raise(ArgumentError) { f3("string") }
+    e = assert_raise(ArgumentError) { f3("string") }
+    assert_same(self, e.receiver)
+    assert_equal(:f3, e.method_name)
   end
 
 
@@ -47,8 +53,12 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal(["bar", 424242], f4(str: "bar"))
     assert_equal(["foo", 111111], f4(num: 111111))
     assert_equal(["bar", 111111], f4(str: "bar", num: 111111))
-    assert_raise(ArgumentError) { f4(str: "bar", check: true) }
-    assert_raise(ArgumentError) { f4("string") }
+    e = assert_raise(ArgumentError) { f4(str: "bar", check: true) }
+    assert_same(self, e.receiver)
+    assert_equal(:f4, e.method_name)
+    e = assert_raise(ArgumentError) { f4("string") }
+    assert_same(self, e.receiver)
+    assert_equal(:f4, e.method_name)
   end
 
 
@@ -60,7 +70,9 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal(["foo", 111111, {}], f5(num: 111111))
     assert_equal(["bar", 111111, {}], f5(str: "bar", num: 111111))
     assert_equal(["bar", 424242, {:check=>true}], f5(str: "bar", check: true))
-    assert_raise(ArgumentError) { f5("string") }
+    e = assert_raise(ArgumentError) { f5("string") }
+    assert_same(self, e.receiver)
+    assert_equal(:f5, e.method_name)
   end
 
 
@@ -159,8 +171,11 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal(["bar", 424242], p1[str: "bar"])
     assert_equal(["foo", 111111], p1[num: 111111])
     assert_equal(["bar", 111111], p1[str: "bar", num: 111111])
-    assert_raise(ArgumentError) { p1[str: "bar", check: true] }
+    p = p1
+    e = assert_raise(ArgumentError) { p[str: "bar", check: true] }
     assert_equal(["foo", 424242], p1["string"] )
+    assert_same(p, e.receiver)
+    assert_equal(:[], e.method_name)
   end
 
 
@@ -314,8 +329,12 @@ class TestKeywordArguments < Test::Unit::TestCase
       eval("def o.foo(a:) a; end", nil, "xyzzy")
       eval("def o.bar(a:,**b) [a, b]; end")
     end
-    assert_raise_with_message(ArgumentError, /missing keyword/, feature7701) {o.foo}
-    assert_raise_with_message(ArgumentError, /unknown keyword/, feature7701) {o.foo(a:0, b:1)}
+    e = assert_raise_with_message(ArgumentError, /missing keyword/, feature7701) {o.foo}
+    assert_same(o, e.receiver)
+    assert_equal(:foo, e.method_name)
+    e = assert_raise_with_message(ArgumentError, /unknown keyword/, feature7701) {o.foo(a:0, b:1)}
+    assert_same(o, e.receiver)
+    assert_equal(:foo, e.method_name)
     begin
       o.foo(a: 0, b: 1)
     rescue => e
@@ -328,8 +347,12 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal([42, {}], o.bar(a: 42), feature7701)
     assert_equal([42, {c: feature7701}], o.bar(a: 42, c: feature7701), feature7701)
     assert_equal([[:keyreq, :a], [:keyrest, :b]], o.method(:bar).parameters, feature7701)
-    assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {o.bar(c: bug8139)}
-    assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {o.bar}
+    e = assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {o.bar(c: bug8139)}
+    assert_same(o, e.receiver)
+    assert_equal(:bar, e.method_name)
+    e = assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {o.bar}
+    assert_same(o, e.receiver)
+    assert_equal(:bar, e.method_name)
   end
 
   def test_required_keyword_with_newline
@@ -370,9 +393,13 @@ class TestKeywordArguments < Test::Unit::TestCase
     b = assert_nothing_raised(SyntaxError, feature7701) do
       break eval("proc {|a:| a}", nil, 'xyzzy', __LINE__)
     end
-    assert_raise_with_message(ArgumentError, /missing keyword/, feature7701) {b.call}
+    e = assert_raise_with_message(ArgumentError, /missing keyword/, feature7701) {b.call}
+    assert_same(b, e.receiver)
+    assert_equal(:call, e.method_name)
     e = assert_raise_with_message(ArgumentError, /unknown keyword/, feature7701) {b.call(a:0, b:1)}
     assert_equal('xyzzy', e.backtrace_locations[0].path)
+    assert_same(b, e.receiver)
+    assert_equal(:call, e.method_name)
 
     assert_equal(42, b.call(a: 42), feature7701)
     assert_equal([[:keyreq, :a]], b.parameters, feature7701)
@@ -384,17 +411,25 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal([42, {}], b.call(a: 42), feature7701)
     assert_equal([42, {c: feature7701}], b.call(a: 42, c: feature7701), feature7701)
     assert_equal([[:keyreq, :a], [:keyrest, :bl]], b.parameters, feature7701)
-    assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {b.call(c: bug8139)}
-    assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {b.call}
+    e = assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {b.call(c: bug8139)}
+    assert_same(b, e.receiver)
+    assert_equal(:call, e.method_name)
+    e = assert_raise_with_message(ArgumentError, /missing keyword/, bug8139) {b.call}
+    assert_same(b, e.receiver)
+    assert_equal(:call, e.method_name)
 
     b = assert_nothing_raised(SyntaxError, feature7701) do
       break eval("proc {|m, a:| [m, a]}", nil, 'xyzzy', __LINE__)
     end
-    assert_raise_with_message(ArgumentError, /missing keyword/) {b.call}
+    e = assert_raise_with_message(ArgumentError, /missing keyword/) {b.call}
     assert_equal([:ok, 42], b.call(:ok, a: 42))
+    assert_same(b, e.receiver)
+    assert_equal(:call, e.method_name)
     e = assert_raise_with_message(ArgumentError, /unknown keyword/) {b.call(42, a:0, b:1)}
     assert_equal('xyzzy', e.backtrace_locations[0].path)
     assert_equal([[:opt, :m], [:keyreq, :a]], b.parameters)
+    assert_same(b, e.receiver)
+    assert_equal(:call, e.method_name)
   end
 
   def test_super_with_keyword
@@ -511,9 +546,12 @@ class TestKeywordArguments < Test::Unit::TestCase
     def m.f3(**a) a; end
     def m.f4(*a) a; end
     o = {a: 1}
-    assert_raise_with_message(ArgumentError, /unknown keyword: a/) {
+    e = assert_raise_with_message(ArgumentError, /unknown keyword: a/) {
       m.f(**o)
     }
+    assert_same(m, e.receiver)
+    assert_equal(:f, e.method_name)
+
     o = {}
     assert_equal(:ok, m.f(**o), '[ruby-core:68124] [Bug #10856]')
     a = []
@@ -580,16 +618,21 @@ class TestKeywordArguments < Test::Unit::TestCase
         bar(k1: 1)
       end
     end
-    assert_raise_with_message(ArgumentError, /unknown keyword: k1/, bug10413) {
+    e = assert_raise_with_message(ArgumentError, /unknown keyword: k1/, bug10413) {
       o.foo {raise "unreachable"}
     }
+    assert_same(o, e.receiver)
+    assert_equal(:bar, e.method_name)
   end
 
   def test_unknown_keyword
     bug13004 = '[ruby-dev:49893] [Bug #13004]'
-    assert_raise_with_message(ArgumentError, /unknown keyword: invalid-argument/, bug13004) {
-      [].sample(random: nil, "invalid-argument": nil)
+    a = []
+    e = assert_raise_with_message(ArgumentError, /unknown keyword: invalid-argument/, bug13004) {
+      a.sample(random: nil, "invalid-argument": nil)
     }
+    assert_equal(:sample, e.method_name)
+    assert_same(a, e.receiver)
   end
 
   def test_super_with_anon_restkeywords
@@ -684,14 +727,18 @@ class TestKeywordArguments < Test::Unit::TestCase
   def test_arity_error_message
     obj = Object.new
     def obj.t(x:) end
-    assert_raise_with_message(ArgumentError, /required keyword: x\)/) do
+    e = assert_raise_with_message(ArgumentError, /required keyword: x\)/) do
       obj.t(42)
     end
+    assert_same(obj, e.receiver)
+    assert_equal(:t, e.method_name)
     obj = Object.new
     def obj.t(x:, y:, z: nil) end
-    assert_raise_with_message(ArgumentError, /required keywords: x, y\)/) do
+    e = assert_raise_with_message(ArgumentError, /required keywords: x, y\)/) do
       obj.t(42)
     end
+    assert_same(obj, e.receiver)
+    assert_equal(:t, e.method_name)
   end
 
   def many_kwargs(a0: '', a1: '', a2: '', a3: '', a4: '', a5: '', a6: '', a7: '',

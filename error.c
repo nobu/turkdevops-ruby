@@ -1828,6 +1828,40 @@ key_err_initialize(int argc, VALUE *argv, VALUE self)
     return self;
 }
 
+MJIT_FUNC_EXPORTED VALUE
+rb_arg_error_new(VALUE message, VALUE recv, VALUE name)
+{
+    VALUE exc = rb_exc_new_str(rb_eArgError, message);
+    rb_ivar_set(exc, id_recv, recv);
+    rb_ivar_set(exc, id_name, name);
+    return exc;
+}
+
+/*
+ * call-seq:
+ *   argument_error.receiver  -> object
+ *
+ * Return the receiver associated with this ArgumentError exception.
+ */
+
+static VALUE
+arg_err_receiver(VALUE self)
+{
+    VALUE recv = rb_ivar_lookup(self, id_recv, Qundef);
+    if (recv == Qundef)
+	rb_raise(rb_eArgError, "no receiver is available");
+    return recv;
+}
+
+/*
+ * call-seq:
+ *   argument_error.method_name      -> string or nil
+ *
+ *  Return the name associated with this ArgumentError exception.
+ */
+
+#define arg_err_method_name name_err_name
+
 /*
  * call-seq:
  *   SyntaxError.new([msg])  -> syntax_error
@@ -2448,6 +2482,8 @@ Init_Exception(void)
     rb_eStandardError = rb_define_class("StandardError", rb_eException);
     rb_eTypeError     = rb_define_class("TypeError", rb_eStandardError);
     rb_eArgError      = rb_define_class("ArgumentError", rb_eStandardError);
+    rb_define_method(rb_eArgError, "receiver", arg_err_receiver, 0);
+    rb_define_method(rb_eArgError, "method_name", arg_err_method_name, 0);
     rb_eIndexError    = rb_define_class("IndexError", rb_eStandardError);
     rb_eKeyError      = rb_define_class("KeyError", rb_eIndexError);
     rb_define_method(rb_eKeyError, "initialize", key_err_initialize, -1);

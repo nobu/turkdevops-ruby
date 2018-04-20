@@ -9,9 +9,11 @@
 **********************************************************************/
 
 NORETURN(static void raise_argument_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const VALUE exc));
-NORETURN(static void argument_arity_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const int miss_argc, const int min_argc, const int max_argc));
-NORETURN(static void argument_kw_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const char *error, const VALUE keys));
-VALUE rb_keyword_error_new(const char *error, VALUE keys); /* class.c */
+NORETURN(static void argument_arity_error(rb_execution_context_t *ec, const rb_iseq_t *iseq,
+                                          VALUE recv, ID mid,
+                                          const int miss_argc, const int min_argc, const int max_argc));
+NORETURN(static void argument_kw_error(rb_execution_context_t *ec, const rb_iseq_t *iseq,
+                                       VALUE recv, ID mid, const char *error, const VALUE keys));
 static VALUE method_missing(VALUE obj, ID id, int argc, const VALUE *argv,
 			    enum method_missing_reason call_status);
 
@@ -396,6 +398,7 @@ args_setup_kw_parameters_lookup(const ID key, VALUE *ptr, const VALUE *const pas
 
 static void
 args_setup_kw_parameters(rb_execution_context_t *const ec, const rb_iseq_t *const iseq,
+			 VALUE recv, ID mid,
 			 VALUE *const passed_values, const int passed_keyword_len, const VALUE *const passed_keywords,
 			 VALUE *const locals)
 {
@@ -419,7 +422,7 @@ args_setup_kw_parameters(rb_execution_context_t *const ec, const rb_iseq_t *cons
 	}
     }
 
-    if (missing) argument_kw_error(ec, iseq, "missing", missing);
+    if (missing) argument_kw_error(ec, iseq, recv, mid, "missing", missing);
 
     for (di=0; i<key_num; i++, di++) {
 	if (args_setup_kw_parameters_lookup(acceptable_keywords[i], &locals[i], passed_keywords, passed_values, passed_keyword_len)) {
@@ -460,7 +463,7 @@ args_setup_kw_parameters(rb_execution_context_t *const ec, const rb_iseq_t *cons
     else {
 	if (found != passed_keyword_len) {
 	    VALUE keys = make_unknown_kw_hash(passed_keywords, passed_keyword_len, passed_values);
-	    argument_kw_error(ec, iseq, "unknown", keys);
+	    argument_kw_error(ec, iseq, recv, mid, "unknown", keys);
 	}
     }
 
@@ -596,7 +599,7 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
 		args_extend(args, min_argc);
 	    }
 	    else {
-		argument_arity_error(ec, iseq, given_argc, min_argc, max_argc);
+		argument_arity_error(ec, iseq, calling->recv, ci->mid, given_argc, min_argc, max_argc);
 	    }
 	}
     }
@@ -620,7 +623,7 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
 	    given_argc = max_argc;
 	}
 	else {
-	    argument_arity_error(ec, iseq, given_argc, min_argc, max_argc);
+	    argument_arity_error(ec, iseq, calling->recv, ci->mid, given_argc, min_argc, max_argc);
 	}
     }
 
@@ -646,7 +649,8 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
 
 	if (args->kw_argv != NULL) {
 	    const struct rb_call_info_kw_arg *kw_arg = args->kw_arg;
-	    args_setup_kw_parameters(ec, iseq, args->kw_argv, kw_arg->keyword_len, kw_arg->keywords, klocals);
+	    args_setup_kw_parameters(ec, iseq, calling->recv, ci->mid, args->kw_argv,
+                                     kw_arg->keyword_len, kw_arg->keywords, klocals);
 	}
 	else if (!NIL_P(keyword_hash)) {
 	    int kw_len = rb_long2int(RHASH_SIZE(keyword_hash));
@@ -657,18 +661,20 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
 	    arg.argc = 0;
 	    rb_hash_foreach(keyword_hash, fill_keys_values, (VALUE)&arg);
 	    VM_ASSERT(arg.argc == kw_len);
-	    args_setup_kw_parameters(ec, iseq, arg.vals, kw_len, arg.keys, klocals);
+	    args_setup_kw_parameters(ec, iseq, calling->recv, ci->mid, arg.vals,
+                                     kw_len, arg.keys, klocals);
 	}
 	else {
 	    VM_ASSERT(args_argc(args) == 0);
-	    args_setup_kw_parameters(ec, iseq, NULL, 0, NULL, klocals);
+	    args_setup_kw_parameters(ec, iseq, calling->recv, ci->mid, NULL,
+                                     0, NULL, klocals);
 	}
     }
     else if (iseq->body->param.flags.has_kwrest) {
 	args_setup_kw_rest_parameter(keyword_hash, locals + iseq->body->param.keyword->rest_start);
     }
     else if (!NIL_P(keyword_hash) && RHASH_SIZE(keyword_hash) > 0) {
-	argument_kw_error(ec, iseq, "unknown", rb_hash_keys(keyword_hash));
+	argument_kw_error(ec, iseq, calling->recv, ci->mid, "unknown", rb_hash_keys(keyword_hash));
     }
     else if (kw_splat && NIL_P(keyword_hash)) {
 	if (RTEST(ruby_verbose)) {
@@ -730,16 +736,19 @@ raise_argument_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const VA
 }
 
 static void
-argument_arity_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const int miss_argc, const int min_argc, const int max_argc)
+argument_arity_error(rb_execution_context_t *ec, const rb_iseq_t *iseq,
+		     VALUE recv, ID mid,
+		     const int miss_argc, const int min_argc, const int max_argc)
 {
-    VALUE exc = rb_arity_error_new(miss_argc, min_argc, max_argc);
+    VALUE exc;
+    VALUE mesg = rb_arity_error_messae(miss_argc, min_argc, max_argc);
+
     if (iseq->body->param.flags.has_kw) {
 	const struct rb_iseq_param_keyword *const kw = iseq->body->param.keyword;
 	const ID *keywords = kw->table;
 	int req_key_num = kw->required_num;
 	if (req_key_num > 0) {
 	    static const char required[] = "; required keywords";
-	    VALUE mesg = rb_attr_get(exc, idMesg);
 	    rb_str_resize(mesg, RSTRING_LEN(mesg)-1);
 	    rb_str_cat(mesg, required, sizeof(required) - 1 - (req_key_num == 1));
 	    rb_str_cat_cstr(mesg, ":");
@@ -751,13 +760,17 @@ argument_arity_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const in
 	    RSTRING_PTR(mesg)[RSTRING_LEN(mesg)-1] = ')';
 	}
     }
+
+    exc = rb_arg_error_new(mesg, recv, ID2SYM(mid));
     raise_argument_error(ec, iseq, exc);
 }
 
 static void
-argument_kw_error(rb_execution_context_t *ec, const rb_iseq_t *iseq, const char *error, const VALUE keys)
+argument_kw_error(rb_execution_context_t *ec, const rb_iseq_t *iseq,
+		  VALUE recv, ID mid, const char *error, const VALUE keys)
 {
-    raise_argument_error(ec, iseq, rb_keyword_error_new(error, keys));
+    VALUE exc = rb_keyword_error_new(error, recv, ID2SYM(mid), keys);
+    raise_argument_error(ec, iseq, exc);
 }
 
 static inline void

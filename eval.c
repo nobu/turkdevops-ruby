@@ -1125,6 +1125,14 @@ rb_frame_callee(void)
     return frame_called_id(GET_EC()->cfp);
 }
 
+VALUE
+rb_frame_receiver(void)
+{
+    const rb_control_frame_t *cfp = GET_EC()->cfp;
+    if (cfp) return cfp->self;
+    return Qundef;
+}
+
 static rb_control_frame_t *
 previous_frame(const rb_execution_context_t *ec)
 {

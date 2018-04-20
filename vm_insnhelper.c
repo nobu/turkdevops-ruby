@@ -294,8 +294,9 @@ rb_vm_pop_frame(rb_execution_context_t *ec)
 }
 
 /* method dispatch */
+
 static inline VALUE
-rb_arity_error_new(int argc, int min, int max)
+rb_arity_error_messae(int argc, int min, int max)
 {
     VALUE err_mess = 0;
     if (min == max) {
@@ -307,13 +308,16 @@ rb_arity_error_new(int argc, int min, int max)
     else {
 	err_mess = rb_sprintf("wrong number of arguments (given %d, expected %d..%d)", argc, min, max);
     }
-    return rb_exc_new3(rb_eArgError, err_mess);
+    return err_mess;
 }
 
 void
 rb_error_arity(int argc, int min, int max)
 {
-    rb_exc_raise(rb_arity_error_new(argc, min, max));
+    VALUE message = rb_arity_error_messae(argc, min, max);
+    VALUE recv = rb_frame_receiver();
+    ID mid = rb_frame_this_func();
+    rb_exc_raise(rb_arg_error_new(message, recv, ID2SYM(mid)));
 }
 
 /* lvar */
@@ -1624,7 +1628,7 @@ vm_callee_setup_arg(rb_execution_context_t *ec, struct rb_calling_info *calling,
 	CALLER_SETUP_ARG(cfp, calling, ci); /* splat arg */
 
 	if (calling->argc != iseq->body->param.lead_num) {
-	    argument_arity_error(ec, iseq, calling->argc, iseq->body->param.lead_num, iseq->body->param.lead_num);
+	    argument_arity_error(ec, iseq, calling->recv, ci->mid, calling->argc, iseq->body->param.lead_num, iseq->body->param.lead_num);
 	}
 
 	CI_SET_FASTPATH(cc, vm_call_iseq_setup_func(ci, param_size, local_size),
@@ -1974,7 +1978,7 @@ vm_call_bmethod_body(rb_execution_context_t *ec, struct rb_calling_info *calling
     /* control block frame */
     ec->passed_bmethod_me = cc->me;
     GetProcPtr(cc->me->def->body.proc, proc);
-    val = vm_invoke_bmethod(ec, proc, calling->recv, calling->argc, argv, calling->block_handler);
+    val = vm_invoke_bmethod(ec, ci, proc, calling->recv, calling->argc, argv, calling->block_handler);
 
     return val;
 }
@@ -2638,7 +2642,7 @@ vm_callee_setup_block_arg(rb_execution_context_t *ec, struct rb_calling_info *ca
 		}
 	    }
 	    else {
-		argument_arity_error(ec, iseq, calling->argc, iseq->body->param.lead_num, iseq->body->param.lead_num);
+		argument_arity_error(ec, iseq, calling->recv, ci->mid, calling->argc, iseq->body->param.lead_num, iseq->body->param.lead_num);
 	    }
 	}
 
@@ -2650,16 +2654,20 @@ vm_callee_setup_block_arg(rb_execution_context_t *ec, struct rb_calling_info *ca
 }
 
 static int
-vm_yield_setup_args(rb_execution_context_t *ec, const rb_iseq_t *iseq, const int argc, VALUE *argv, VALUE block_handler, enum arg_setup_type arg_setup_type)
+vm_yield_setup_args(rb_execution_context_t *ec, const rb_iseq_t *iseq, VALUE self,
+                    const int argc, VALUE *argv, VALUE block_handler, const struct rb_call_info *ci,
+                    enum arg_setup_type arg_setup_type)
 {
     struct rb_calling_info calling_entry, *calling;
-    struct rb_call_info ci_entry, *ci;
+    struct rb_call_info ci_entry;
 
     calling = &calling_entry;
     calling->argc = argc;
+    calling->recv = self;
     calling->block_handler = block_handler;
 
     ci_entry.flag = 0;
+    ci_entry.mid = ci ? ci->mid : 0;
     ci = &ci_entry;
 
     return vm_callee_setup_block_arg(ec, calling, ci, iseq, argv, arg_setup_type);

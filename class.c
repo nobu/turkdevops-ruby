@@ -1774,7 +1774,7 @@ rb_define_attr(VALUE klass, const char *name, int read, int write)
 }
 
 MJIT_FUNC_EXPORTED VALUE
-rb_keyword_error_new(const char *error, VALUE keys)
+rb_keyword_error_new(const char *error, VALUE recv, VALUE name, VALUE keys)
 {
     const VALUE *ptr = RARRAY_CONST_PTR(keys);
     long i = 0, len = RARRAY_LEN(keys);
@@ -1791,14 +1791,16 @@ rb_keyword_error_new(const char *error, VALUE keys)
 	}
     }
 
-    return rb_exc_new_str(rb_eArgError, error_message);
+    return rb_arg_error_new(error_message, recv, name);
 }
 
 NORETURN(static void rb_keyword_error(const char *error, VALUE keys));
 static void
 rb_keyword_error(const char *error, VALUE keys)
 {
-    rb_exc_raise(rb_keyword_error_new(error, keys));
+    VALUE recv = rb_frame_receiver();
+    ID mid = rb_frame_this_func();
+    rb_exc_raise(rb_keyword_error_new(error, recv, ID2SYM(mid), keys));
 }
 
 NORETURN(static void unknown_keyword_error(VALUE hash, const ID *table, int keywords));

@@ -1151,6 +1151,7 @@ VALUE rb_obj_public_methods(int argc, const VALUE *argv, VALUE obj);
 VALUE rb_special_singleton_class(VALUE);
 VALUE rb_singleton_class_clone_and_attach(VALUE obj, VALUE attach);
 VALUE rb_singleton_class_get(VALUE obj);
+VALUE rb_keyword_error_new(const char *error, VALUE recv, VALUE name, VALUE keys);
 void Init_class_hierarchy(void);
 
 int rb_class_has_methods(VALUE c);
@@ -1230,6 +1231,7 @@ PRINTF_ARGS(void rb_enc_warning(rb_encoding *enc, const char *fmt, ...), 2, 3);
 PRINTF_ARGS(void rb_sys_enc_warning(rb_encoding *enc, const char *fmt, ...), 2, 3);
 PRINTF_ARGS(void rb_syserr_enc_warning(int err, rb_encoding *enc, const char *fmt, ...), 3, 4);
 #endif
+VALUE rb_arg_error_new(VALUE message, VALUE recv, VALUE name);
 
 #define rb_raise_cstr(etype, mesg) \
     rb_exc_raise(rb_exc_new_str(etype, rb_str_new_cstr(mesg)))
@@ -2002,6 +2004,9 @@ NORETURN(void rb_unexpected_type(VALUE,int));
     (!RB_TYPE_P((VALUE)(v), (t)) || \
      ((t) == RUBY_T_DATA && RTYPEDDATA_P(v)) ? \
      rb_unexpected_type((VALUE)(v), (t)) : (void)0)
+
+/* eval.c (export) */
+VALUE rb_frame_receiver(void);
 
 /* file.c (export) */
 #if defined HAVE_READLINK && defined RUBY_ENCODING_H
