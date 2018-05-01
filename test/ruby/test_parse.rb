@@ -1108,14 +1108,6 @@ x = __ENCODING__
     assert_equal(1.3, o.x)
   end
 
-  def test_serial_comparison
-    assert_warning(/comparison '<' after/) do
-      $VERBOSE = true
-      x = 1
-      eval("if false; 0 < x < 2; end")
-    end
-  end
-
   def test_eof_in_def
     assert_raise(SyntaxError) { eval("def m\n\0""end") }
     assert_raise(SyntaxError) { eval("def m\n\C-d""end") }
