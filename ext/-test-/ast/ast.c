@@ -238,6 +238,17 @@ node_children(rb_ast_t *ast, NODE *node)
 	    rb_ary_push(ary, NEW_CHILD(ast, node->nd_2nd));
 	    return ary;
 	}
+      case NODE_CMPSEQ:
+	{
+	    VALUE ary = rb_ary_new();
+	    NODE *end = node->nd_next;
+
+	    node = node->nd_head;
+	    while (rb_ary_push(ary, NEW_CHILD(ast, node->nd_head)), node != end)
+		node = node->nd_next;
+	    rb_ary_push(ary, NEW_CHILD(ast, node->nd_next));
+	    return ary;
+	}
       case NODE_MASGN:
         if (NODE_NAMED_REST_P(node->nd_args)) {
 	    return rb_ary_new_from_node_args(ast, 3, node->nd_value, node->nd_head, node->nd_args);
