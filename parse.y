@@ -8588,8 +8588,9 @@ new_cmpseq(struct parser_params *p, NODE *left, ID id, NODE *right,
 	seq->nd_head = seq->nd_next = left;
     }
     left = seq->nd_next;
-    seq->nd_next = left->nd_next = NEW_CMPSEQ(left->nd_next, id, right, loc);
+    seq->nd_next = left->nd_next = NEW_CMPSEQ(left->nd_next, id, right, op_loc);
     nd_set_line(seq, op_loc->beg_pos.lineno);
+    seq->nd_loc = *loc;
     return seq;
 }
 
