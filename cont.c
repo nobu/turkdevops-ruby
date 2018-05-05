@@ -793,6 +793,13 @@ fiber_entry(void *arg)
 }
 #else /* _WIN32 */
 
+NORETURN(static void fiber_entry(void *arg));
+static void
+fiber_entry(void *arg)
+{
+    rb_fiber_start();
+}
+
 /*
  * FreeBSD require a first (i.e. addr) argument of mmap(2) is not NULL
  * if MAP_STACK is passed.
@@ -855,7 +862,7 @@ fiber_initialize_machine_stack_context(rb_fiber_t *fib, size_t size)
     fib->ss_size = size;
 
     /*coro_stack_alloc(&fib->stack, size);*/
-    coro_create(&fib->context, rb_fiber_start, NULL, fib->ss_sp, fib->ss_size);
+    coro_create(&fib->context, fiber_entry, NULL, fib->ss_sp, fib->ss_size);
     sec->machine.stack_start = (VALUE*)(ptr + STACK_DIR_UPPER(0, size));
     sec->machine.stack_maxsize = size - RB_PAGE_SIZE;
 #elif defined(_WIN32)
