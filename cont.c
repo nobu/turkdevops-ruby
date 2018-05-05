@@ -39,7 +39,9 @@
   setup time for 10000 fibers:   0.099268
   execution time for 1000 messages:   8.491746
 */
+#if defined __GNUC__ && !defined _WIN32
 #include "libcoro/coro.c"
+#endif
 
 #if !defined(FIBER_USE_NATIVE)
 # if defined(HAVE_GETCONTEXT) && defined(HAVE_SETCONTEXT)
@@ -357,7 +359,7 @@ cont_free(void *ptr)
 	/* fiber */
 	const rb_fiber_t *fib = (rb_fiber_t*)cont;
 #if defined(CORO_H)
-	coro_destroy(&fib->context);
+	coro_destroy((coro_context *)&fib->context);
 	if (fib->ss_sp != NULL) {
 	    if (cont->type == ROOT_FIBER_CONTEXT) {
 		rb_bug("Illegal root fiber parameter");
