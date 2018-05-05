@@ -43,6 +43,9 @@
 #define FIBER_USE_LIBCORO
 
 #ifdef FIBER_USE_LIBCORO
+#if defined __GNUC__
+# define asm __asm__		/* for -std=iso9899:1999 */
+#endif
 #include "libcoro/coro.c"
 #define FIBER_USE_NATIVE 1
 #endif
