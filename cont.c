@@ -40,6 +40,7 @@
   execution time for 1000 messages:   8.491746
 */
 #if defined __GNUC__ && !defined _WIN32
+#define asm __asm__
 #define perror(mesg) (void)0
 #ifdef RUBY_FUNCTION_NAME_STRING
 # define abort() rb_fatal("%s: failed", RUBY_FUNCTION_NAME_STRING)
