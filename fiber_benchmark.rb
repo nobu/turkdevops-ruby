@@ -5,7 +5,7 @@ require 'benchmark'
 
 class Ring
    attr_reader :id
-   attr_accessor :attach 
+   attr_accessor :attach
 
    def initialize(id)
       @id = id
@@ -30,7 +30,7 @@ class Ring
       while message = message_in
          #puts "... #{@id} I received message #{message}"
          # do something with message
-         message_out(message)      
+         message_out(message)
       end
    end
 
@@ -52,8 +52,8 @@ class RingStart < Ring
       @message = message
       super(n)
    end
-   
-   def pass_message 
+
+   def pass_message
       loop { message_out(@message) }
    end
 
@@ -97,4 +97,3 @@ tm  = Benchmark.measure {
 }.format("%10.6r\n").gsub!(/\(|\)/, "")
 
 puts "execution time for #{m} messages: #{tm}"
-
