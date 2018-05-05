@@ -398,7 +398,7 @@ void __attribute__ ((__noinline__))
 #endif
 coro_transfer (coro_context *prev, coro_context *next);
 
-# define coro_destroy(ctx) (void *)(ctx)
+# define coro_destroy(ctx) (void)(ctx)
 
 #elif CORO_PTHREAD
 
