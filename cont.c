@@ -39,7 +39,13 @@
   setup time for 10000 fibers:   0.099268
   execution time for 1000 messages:   8.491746
 */
+
+#define FIBER_USE_LIBCORO
+
+#ifdef FIBER_USE_LIBCORO
 #include "libcoro/coro.c"
+#define FIBER_USE_NATIVE 1
+#endif
 
 #if !defined(FIBER_USE_NATIVE)
 # if defined(HAVE_GETCONTEXT) && defined(HAVE_SETCONTEXT)
