@@ -48,6 +48,9 @@
 #if defined __GNUC__
 # define asm __asm__		/* for -std=iso9899:1999 */
 #endif
+#if defined _WIN32
+# define WINDOWS
+#endif
 NORETURN(static void coro_init(void));
 #include "libcoro/coro.c"
 #define FIBER_USE_NATIVE 1
