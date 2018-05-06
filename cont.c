@@ -40,7 +40,9 @@
   execution time for 1000 messages:   8.491746
 */
 
+#if defined __GNUC__
 #define FIBER_USE_LIBCORO
+#endif
 
 #ifdef FIBER_USE_LIBCORO
 #if defined __GNUC__
