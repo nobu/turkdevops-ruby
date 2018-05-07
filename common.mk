@@ -1559,6 +1559,8 @@ cont.$(OBJEXT): $(CCAN_DIR)/list/list.h
 cont.$(OBJEXT): $(CCAN_DIR)/str/str.h
 cont.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 cont.$(OBJEXT): $(top_srcdir)/include/ruby.h
+cont.$(OBJEXT): $(top_srcdir)/libcoro/coro.c
+cont.$(OBJEXT): $(top_srcdir)/libcoro/coro.h
 cont.$(OBJEXT): {$(VPATH)}config.h
 cont.$(OBJEXT): {$(VPATH)}cont.c
 cont.$(OBJEXT): {$(VPATH)}defines.h
