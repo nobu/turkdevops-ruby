@@ -527,8 +527,8 @@ coro_init (void *args_)
 
   /* we try to be good citizens and use deferred cancellation and cleanup handlers */
   pthread_cleanup_push (mutex_unlock_wrapper, &coro_mutex);
-    coro_transfer (args->self, args->main);
-    func (arg);
+  coro_transfer (args->self, args->main);
+  func (arg);
   pthread_cleanup_pop (1);
 
   return 0;
