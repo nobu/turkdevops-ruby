@@ -148,7 +148,7 @@ trampoline (int sig)
 
          #if _WIN32 || __CYGWIN__
            #define NUM_SAVED 29
-           "\tsubq $168, %rsp\t" /* one dummy qword to improve alignment */
+           "\tsubq $168, %rsp\n" /* one dummy qword to improve alignment */
            "\tmovaps %xmm6, (%rsp)\n"
            "\tmovaps %xmm7, 16(%rsp)\n"
            "\tmovaps %xmm8, 32(%rsp)\n"
