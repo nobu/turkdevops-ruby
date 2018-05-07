@@ -135,7 +135,7 @@ trampoline (int sig)
 
   asm (
        "\t.text\n"
-       #if _WIN32 || __CYGWIN__ || __MACH__
+       #if ((_WIN32 || __CYGWIN__) && !defined(_WIN64)) || __MACH__
        "\t.globl _coro_transfer\n"
        "_coro_transfer:\n"
        #else
