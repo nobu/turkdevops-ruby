@@ -1,3 +1,16 @@
+#!/bin/sh
+_=\
+=begin
+origdir=$(pwd -P)
+specdir=$(cd ${0%/*} && pwd -P)
+specfile=$specdir/${0##*/}
+SRCDIR=${specdir%/*/*}
+export SRCDIR
+cd $1
+shift
+exec ${RUBY-ruby} "$SRCDIR/spec/mspec/bin/mspec-run" --prefix="$origdir" -B "$specfile" "$@"
+=end
+_
 # Configuration file for Ruby >= 2.0 implementations.
 
 class MSpecScript
