@@ -442,7 +442,7 @@ args_setup_kw_parameters(rb_execution_context_t *const ec, const rb_iseq_t *cons
 		if (LIKELY(i < KW_SPECIFIED_BITS_MAX)) {
 		    unspecified_bits |= 0x01 << di;
 		}
-		else {
+		else if (iseq->body->param.flags.has_kwbits) {
 		    if (NIL_P(unspecified_bits_value)) {
 			/* fixnum -> hash */
 			int j;
@@ -474,10 +474,12 @@ args_setup_kw_parameters(rb_execution_context_t *const ec, const rb_iseq_t *cons
 	}
     }
 
-    if (NIL_P(unspecified_bits_value)) {
-	unspecified_bits_value = INT2FIX(unspecified_bits);
+    if (iseq->body->param.flags.has_kwbits) {
+	if (NIL_P(unspecified_bits_value)) {
+	    unspecified_bits_value = INT2FIX(unspecified_bits);
+	}
+	locals[key_num] = unspecified_bits_value;
     }
-    locals[key_num] = unspecified_bits_value;
 }
 
 static inline void

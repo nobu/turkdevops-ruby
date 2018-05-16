@@ -379,6 +379,7 @@ struct rb_iseq_constant_body {
 	    unsigned int has_post   : 1;
 	    unsigned int has_kw     : 1;
 	    unsigned int has_kwrest : 1;
+	    unsigned int has_kwbits : 1;
 	    unsigned int has_block  : 1;
 
 	    unsigned int ambiguous_param0 : 1; /* {|a|} */

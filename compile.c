@@ -1505,7 +1505,7 @@ iseq_calc_param_size(rb_iseq_t *iseq)
 	    body->param.size = body->param.keyword->rest_start + 1;
 	}
 	else if (body->param.flags.has_kw) {
-	    body->param.size = body->param.keyword->bits_start + 1;
+	    body->param.size = body->param.keyword->bits_start + body->param.flags.has_kwbits;
 	}
 	else if (body->param.flags.has_post) {
 	    body->param.size = body->param.post_start + body->param.post_num;
@@ -1544,14 +1544,14 @@ iseq_set_arguments_keywords(rb_iseq_t *iseq, LINK_ANCHOR *const optargs,
 	node = node->nd_next;
     }
     arg_size += kw;
-    keyword->bits_start = arg_size++;
+    keyword->bits_start = arg_size;
 
     node = args->kw_args;
     while (node) {
 	const NODE *val_node = node->nd_body->nd_value;
 	VALUE dv;
 
-	if (val_node == (const NODE *)-1) {
+	if (val_node == NODE_SPECIAL_REQUIRED_KEYWORD) {
 	    ++rkw;
 	}
 	else {
@@ -1583,9 +1583,13 @@ iseq_set_arguments_keywords(rb_iseq_t *iseq, LINK_ANCHOR *const optargs,
 
     keyword->num = kw;
 
-    if (args->kw_rest_arg->nd_vid != 0) {
-	keyword->rest_start = arg_size++;
-	body->param.flags.has_kwrest = TRUE;
+    if (args->kw_rest_arg) {
+	body->param.flags.has_kwbits = args->kw_rest_arg != 0;
+	++arg_size;
+	if (args->kw_rest_arg->nd_vid != 0) {
+	    keyword->rest_start = arg_size++;
+	    body->param.flags.has_kwrest = TRUE;
+	}
     }
     keyword->required_num = rkw;
     keyword->table = &body->local_table[keyword->bits_start - keyword->num];
@@ -7468,7 +7472,7 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
 		COMPILE_ERROR(ERROR_ARGS "unreachable");
 		goto ng;
 	    }
-	    else {
+	    else if (iseq->body->param.flags.has_kwbits) {
 		/* if keywordcheck(_kw_bits, nth_keyword)
 		 *   kw = default_value
 		 * end

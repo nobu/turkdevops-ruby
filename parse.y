@@ -10110,6 +10110,7 @@ new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, 
 	ID kw_bits = internal_id(p), *required_kw_vars, *kw_vars;
 	struct vtable *vtargs = p->lvtbl->args;
 	NODE *kwn = kw_args;
+	int need_kw_bits = 0;
 
 	vtable_pop(vtargs, !!block + !!kw_rest_arg);
 	required_kw_vars = kw_vars = &vtargs->tbl[vtargs->pos];
@@ -10127,15 +10128,27 @@ new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, 
 	    }
 	    else {
 		*kw_vars++ = vid;
+		if (!need_kw_bits) {
+		    switch (nd_type(kwn->nd_body->nd_value)) {
+		      case NODE_NIL: case NODE_TRUE: case NODE_FALSE:
+		      case NODE_LIT: case NODE_STR:
+			break;
+		      default:
+			need_kw_bits = 1;
+			break;
+		    }
+		}
 	    }
 	}
 
-	arg_var(p, kw_bits);
+	if (need_kw_bits) arg_var(p, kw_bits);
 	if (kw_rest_arg) arg_var(p, kw_rest_arg);
 	if (block) arg_var(p, block);
 
-	args->kw_rest_arg = NEW_DVAR(kw_rest_arg, loc);
-	args->kw_rest_arg->nd_cflag = kw_bits;
+	if (need_kw_bits) {
+	    args->kw_rest_arg = NEW_DVAR(kw_rest_arg, loc);
+	    args->kw_rest_arg->nd_cflag = kw_bits;
+	}
     }
     else if (kw_rest_arg) {
 	args->kw_rest_arg = NEW_DVAR(kw_rest_arg, loc);
