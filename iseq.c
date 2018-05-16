@@ -2803,50 +2803,46 @@ rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc)
     VALUE a, args = rb_ary_new2(body->param.size);
     ID req, opt, rest, block, key, keyrest;
 #define PARAM_TYPE(type) rb_ary_push(a = rb_ary_new2(2), ID2SYM(type))
-#define PARAM_ID(i) body->local_table[(i)]
-#define PARAM(i, type) (		      \
-	PARAM_TYPE(type),		      \
-	rb_id2str(PARAM_ID(i)) ?	      \
-	rb_ary_push(a, ID2SYM(PARAM_ID(i))) : \
-	a)
+#define PARAM_POS(i) body->local_table[(i)]
+#define PARAM_KWD(i) keyword->table[i]
+#define PUSH_PARAM(id, type) \
+    rb_ary_push(args,			      \
+		(PARAM_TYPE(type),	      \
+		 rb_id2str(id) ?	      \
+		 rb_ary_push(a, ID2SYM(id)) : \
+		 (is_proc && &type == &opt) ? \
+		 rb_ary_push(a, Qnil) :	      \
+		 a))
 
     CONST_ID(req, "req");
     CONST_ID(opt, "opt");
     if (is_proc) {
 	for (i = 0; i < body->param.lead_num; i++) {
-	    PARAM_TYPE(opt);
-	    rb_ary_push(a, rb_id2str(PARAM_ID(i)) ? ID2SYM(PARAM_ID(i)) : Qnil);
-	    rb_ary_push(args, a);
+	    PUSH_PARAM(PARAM_POS(i), opt);
 	}
     }
     else {
 	for (i = 0; i < body->param.lead_num; i++) {
-	    rb_ary_push(args, PARAM(i, req));
+	    PUSH_PARAM(PARAM_POS(i), req);
 	}
     }
     r = body->param.lead_num + body->param.opt_num;
     for (; i < r; i++) {
-	PARAM_TYPE(opt);
-	if (rb_id2str(PARAM_ID(i))) {
-	    rb_ary_push(a, ID2SYM(PARAM_ID(i)));
-	}
-	rb_ary_push(args, a);
+	PUSH_PARAM(PARAM_POS(i), opt);
     }
     if (body->param.flags.has_rest) {
 	CONST_ID(rest, "rest");
-	rb_ary_push(args, PARAM(body->param.rest_start, rest));
+	PUSH_PARAM(PARAM_POS(body->param.rest_start), rest);
     }
     r = body->param.post_start + body->param.post_num;
     if (is_proc) {
 	for (i = body->param.post_start; i < r; i++) {
-	    PARAM_TYPE(opt);
-	    rb_ary_push(a, rb_id2str(PARAM_ID(i)) ? ID2SYM(PARAM_ID(i)) : Qnil);
-	    rb_ary_push(args, a);
+	    PUSH_PARAM(PARAM_POS(i), opt);
 	}
     }
     else {
 	for (i = body->param.post_start; i < r; i++) {
-	    rb_ary_push(args, PARAM(i, req));
+	    PUSH_PARAM(PARAM_POS(i), req);
 	}
     }
     if (body->param.flags.has_kw) {
@@ -2855,29 +2851,21 @@ rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc)
 	    ID keyreq;
 	    CONST_ID(keyreq, "keyreq");
 	    for (; i < keyword->required_num; i++) {
-		PARAM_TYPE(keyreq);
-		if (rb_id2str(keyword->table[i])) {
-		    rb_ary_push(a, ID2SYM(keyword->table[i]));
-		}
-		rb_ary_push(args, a);
+		PUSH_PARAM(PARAM_KWD(i), keyreq);
 	    }
 	}
 	CONST_ID(key, "key");
 	for (; i < keyword->num; i++) {
-	    PARAM_TYPE(key);
-	    if (rb_id2str(keyword->table[i])) {
-		rb_ary_push(a, ID2SYM(keyword->table[i]));
-	    }
-	    rb_ary_push(args, a);
+	    PUSH_PARAM(PARAM_KWD(i), key);
 	}
     }
     if (body->param.flags.has_kwrest) {
 	CONST_ID(keyrest, "keyrest");
-	rb_ary_push(args, PARAM(keyword->rest_start, keyrest));
+	PUSH_PARAM(PARAM_POS(keyword->rest_start), keyrest);
     }
     if (body->param.flags.has_block) {
 	CONST_ID(block, "block");
-	rb_ary_push(args, PARAM(body->param.block_start, block));
+	PUSH_PARAM(PARAM_POS(body->param.block_start), block);
     }
     return args;
 }
