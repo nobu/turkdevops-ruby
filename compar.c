@@ -177,8 +177,9 @@ cmp_between(VALUE x, VALUE min, VALUE max)
  *  call-seq:
  *     obj.clamp(min, max) ->  obj
  *
- * Returns <i>min</i> if <i>obj</i> <code><=></code> <i>min</i> is less
- * than zero, <i>max</i> if <i>obj</i> <code><=></code> <i>max</i> is
+ * Returns <i>min</i> if <i>min</i> is not nil and <i>obj</i>
+ * <code><=></code> <i>min</i> is less than zero, <i>max</i> if
+ * <i>max</i> is not nil and <i>obj</i> <code><=></code> <i>max</i> is
  * greater than zero and <i>obj</i> otherwise.
  *
  *     12.clamp(0, 100)         #=> 12
@@ -187,6 +188,10 @@ cmp_between(VALUE x, VALUE min, VALUE max)
  *
  *     'd'.clamp('a', 'f')      #=> 'd'
  *     'z'.clamp('a', 'f')      #=> 'f'
+ *
+ *     3.clamp(10, nil)         #=> 10
+ *     42.clamp(nil, 10)        #=> 10
+ *     42.clamp(nil, nil)       #=> 42
  */
 
 static VALUE
@@ -194,15 +199,19 @@ cmp_clamp(VALUE x, VALUE min, VALUE max)
 {
     int c;
 
-    if (cmpint(min, max) > 0) {
+    if (!NIL_P(min) && !NIL_P(max) && cmpint(min, max) > 0) {
 	rb_raise(rb_eArgError, "min argument must be smaller than max argument");
     }
 
-    c = cmpint(x, min);
-    if (c == 0) return x;
-    if (c < 0) return min;
-    c = cmpint(x, max);
-    if (c > 0) return max;
+    if (!NIL_P(min)) {
+	c = cmpint(x, min);
+	if (c == 0) return x;
+	if (c < 0) return min;
+    }
+    if (!NIL_P(max)) {
+	c = cmpint(x, max);
+	if (c > 0) return max;
+    }
     return x;
 }
 
