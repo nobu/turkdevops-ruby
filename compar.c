@@ -10,6 +10,7 @@
 **********************************************************************/
 
 #include "ruby/ruby.h"
+#include "internal.h"
 #include "id.h"
 
 VALUE rb_mComparable;
@@ -195,9 +196,20 @@ cmp_between(VALUE x, VALUE min, VALUE max)
  */
 
 static VALUE
-cmp_clamp(VALUE x, VALUE min, VALUE max)
+cmp_clamp(int argc, VALUE *argv, VALUE x)
 {
+    VALUE min, max, opts;
     int c;
+
+    argc = rb_scan_args(argc, argv, "02:", &min, &max, &opts);
+    if (!NIL_P(opts)) {
+	static const ID kwds[] = {idMin, idMax};
+	VALUE v[numberof(kwds)];
+	rb_check_arity(argc, 0, 0);
+	rb_get_kwargs(opts, kwds, 0, numberof(kwds), v);
+	min = (v[0] == Qundef) ? Qnil : v[0];
+	max = (v[1] == Qundef) ? Qnil : v[1];
+    }
 
     if (!NIL_P(min) && !NIL_P(max) && cmpint(min, max) > 0) {
 	rb_raise(rb_eArgError, "min argument must be smaller than max argument");
@@ -267,5 +279,5 @@ Init_Comparable(void)
     rb_define_method(rb_mComparable, "<", cmp_lt, 1);
     rb_define_method(rb_mComparable, "<=", cmp_le, 1);
     rb_define_method(rb_mComparable, "between?", cmp_between, 2);
-    rb_define_method(rb_mComparable, "clamp", cmp_clamp, 2);
+    rb_define_method(rb_mComparable, "clamp", cmp_clamp, -1);
 }

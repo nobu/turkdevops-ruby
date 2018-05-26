@@ -94,6 +94,26 @@ class TestComparable < Test::Unit::TestCase
     assert_equal(@o, @o.clamp(-1, nil))
     assert_equal(1, @o.clamp(1, nil))
     assert_equal(@o, @o.clamp(nil, nil))
+  end
+
+  def test_clamp_keywords
+    cmp->(x) do 0 <=> x end
+    assert_equal(1, @o.clamp(min: 1, max: 2))
+    assert_equal(-1, @o.clamp(min: -2, max: -1))
+    assert_equal(@o, @o.clamp(min: -1, max: 3))
+
+    assert_equal(1, @o.clamp(min: 1, max: 1))
+    assert_equal(@o, @o.clamp(min: 0, max: 0))
+
+    assert_raise_with_message(ArgumentError, 'min argument must be smaller than max argument') {
+      @o.clamp(min: 2, max: 1)
+    }
+
+    assert_equal(@o, @o.clamp(max: 2))
+    assert_equal(-1, @o.clamp(max: -1))
+    assert_equal(@o, @o.clamp(min: -1))
+    assert_equal(1, @o.clamp(min: 1))
+    assert_equal(@o, @o.clamp())
    end
 
   def test_err
