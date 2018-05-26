@@ -3,10 +3,12 @@ require_relative 'fixtures/classes'
 
 ruby_version_is '2.4' do
   describe 'Comparable#clamp' do
-    it 'raises an Argument error unless given 2 parameters' do
-      c = ComparableSpecs::Weird.new(0)
-      lambda { c.clamp(c) }.should raise_error(ArgumentError)
-      lambda { c.clamp(c, c, c) }.should raise_error(ArgumentError)
+    ruby_version_is ""..."2.6" do
+      it 'raises an Argument error unless given 2 parameters' do
+        c = ComparableSpecs::Weird.new(0)
+        lambda { c.clamp(c) }.should raise_error(ArgumentError)
+        lambda { c.clamp(c, c, c) }.should raise_error(ArgumentError)
+      end
     end
 
     it 'raises an Argument error unless the 2 parameters are correctly ordered' do
