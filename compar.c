@@ -199,6 +199,7 @@ static VALUE
 cmp_clamp(int argc, VALUE *argv, VALUE x)
 {
     VALUE min, max, opts;
+    int excl = FALSE;
     int c;
 
     argc = rb_scan_args(argc, argv, "02:", &min, &max, &opts);
@@ -210,8 +211,12 @@ cmp_clamp(int argc, VALUE *argv, VALUE x)
 	min = (v[0] == Qundef) ? Qnil : v[0];
 	max = (v[1] == Qundef) ? Qnil : v[1];
     }
+    else if (argc == 1) {
+	rb_range_values(argv[0], &min, &max, &excl);
+    }
 
-    if (!NIL_P(min) && !NIL_P(max) && cmpint(min, max) > 0) {
+    if (!NIL_P(min) && !NIL_P(max) &&
+	((c = cmpint(min, max)) > 0 || (excl && c == 0))) {
 	rb_raise(rb_eArgError, "min argument must be smaller than max argument");
     }
 
@@ -223,6 +228,7 @@ cmp_clamp(int argc, VALUE *argv, VALUE x)
     if (!NIL_P(max)) {
 	c = cmpint(x, max);
 	if (c > 0) return max;
+	if (excl && c == 0) return max;
     }
     return x;
 }
