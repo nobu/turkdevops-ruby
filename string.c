@@ -5566,6 +5566,64 @@ rb_str_byteslice(int argc, VALUE *argv, VALUE str)
 
 /*
  *  call-seq:
+ *     str.byteslice!(integer)           -> new_str or nil
+ *     str.byteslice!(integer, integer)  -> new_str or nil
+ *     str.byteslice!(range)             -> new_str or nil
+ *
+ *  Deletes the specified portion from <i>str</i>, and returns the portion
+ *  deleted.
+ *
+ *     string = "\u3042\u3044"
+ *     string.byteslice!(1)        #=> "\x81"
+ *     string.byteslice!(2..3)     #=> "\xe3\x81"
+ *     string                      #=> "\u3084"
+ */
+
+static VALUE
+rb_str_byteslice_bang(int argc, VALUE *argv, VALUE str)
+{
+    VALUE result, indx;
+    long beg, len = 1;
+    int empty = FALSE;
+
+    rb_str_modify(str);
+    rb_check_arity(argc, 1, 2);
+    indx = argv[0];
+    if (argc == 2) {
+	beg = NUM2LONG(indx);
+	len = NUM2LONG(argv[1]);
+	empty = TRUE;
+    }
+    else if (FIXNUM_P(indx)) {
+	beg = FIX2LONG(indx);
+    }
+    else {
+	/* check if indx is Range */
+	len = RSTRING_LEN(str);
+
+	switch (rb_range_beg_len(indx, &beg, &len, len, 0)) {
+	  case Qfalse:
+	    beg = NUM2LONG(indx);
+	    break;
+	  case Qnil:
+	    return Qnil;
+	  default:
+	    empty = TRUE;
+	    break;
+	}
+    }
+    result = str_byte_substr(str, beg, len, empty);
+    if (!NIL_P(result) && (len = RSTRING_LEN(result)) > 0) {
+	static const struct RString empty_str = {{T_STRING|STR_NOFREE|STR_FAKESTR}};
+	str_modifiable(str);
+	if (beg < 0) beg += RSTRING_LEN(str);
+	rb_str_splice_0(str, beg, len, (VALUE)&empty_str);
+    }
+    return result;
+}
+
+/*
+ *  call-seq:
  *     str.reverse   -> new_str
  *
  *  Returns a new string with the characters from <i>str</i> in reverse order.
@@ -10950,6 +11008,7 @@ Init_String(void)
     rb_define_method(rb_cString, "getbyte", rb_str_getbyte, 1);
     rb_define_method(rb_cString, "setbyte", rb_str_setbyte, 2);
     rb_define_method(rb_cString, "byteslice", rb_str_byteslice, -1);
+    rb_define_method(rb_cString, "byteslice!", rb_str_byteslice_bang, -1);
     rb_define_method(rb_cString, "scrub", str_scrub, -1);
     rb_define_method(rb_cString, "scrub!", str_scrub_bang, -1);
     rb_define_method(rb_cString, "freeze", rb_str_freeze, 0);

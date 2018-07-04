@@ -3062,6 +3062,56 @@ CODE
     assert_equal(false, ("\u3042"*10).byteslice(0, 20).valid_encoding?, bug7954)
   end
 
+  def test_byteslice!
+    a = S("hello").freeze
+    s = a.dup
+    assert_equal("h", s.byteslice!(0))
+    assert_equal(nil, s.byteslice!(5))
+    assert_equal("o", s.byteslice!(-1))
+    assert_equal(nil, s.byteslice!(-6))
+    assert_equal(S("ell"), s)
+    assert_equal(S("hello"), a)
+
+    s = a.dup
+    assert_equal("", s.byteslice!(0, 0))
+    assert_equal("hello", s.byteslice!(0, 6))
+    assert_equal("", s)
+    assert_equal(S("hello"), a)
+
+    s = a.dup
+    assert_equal("", s.byteslice!(5, 1))
+    assert_equal(S("hello"), s)
+    assert_equal("o", s.byteslice!(-1, 6))
+    assert_equal(S("hell"), s)
+    assert_equal(S("hello"), a)
+
+    s = a.dup
+    assert_equal(nil, s.byteslice!(-6, 1))
+    assert_equal(nil, s.byteslice!(0, -1))
+    assert_equal(a, s)
+
+    s = a.dup
+    assert_equal("h", s.byteslice!(0..0))
+    assert_equal(S("ello"), s)
+    assert_equal("", s.byteslice!(4..0))
+    assert_equal(S("ello"), s)
+    assert_equal("o", s.byteslice!(3..4))
+    assert_equal("", s.byteslice!(3..0))
+    assert_equal("", s.byteslice!(-1..0))
+    assert_equal("ll", s.byteslice!(-2..5))
+    assert_equal(S("e"), s)
+
+    s = S("\u3042\u3044\u3046")
+    assert_equal(u("\x81"), s.byteslice!(1))
+    assert_equal(u("\x81\x84\xE3"), s.byteslice!(3, 3))
+    assert_equal(u("\xE3\x81"), s.byteslice!(2..3))
+    assert_equal(S("\u3086"), s)
+
+    s = S("\u3042")
+    assert_not_predicate(s.byteslice!(0, 2), :valid_encoding?)
+    assert_not_predicate(("\u3042"*10).byteslice!(0, 20), :valid_encoding?)
+  end
+
   def test_unknown_string_option
     str = nil
     assert_nothing_raised(SyntaxError) do
