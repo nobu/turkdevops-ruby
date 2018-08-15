@@ -100,12 +100,13 @@ for:
     - ver
     - chcp
     - set /a JOBS=%NUMBER_OF_PROCESSORS%
-    - set MSYS_NO_PATHCONV=1
     - SET BITS=%Platform:x86=32%
     - SET BITS=%BITS:x=%
     - SET ruby_path=C:\Ruby%ruby_version:-x86=%
     - SET PATH=\usr\local\bin;%ruby_path%\bin;%PATH%;C:\msys64\%MSYSTEM%\bin;C:\msys64\usr\bin
     - ruby --version
+    - SET
+    - cygpath -w / /usr
     - mkdir \usr\bin
     - mkdir \usr\share
     - mkdir \usr\local\bin
@@ -127,9 +128,6 @@ for:
     - sh -c "ln -sf $(which mingw32-make) /c/msys64/usr/bin/make.exe"
     # del c:\msys64\usr\bin\make.exe
     # mklink c:\msys64\usr\bin\make.exe mingw32-make.exe
-    - dir c:\usr\bin
-    - dir c:\usr\share
-    - dir c:\msys64\usr\bin\make.exe
     - mingw32-make -j%JOBS%
     - mingw32-make -j%JOBS% install"
   test_script:
