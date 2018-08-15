@@ -125,13 +125,13 @@ for:
     # mklink /d \usr\share\autoconf c:\msys64\usr\share\autoconf
     - sh -c autoconf
     - sh configure --disable-install-doc --prefix=/usr/local
-    - sh -c "ln -sf $(which mingw32-make) /c/msys64/usr/bin/make.exe"
-    # del c:\msys64\usr\bin\make.exe
-    # mklink c:\msys64\usr\bin\make.exe mingw32-make.exe
-    - mingw32-make -j%JOBS%
-    - mingw32-make -j%JOBS% install"
+    # sh -c "ln -sf $(which mingw32-make) /c/msys64/usr/bin/make.exe"
+    - del c:\msys64\usr\bin\make.exe
+    - mklink c:\msys64\usr\bin\make.exe c:\cygwin64\bin\make.exe
+    - make -j%JOBS%
+    - make -j%JOBS% install"
   test_script:
     # Overriding TEST_EXCLUDES because `--name=!/memory_leak/` is considered as a positive filter on AppVeyor msys2.
-    - mingw32-make test
-    - mingw32-make -j%JOBS% test-all RUBY_FORCE_TEST_JIT=1 V=1
-    - mingw32-make -j%JOBS% test-spec MSPECOPT=-j
+    - make test
+    - make -j%JOBS% test-all RUBY_FORCE_TEST_JIT=1 V=1
+    - make -j%JOBS% test-spec MSPECOPT=-j
