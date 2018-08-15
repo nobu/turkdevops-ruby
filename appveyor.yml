@@ -103,31 +103,28 @@ for:
     - SET BITS=%Platform:x86=32%
     - SET BITS=%BITS:x=%
     - SET ruby_path=C:\Ruby%ruby_version:-x86=%
-    - SET PATH=\usr\local\bin;%ruby_path%\bin;%PATH%;C:\msys64\%MSYSTEM%\bin;C:\msys64\usr\bin
+    - SET PATH=\usr\local\bin;%ruby_path%\bin;c:\cygwin64\bin;%PATH%;C:\msys64\%MSYSTEM%\bin;C:\msys64\usr\bin
     - ruby --version
     - SET
-    - cygpath -w / /usr
-    - mkdir \usr\bin
-    - mkdir \usr\share
-    - mkdir \usr\local\bin
-    - mkdir \usr\local\include
-    - mkdir \usr\local\lib
-  build_script:
     - cd %APPVEYOR_BUILD_FOLDER%
     - pacman --noconfirm --sync --refresh --refresh pacman
     - pacman --noconfirm --sync --refresh --refresh --sysupgrade --sysupgrade
     - pacman --noconfirm -S --needed base-devel mingw-w64-x86_64-gdbm
-    - sh -c "ln -s $(which autom4te) /usr/bin/autom4te"
-    # mklink \usr\bin\autom4te c:\msys64\usr\bin\autom4te
-    - sh -c "ln -s $(which m4) /usr/bin/m4"
-    # mklink \usr\bin\m4.exe c:\msys64\usr\bin\m4.exe
-    - sh -c "ln -s /c/msys64/usr/share/autoconf /usr/share/autoconf"
-    # mklink /d \usr\share\autoconf c:\msys64\usr\share\autoconf
-    - sh -c autoconf
-    - sh configure --disable-install-doc --prefix=/usr/local
     # sh -c "ln -sf $(which mingw32-make) /c/msys64/usr/bin/make.exe"
     - del c:\msys64\usr\bin\make.exe
     - mklink c:\msys64\usr\bin\make.exe c:\cygwin64\bin\make.exe
+    - SET MAKE=/usr/bin/make
+    - c:\cygwin64\bin\make.exe --version
+    # sh -c "ln -s $(which autom4te) /usr/bin/autom4te"
+    # mklink \usr\bin\autom4te c:\msys64\usr\bin\autom4te
+    # sh -c "ln -s $(which m4) /usr/bin/m4"
+    # mklink \usr\bin\m4.exe c:\msys64\usr\bin\m4.exe
+    # sh -c "ln -s /c/msys64/usr/share/autoconf /usr/share/autoconf"
+    # mklink /d \usr\share\autoconf c:\msys64\usr\share\autoconf
+    - mklink \msys64\%MSYSTEM%\bin\mingw64-x86_64-gcc.exe gcc.exe
+    - sh -c autoconf
+    - sh configure --disable-install-doc --prefix=/usr/local --with-gcc=mingw64-x86_64-gcc.exe
+  build_script:
     - make -j%JOBS%
     - make -j%JOBS% install"
   test_script:
