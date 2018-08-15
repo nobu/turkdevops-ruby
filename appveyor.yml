@@ -7,7 +7,6 @@ environment:
   ruby_version: "24-%Platform%"
   zlib_version: "1.2.11"
   matrix:
-    - vs: "120"
     - MSYS2_ARCH: x86_64
       MSYSTEM: MINGW64
 matrix:
