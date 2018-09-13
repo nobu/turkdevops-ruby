@@ -7711,19 +7711,26 @@ rb_f_puts(int argc, VALUE *argv, VALUE recv)
     return rb_funcallv(rb_stdout, rb_intern("puts"), argc, argv);
 }
 
-void
-rb_p(VALUE obj) /* for debug print within C code */
+static VALUE
+rb_p_to(VALUE obj, VALUE port) /* for debug print within C code */
 {
     VALUE args[2];
     args[0] = rb_obj_as_string(rb_inspect(obj));
     args[1] = rb_default_rs;
-    if (RB_TYPE_P(rb_stdout, T_FILE) &&
-        rb_method_basic_definition_p(CLASS_OF(rb_stdout), id_write)) {
-	io_writev(2, args, rb_stdout);
+    if (RB_TYPE_P(port, T_FILE) &&
+        rb_method_basic_definition_p(CLASS_OF(port), id_write)) {
+	io_writev(2, args, port);
     }
     else {
-	rb_io_writev(rb_stdout, 2, args);
+	rb_io_writev(port, 2, args);
     }
+    return obj;
+}
+
+void
+rb_p(VALUE obj)
+{
+    rb_p_to(obj, rb_stdout);
 }
 
 struct rb_f_p_arg {
@@ -7821,6 +7828,22 @@ rb_obj_display(int argc, VALUE *argv, VALUE self)
     rb_io_write(out, self);
 
     return Qnil;
+}
+
+/*
+ *  call-seq:
+ *     obj.P(port=$>)    -> self
+ *
+ *  Directly writes _obj_.+inspect+ followed by a newline to _port_.
+ */
+
+static VALUE
+rb_obj_inspect_self(int argc, VALUE *argv, VALUE self)
+{
+    VALUE port = rb_stdout;
+    if (rb_check_arity(argc, 0, 1)) port = argv[0];
+    rb_p_to(self, port);
+    return self;
 }
 
 static int
@@ -12971,6 +12994,7 @@ Init_IO(void)
 
     rb_define_global_function("p", rb_f_p, -1);
     rb_define_method(rb_mKernel, "display", rb_obj_display, -1);
+    rb_define_method(rb_mKernel, "P", rb_obj_inspect_self, -1);
 
     rb_cIO = rb_define_class("IO", rb_cObject);
     rb_include_module(rb_cIO, rb_mEnumerable);
