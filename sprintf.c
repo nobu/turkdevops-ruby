@@ -734,7 +734,13 @@ rb_str_format(int argc, const VALUE *argv, VALUE fmt)
 		long len, slen;
 
 		if (*p == 'p') {
-		    str = rb_inspect(arg);
+		    if (flags & FSHARP) {
+                        VALUE cname = rb_class_name(CLASS_OF(arg));
+                        str = rb_sprintf("%"PRIsVALUE":%p", cname, (void*)arg);
+                    }
+                    else {
+                        str = rb_inspect(arg);
+                    }
 		}
 		else {
 		    str = rb_obj_as_string(arg);

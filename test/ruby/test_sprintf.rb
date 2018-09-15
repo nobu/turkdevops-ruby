@@ -242,6 +242,7 @@ class TestSprintf < Test::Unit::TestCase
     obj = Object.new
     def obj.inspect; "TEST"; end
     assert_equal("<TEST>", sprintf("<%p>", obj))
+    assert_match(/\A<Object:0x\h+>\z/, sprintf("<%#p>", obj))
   end
 
   def test_invalid
