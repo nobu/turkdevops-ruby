@@ -371,18 +371,23 @@ remove_from_list(struct rb_mjit_unit_node *node, struct rb_mjit_unit_list *list)
     free(node);
 }
 
-static void
-remove_file(const char *filename)
+static int
+remove_file(const char *filename, int final)
 {
-    if (remove(filename)) {
+    int ret = remove(filename);
+    if (ret && final) {
         mjit_warning("failed to remove \"%s\": %s", filename, strerror(errno));
+        ret = 0;
     }
+    return ret;
 }
 
 /* Lazily delete .o and/or .so files. */
-static void
-clean_object_files(struct rb_mjit_unit *unit)
+static int
+clean_object_files(struct rb_mjit_unit *unit, int final)
 {
+    int cleaned = 0;
+
 #ifndef _MSC_VER
     if (unit->o_file) {
         char *o_file = unit->o_file;
@@ -391,7 +396,7 @@ clean_object_files(struct rb_mjit_unit *unit)
         /* For compaction, unit->o_file is always set when compilation succeeds.
            So save_temps needs to be checked here. */
         if (!mjit_opts.save_temps)
-            remove_file(o_file);
+            remove_file(o_file, TRUE);
         free(o_file);
     }
 #endif
@@ -402,10 +407,11 @@ clean_object_files(struct rb_mjit_unit *unit)
 
         unit->so_file = NULL;
         /* unit->so_file is set only when mjit_opts.save_temps is FALSE. */
-        remove_file(so_file);
-        free(so_file);
+        cleaned = remove_file(so_file, final);
+        if (cleaned == 0) free(so_file);
     }
 #endif
+    return cleaned;
 }
 
 /* This is called in the following situations:
@@ -416,17 +422,23 @@ clean_object_files(struct rb_mjit_unit *unit)
    `jit_func` value does not matter for 1 and 3 since the unit won't be used anymore.
    For the situation 2, this sets the ISeq's JIT state to NOT_COMPILED_JIT_ISEQ_FUNC
    to prevent the situation that the same methods are continously compiled.  */
-static void
-free_unit(struct rb_mjit_unit *unit)
+static int
+free_unit(struct rb_mjit_unit *unit, int final)
 {
+    int cleaned;
+
     if (unit->iseq) { /* ISeq is not GCed */
         unit->iseq->body->jit_func = (mjit_func_t)NOT_COMPILED_JIT_ISEQ_FUNC;
         unit->iseq->body->jit_unit = NULL;
+        unit->iseq = NULL;
     }
-    if (unit->handle) /* handle is NULL if it's in queue */
+    if (unit->handle) { /* handle is NULL if it's in queue */
         dlclose(unit->handle);
-    clean_object_files(unit);
-    free(unit);
+        unit->handle = NULL;
+    }
+    cleaned = clean_object_files(unit, final);
+    if (cleaned == 0) free(unit);
+    return cleaned;
 }
 
 /* Start a critical section.  Use message MSG to print debug info at
@@ -507,8 +519,8 @@ get_from_list(struct rb_mjit_unit_list *list)
     /* Find iseq with max total_calls */
     for (node = list->head; node != NULL; node = node ? node->next : NULL) {
         if (node->unit->iseq == NULL) { /* ISeq is GCed. */
-            free_unit(node->unit);
-            remove_from_list(node, list);
+            if (free_unit(node->unit, FALSE) == 0)
+                remove_from_list(node, list);
             continue;
         }
 
@@ -677,7 +689,7 @@ remove_so_file(const char *so_file, struct rb_mjit_unit *unit)
     if (unit->so_file == NULL)
         mjit_warning("failed to allocate memory to lazily remove '%s': %s", so_file, strerror(errno));
 #else
-    remove_file(so_file);
+    remove_file(so_file, TRUE);
 #endif
 }
 
@@ -1084,7 +1096,7 @@ convert_unit_to_func(struct rb_mjit_unit *unit)
     fclose(f);
     if (!success) {
         if (!mjit_opts.save_temps)
-            remove_file(c_file);
+            remove_file(c_file, TRUE);
         print_jit_result("failure", unit, 0, c_file);
         return (mjit_func_t)NOT_COMPILED_JIT_ISEQ_FUNC;
     }
@@ -1103,14 +1115,14 @@ convert_unit_to_func(struct rb_mjit_unit *unit)
         unit->o_file = strdup(o_file);
         if (unit->o_file == NULL) {
             mjit_warning("failed to allocate memory to remember '%s' (%s), removing it...", o_file, strerror(errno));
-            remove_file(o_file);
+            remove_file(o_file, TRUE);
         }
     }
 #endif
     end_time = real_ms_time();
 
     if (!mjit_opts.save_temps)
-        remove_file(c_file);
+        remove_file(c_file, TRUE);
     if (!success) {
         verbose(2, "Failed to generate so: %s", so_file);
         return (mjit_func_t)NOT_COMPILED_JIT_ISEQ_FUNC;

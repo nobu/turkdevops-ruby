@@ -101,7 +101,7 @@ free_list(struct rb_mjit_unit_list *list)
     struct rb_mjit_unit_node *node, *next;
     for (node = list->head; node != NULL; node = next) {
         next = node->next;
-        free_unit(node->unit);
+        free_unit(node->unit, TRUE);
         xfree(node);
     }
 }
@@ -225,8 +225,8 @@ unload_units(void)
     for (node = active_units.head; node != NULL; node = next) {
         next = node->next;
         if (node->unit->iseq == NULL) { /* ISeq is GCed. */
-            free_unit(node->unit);
-            remove_from_list(node, &active_units);
+            if (free_unit(node->unit, FALSE) == 0)
+                remove_from_list(node, &active_units);
         }
     }
 
@@ -263,8 +263,8 @@ unload_units(void)
         /* Unload the worst node. */
         verbose(2, "Unloading unit %d (calls=%lu)", worst_node->unit->id, worst_node->unit->iseq->body->total_calls);
         assert(worst_node->unit->handle != NULL);
-        free_unit(worst_node->unit);
-        remove_from_list(worst_node, &active_units);
+        if (free_unit(worst_node->unit, FALSE) == 0)
+            remove_from_list(worst_node, &active_units);
     }
     verbose(1, "Too many JIT code -- %d units unloaded", units_num - active_units.length);
 }
@@ -706,7 +706,7 @@ mjit_finish(void)
 
 #ifndef _MSC_VER /* mswin has prebuilt precompiled header */
     if (!mjit_opts.save_temps)
-        remove_file(pch_file);
+        remove_file(pch_file, FALSE);
 
     xfree(header_file); header_file = NULL;
 #endif
