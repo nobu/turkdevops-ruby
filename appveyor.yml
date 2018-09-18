@@ -1,6 +1,8 @@
 ---
 version: '{build}'
 shallow_clone: true
+image:
+  - Visual Studio 2017
 platform:
   - x64
 environment:
@@ -8,10 +10,7 @@ environment:
   zlib_version: "1.2.11"
   matrix:
     - build: vs
-      vs: 120
-    - build: vs
-      vs: 140
-    - build: msys2
+      vs: 150
 matrix:
   fast_finish: true
 notifications:
@@ -56,7 +55,7 @@ for:
     - SET BITS=%BITS:x=%
     - SET OPENSSL_DIR=c:\OpenSSL-Win%BITS%
     - CALL SET vcvars=%%^VS%VS%COMNTOOLS^%%..\..\VC\vcvarsall.bat
-    - SET vcvars
+    - if %vs% == 150 SET vcvars=%ProgramFiles(x86)%\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars%BITS%.bat
     - '"%vcvars%" %Platform:x64=amd64%'
     - SET ruby_path=C:\Ruby%ruby_version:-x86=%
     - SET PATH=\usr\local\bin;%ruby_path%\bin;%PATH%;C:\msys64\mingw64\bin;C:\msys64\usr\bin
