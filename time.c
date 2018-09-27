@@ -4777,19 +4777,15 @@ time_mdump(VALUE time)
     long usec, nsec;
     VALUE subsecx, nano, subnano, v, zone;
 
+    const int max_year = 1900+0xffff;
+
     GetTimeval(time, tobj);
 
     gmtimew(tobj->timew, &vtm);
 
-    if (FIXNUM_P(vtm.year)) {
-        year = FIX2LONG(vtm.year);
-        if (year < 1900 || 1900+0xffff < year)
-            rb_raise(rb_eArgError, "year too %s to marshal: %ld UTC",
-                     (year < 1900 ? "small" : "big"), year);
-    }
-    else {
-        rb_raise(rb_eArgError, "year too %s to marshal: %"PRIsVALUE" UTC",
-                 (le(vtm.year, INT2FIX(1900)) ? "small" : "big"), vtm.year);
+    if (!FIXNUM_P(vtm.year) ||
+        (year = FIX2LONG(vtm.year)) < 1900 || max_year < year) {
+        year = max_year;
     }
 
     subsecx = vtm.subsecx;
@@ -4859,6 +4855,9 @@ time_mdump(VALUE time)
 	    off = rb_Integer(div);
 	rb_ivar_set(str, id_offset, off);
     }
+    if (year == max_year && vtm.year != INT2FIX(max_year)) {
+        rb_ivar_set(str, id_year, vtm.year);
+    }
     zone = tobj->vtm.zone;
     if (maybe_tzobj_p(zone)) {
         zone = rb_funcallv(zone, id_name, 0, 0);
@@ -4891,7 +4890,7 @@ time_mload(VALUE time, VALUE str)
     struct vtm vtm;
     int i, gmt;
     long nsec;
-    VALUE submicro, nano_num, nano_den, offset, zone;
+    VALUE submicro, nano_num, nano_den, offset, zone, year;
     wideval_t timew;
 
     time_modify(time);
@@ -4907,6 +4906,7 @@ time_mload(VALUE time, VALUE str)
     get_attr(submicro, {});
     get_attr(offset, (offset = rb_rescue(validate_utc_offset, offset, NULL, Qnil)));
     get_attr(zone, (zone = rb_rescue(validate_zone_name, zone, NULL, Qnil)));
+    get_attr(year, {});
 
 #undef get_attr
 
@@ -4938,7 +4938,10 @@ time_mload(VALUE time, VALUE str)
 	p &= ~(1UL<<31);
 	gmt        = (int)((p >> 30) & 0x1);
 
-	vtm.year = INT2FIX(((int)(p >> 14) & 0xffff) + 1900);
+        if (NIL_P(year)) {
+            year = INT2FIX(((int)(p >> 14) & 0xffff) + 1900);
+        }
+        vtm.year = year;
 	vtm.mon  = ((int)(p >> 10) & 0xf) + 1;
 	vtm.mday = (int)(p >>  5) & 0x1f;
 	vtm.hour = (int) p        & 0x1f;
