@@ -377,10 +377,12 @@ class TestTime < Test::Unit::TestCase
 
   def test_marshal_distant_past
     assert_marshal_roundtrip(Time.utc(1890, 1, 1))
+    assert_marshal_roundtrip(Time.utc(-4.5e9, 1, 1))
   end
 
   def test_marshal_distant_future
     assert_marshal_roundtrip(Time.utc(30000, 1, 1))
+    assert_marshal_roundtrip(Time.utc(5.67e9, 4, 8))
   end
 
   def test_at3
