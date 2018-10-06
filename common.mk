@@ -310,7 +310,7 @@ $(GOLF): $(LIBRUBY) $(GOLFOBJS) PHONY
 		PROGRAM=$(GORUBY)$(EXEEXT) \
 		V=$(V) \
 	program
-capi: $(CAPIOUT)/.timestamp PHONY
+capi: $(CAPIOUT)/.timestamp
 
 $(CAPIOUT)/.timestamp: Doxyfile $(PREP)
 	$(Q) $(MAKEDIRS) "$(@D)"
@@ -325,7 +325,7 @@ Doxyfile: $(srcdir)/template/Doxyfile.tmpl $(PREP) $(srcdir)/tool/generic_erb.rb
 
 program: $(SHOWFLAGS) $(PROGRAM)
 wprogram: $(SHOWFLAGS) $(WPROGRAM)
-mini: PHONY miniruby$(EXEEXT)
+mini: miniruby$(EXEEXT)
 
 $(PROGRAM) $(WPROGRAM): $(LIBRUBY) $(MAINOBJ) $(OBJS) $(EXTOBJS) $(SETUP) $(PREP)
 
@@ -533,15 +533,15 @@ do-install-gem: $(PROGRAM) pre-install-gem
 post-install-gem::
 	@$(NULLCMD)
 
-rdoc: PHONY main
+rdoc: main
 	@echo Generating RDoc documentation
 	$(Q) $(XRUBY) "$(srcdir)/bin/rdoc" --root "$(srcdir)" --page-dir "$(srcdir)/doc" --encoding=UTF-8 --no-force-update --all --ri --op "$(RDOCOUT)" $(RDOCFLAGS) "$(srcdir)"
 
-html: PHONY main
+html: main
 	@echo Generating RDoc HTML files
 	$(Q) $(XRUBY) "$(srcdir)/bin/rdoc" --root "$(srcdir)" --page-dir "$(srcdir)/doc" --encoding=UTF-8 --no-force-update --all --op "$(HTMLOUT)" $(RDOCFLAGS) "$(srcdir)"
 
-rdoc-coverage: PHONY main
+rdoc-coverage: main
 	@echo Generating RDoc coverage report
 	$(Q) $(XRUBY) "$(srcdir)/bin/rdoc" --root "$(srcdir)" --encoding=UTF-8 --all --quiet -C $(RDOCFLAGS) "$(srcdir)"
 
@@ -549,13 +549,13 @@ RDOCBENCHOUT=/tmp/rdocbench
 
 GCBENCH_ITEM=null
 
-gcbench: PHONY
+gcbench:
 	$(Q) $(XRUBY) "$(srcdir)/benchmark/gc/gcbench.rb" $(GCBENCH_ITEM)
 
-gcbench-rdoc: PHONY
+gcbench-rdoc:
 	$(Q) $(XRUBY) "$(srcdir)/benchmark/gc/gcbench.rb" rdoc
 
-nodoc: PHONY
+nodoc:
 
 what-where-doc: no-install-doc
 no-install-doc: pre-no-install-doc dont-install-doc post-no-install-doc
@@ -567,7 +567,7 @@ post-no-install-doc::
 
 CLEAR_INSTALLED_LIST = clear-installed-list
 
-install-prereq: $(CLEAR_INSTALLED_LIST) yes-fake sudo-precheck PHONY
+install-prereq: $(CLEAR_INSTALLED_LIST) yes-fake sudo-precheck
 
 clear-installed-list: PHONY
 	@> $(INSTALLED_LIST) set MAKE="$(MAKE)"
@@ -690,8 +690,8 @@ check: main test test-testframework test-almost test-spec
 check-ruby: test test-ruby
 
 fake: $(CROSS_COMPILING)-fake
-yes-fake: $(arch)-fake.rb $(RBCONFIG) PHONY
-no-fake -fake: PHONY
+yes-fake: $(arch)-fake.rb $(RBCONFIG)
+no-fake -fake:
 
 # really doesn't depend on .o, just ensure newer than headers which
 # version.o depends on.
@@ -702,30 +702,30 @@ $(arch)-fake.rb: $(srcdir)/template/fake.rb.in $(srcdir)/tool/generic_erb.rb ver
 		i=- srcdir="$(srcdir)" BASERUBY="$(BASERUBY)"
 
 btest: $(TEST_RUNNABLE)-btest
-no-btest: PHONY
-yes-btest: fake miniruby$(EXEEXT) PHONY
+no-btest:
+yes-btest: fake miniruby$(EXEEXT)
 	$(Q)$(exec) $(BOOTSTRAPRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(BTESTRUBY) $(RUN_OPTS)" $(OPTS) $(TESTOPTS)
 
 btest-ruby: $(TEST_RUNNABLE)-btest-ruby
-no-btest-ruby: PHONY
-yes-btest-ruby: prog PHONY
+no-btest-ruby:
+yes-btest-ruby: prog
 	$(Q)$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(srcdir)/lib $(RUN_OPTS)" -q $(OPTS) $(TESTOPTS)
 
 test-basic: $(TEST_RUNNABLE)-test-basic
-no-test-basic: PHONY
-yes-test-basic: prog PHONY
+no-test-basic:
+yes-test-basic: prog
 	$(Q)$(exec) $(RUNRUBY) "$(srcdir)/basictest/runner.rb" --run-opt=$(RUN_OPTS) $(OPTS) $(TESTOPTS)
 
 test-knownbugs: test-knownbug
 test-knownbug: $(TEST_RUNNABLE)-test-knownbug
-no-test-knownbug: PHONY
-yes-test-knownbug: prog PHONY
+no-test-knownbug:
+yes-test-knownbug: prog
 	-$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(srcdir)/KNOWNBUGS.rb
 
 test-testframework: $(TEST_RUNNABLE)-test-testframework
-yes-test-testframework: prog PHONY
+yes-test-testframework: prog
 	$(gnumake_recursive)$(Q)$(exec) $(RUNRUBY) "$(srcdir)/test/runner.rb" --ruby="$(RUNRUBY)" $(TESTOPTS) testunit minitest
-no-test-testframework: PHONY
+no-test-testframework:
 
 test-sample: test-basic # backward compatibility for mswin-build
 test-short: btest-ruby test-knownbug test-basic
@@ -734,20 +734,20 @@ test: test-short
 # $ make test-all TESTOPTS="--help" displays more detail
 # for example, make test-all TESTOPTS="-j2 -v -n test-name -- test-file-name"
 test-all: $(TEST_RUNNABLE)-test-all
-yes-test-all: programs PHONY
+yes-test-all: programs
 	$(gnumake_recursive)$(Q)$(exec) $(RUNRUBY) "$(srcdir)/test/runner.rb" --ruby="$(RUNRUBY)" $(TEST_EXCLUDES) $(TESTOPTS) $(TESTS)
 TESTS_BUILD = mkmf
-no-test-all: PHONY
+no-test-all:
 	$(gnumake_recursive)$(MINIRUBY) -I"$(srcdir)/lib" "$(srcdir)/test/runner.rb" $(TESTOPTS) $(TESTS_BUILD)
 
 test-almost: $(TEST_RUNNABLE)-test-almost
-yes-test-almost: prog PHONY
+yes-test-almost: prog
 	$(gnumake_recursive)$(Q)$(exec) $(RUNRUBY) "$(srcdir)/test/runner.rb" --ruby="$(RUNRUBY)" $(TEST_EXCLUDES) $(TESTOPTS) $(EXCLUDE_TESTFRAMEWORK) $(TESTS)
-no-test-almost: PHONY
+no-test-almost:
 
 test-ruby: $(TEST_RUNNABLE)-test-ruby
-no-test-ruby: PHONY
-yes-test-ruby: prog encs PHONY
+no-test-ruby:
+yes-test-ruby: prog encs
 	$(gnumake_recursive)$(RUNRUBY) "$(srcdir)/test/runner.rb" $(TEST_EXCLUDES) $(TESTOPTS) -- ruby -ext-
 
 extconf: $(PREP)
@@ -780,13 +780,13 @@ yes-test-spec: test-spec-precheck
 no-test-spec:
 
 RUNNABLE = $(LIBRUBY_RELATIVE:no=un)-runnable
-runnable: $(RUNNABLE) prog $(srcdir)/tool/mkrunnable.rb PHONY
+runnable: $(RUNNABLE) prog $(srcdir)/tool/mkrunnable.rb
 	$(Q) $(MINIRUBY) $(srcdir)/tool/mkrunnable.rb -v $(EXTOUT)
-yes-runnable: PHONY
+yes-runnable:
 
 encs: enc trans
 libencs: libenc libtrans
-encs enc trans libencs libenc libtrans: $(SHOWFLAGS) $(ENC_MK) $(LIBRUBY) $(PREP) PHONY
+encs enc trans libencs libenc libtrans: $(SHOWFLAGS) $(ENC_MK) $(LIBRUBY) $(PREP)
 	$(ECHO) making $@
 	$(Q) $(MAKE) $(MAKE_ENC) $@
 
@@ -802,17 +802,24 @@ $(ENC_MK): $(srcdir)/enc/make_encmake.rb $(srcdir)/enc/Makefile.in $(srcdir)/enc
 
 .PRECIOUS: $(MKFILES)
 
-.PHONY: PHONY all fake prereq incs srcs preludes help
-.PHONY: test install install-nodoc install-doc dist
-.PHONY: loadpath golf capi rdoc install-prereq clear-installed-list
+.PHONY: PHONY all fake prereq incs srcs preludes help programs prog
+.PHONY: encs enc trans libencs libenc libtrans yes-fake no-fake -fake
+.PHONY: test install install-prereq install-nodoc install-doc dist mini nodoc
+.PHONY: loadpath golf capi html rdoc rdoc-coverage install-prereq clear-installed-list
 .PHONY: clean clean-ext clean-local clean-enc clean-golf clean-rdoc clean-html clean-extout
 .PHONY: distclean distclean-ext distclean-local distclean-enc distclean-golf distclean-extout
 .PHONY: realclean realclean-ext realclean-local realclean-enc realclean-golf realclean-extout
 .PHONY: exam check test test-short test-all btest btest-ruby test-basic test-knownbug
+.PHONY: yes-btest no-btest yes-btest-ruby no-btest-ruby no-test-basic yes-test-basic
+.PHONY: yes-test-testframework no-test-testframework
+.PHONY: yes-test-all no-test-all yes-test-almost no-test-almost
+.PHONY: yes-test-ruby no-test-ruby
 .PHONY: run runruby parse benchmark gdb gdb-ruby
 .PHONY: update-mspec update-rubyspec test-rubyspec test-spec
-.PHONY: touch-unicode-files
-
+.PHONY: touch-unicode-files update-config_files
+.PHONY: gcbench gcbench-rdoc yes-runnable runnable
+.PHONY: update-gems extract-gems update-bundled_gems
+.PHONY: sudo-precheck update-man-date
 PHONY:
 
 {$(VPATH)}parse.c: {$(VPATH)}parse.y $(srcdir)/tool/ytab.sed {$(VPATH)}id.h
@@ -1041,7 +1048,7 @@ probes.dmyh:
 
 probes.h: {$(VPATH)}probes.$(DTRACE_EXT)
 
-prereq: incs srcs preludes PHONY
+prereq: incs srcs preludes
 
 preludes: {$(VPATH)}prelude.c
 preludes: {$(VPATH)}miniprelude.c
@@ -1179,11 +1186,11 @@ update-download:: update-unicode update-gems download-extlibs
 update-mspec:
 update-rubyspec:
 
-update-config_files: PHONY
+update-config_files:
 	$(Q) $(BASERUBY) -C "$(srcdir)" tool/downloader.rb -d tool -e gnu \
 	    config.guess config.sub
 
-update-gems: PHONY
+update-gems:
 	$(ECHO) Downloading bundled gem files...
 	$(Q) $(BASERUBY) -C "$(srcdir)" \
 	    -I./tool -rdownloader -answ \
@@ -1196,7 +1203,7 @@ update-gems: PHONY
 	    -e 'FileUtils.rm_rf(old.map{'"|n|"'n.chomp(".gem")})' \
 	    gems/bundled_gems
 
-extract-gems: PHONY
+extract-gems:
 	$(ECHO) Extracting bundled gem files...
 	$(Q) $(RUNRUBY) -C "$(srcdir)/gems" \
 	    -I../tool -rgem-unpack -answ \
@@ -1204,7 +1211,7 @@ extract-gems: PHONY
 	    -e 'Gem.unpack("#{gem}-#{ver}.gem")' \
 	    bundled_gems
 
-update-bundled_gems: PHONY
+update-bundled_gems:
 	$(Q) $(RUNRUBY) -rrubygems \
 	    -pla \
 	    -e '$$_=Gem::SpecFetcher.fetcher.detect(:latest) {'"|s|" \
@@ -1370,16 +1377,16 @@ great: exam
 
 yes-test-all no-test-all: sudo-precheck
 
-sudo-precheck: PHONY
+sudo-precheck:
 	@$(SUDO) echo > $(NULL)
 
-update-man-date: PHONY
+update-man-date:
 	-$(Q) $(BASERUBY) -I"$(srcdir)/tool" -rvcs -i -p \
 	-e 'BEGIN{@vcs=VCS.detect(ARGV.shift)}' \
 	-e '$$_.sub!(/^(\.Dd ).*/){$$1+@vcs.modified(ARGF.path).strftime("%B %d, %Y")}' \
 	"$(srcdir)" "$(srcdir)"/man/*.1
 
-help: PHONY
+help:
 	$(MESSAGE_BEGIN) \
 	"                Makefile of Ruby" \
 	"" \

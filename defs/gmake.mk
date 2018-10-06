@@ -24,16 +24,19 @@ TEST_TARGETS := $(patsubst test-short,btest-ruby test-knownbug test-basic,$(TEST
 TEST_DEPENDS := $(filter-out test-short $(TEST_TARGETS),$(TEST_DEPENDS))
 TEST_DEPENDS += $(if $(filter great exam love check,$(MAKECMDGOALS)),all exts)
 
-ifneq ($(filter -O0 -Od,$(optflags)),)
-override XCFLAGS := $(filter-out -D_FORTIFY_SOURCE=%,$(XCFLAGS))
+ifeq ($(firstword $(filter test-short main check,$(MAKECMDGOALS))),test-short)
+ext/configure-ext.mk: | test-short
+encdb.h $(ENC_MK): | test-short
+else
+yes-btest-ruby: | main
+endif
+ifneq ($(filter reinstall,$(MAKECMDGOALS)),)
+install-all install-nodoc: | uninstall
+uninstall: | yes-test-spec
 endif
 
-ifeq ($(if $(filter all main exts enc trans libencs libenc libtrans \
-		    prog program ruby ruby$(EXEEXT) \
-		    wprogram rubyw rubyw$(EXEEXT) \
-		    miniruby$(EXEEXT) mini,\
-	     $(MAKECMDGOALS)),,$(MAKECMDGOALS)),)
--include $(SHOWFLAGS)
+ifneq ($(filter -O0 -Od,$(optflags)),)
+override XCFLAGS := $(filter-out -D_FORTIFY_SOURCE=%,$(XCFLAGS))
 endif
 
 ifneq ($(filter universal-%,$(arch)),)
@@ -61,6 +64,9 @@ ifneq ($(filter-out btest%,$(TEST_TARGETS)),)
 $(addprefix yes-,$(TEST_TARGETS)): $(TEST_DEPENDS)
 endif
 
+yes-test-spec-precheck: test-spec-precheck
+no-test-spec-precheck:
+
 ORDERED_TEST_TARGETS := $(filter $(TEST_TARGETS), \
 	btest-ruby test-knownbug test-basic \
 	test-testframework test-ruby test-almost test-all \
@@ -68,7 +74,8 @@ ORDERED_TEST_TARGETS := $(filter $(TEST_TARGETS), \
 	)
 prev_test := $(if $(filter test-spec,$(ORDERED_TEST_TARGETS)),test-spec-precheck)
 $(foreach test,$(ORDERED_TEST_TARGETS), \
-	$(eval yes-$(value test) no-$(value test): $(value prev_test)); \
+	$(eval yes-$(value test): | yes-$(value prev_test)); \
+	$(eval no-$(value test): | no-$(value prev_test)); \
 	$(eval prev_test := $(value test)))
 
 ifneq ($(if $(filter install,$(MAKECMDGOALS)),$(filter uninstall,$(MAKECMDGOALS))),)
@@ -82,9 +89,9 @@ uninstall sudo-precheck: all $(if $(filter all,$(INSTALLDOC)),docs)
 endif
 
 ifneq ($(filter love,$(MAKECMDGOALS)),)
-showflags: up
-sudo-precheck: test yes-test-testframework no-test-testframework
-install-prereq: sudo-precheck
+showflags: | up
+sudo-precheck: | test yes-test-testframework no-test-testframework
+install-prereq: | sudo-precheck
 yes-test-all no-test-all: install
 yes-test-almost no-test-almost: install
 endif
@@ -140,7 +147,7 @@ $(TIMESTAMPDIR)/.exec.time:
 	$(Q) exit > $@
 
 .PHONY: commit
-commit: $(if $(filter commit,$(MAKECMDGOALS)),$(filter-out commit,$(MAKECMDGOALS)))
+commit: | $(if $(filter commit,$(MAKECMDGOALS)),$(filter-out commit,$(MAKECMDGOALS)))
 	@$(BASERUBY) -C "$(srcdir)" -I./tool -rvcs -e 'VCS.detect(".").commit'
 	+$(Q) \
 	{ \
@@ -154,7 +161,7 @@ commit: $(if $(filter commit,$(MAKECMDGOALS)),$(filter-out commit,$(MAKECMDGOALS
 		update-src srcs all-incs
 
 ifeq ($(words $(filter update-gems extract-gems,$(MAKECMDGOALS))),2)
-extract-gems: update-gems
+extract-gems: | update-gems
 endif
 
 ifeq ($(filter 0 1,$(words $(arch_flags))),)
