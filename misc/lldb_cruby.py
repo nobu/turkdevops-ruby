@@ -58,6 +58,121 @@ def flonum_p(x):
 def static_sym_p(x):
     return (x&~(~0<<RUBY_SPECIAL_SHIFT)) == RUBY_SYMBOL_FLAG
 
+def to_array(target, val):
+    tRArray = target.FindFirstType("struct RArray").GetPointerType()
+    val = val.Cast(tRArray)
+    flags = val.GetValueForExpressionPath("->basic.flags").unsigned
+    if flags & RUBY_FL_USER1:
+        len = ((flags & (RUBY_FL_USER3|RUBY_FL_USER4)) >> (RUBY_FL_USHIFT+3))
+        ptr = val.GetValueForExpressionPath("->as.ary")
+    else:
+        len = val.GetValueForExpressionPath("->as.heap.len").GetValueAsSigned()
+        ptr = val.GetValueForExpressionPath("->as.heap.ptr")
+    return ptr, len
+
+# def lldb_rp_id(target, x):
+#     id = x
+#     if x == '!' || x == '+' || x == '-' || x == '*' || x == '/' || x == '%' || x == '<' || x == '>' || x == '`':
+#         return "(:%c)" % x
+#     elif x == idDot2:
+#         return "(:..)"
+#     elif x == idDot3:
+#         return "(:...)"
+#     elif x == idUPlus:
+#         "(:+@)\n"
+#     elif x == idUMinus:
+#         return "(:-@)"
+#     elif x == idPow:
+#         return "(:**)"
+#     elif x == idCmp:
+#         return "(:<=>)"
+#     elif x == idLTLT:
+#         return "(:<<)"
+#     elif x == idGTGT:
+#         return "(:>>)"
+#     elif x == idLE:
+#         return "(:<=)"
+#     elif x == idGE:
+#         return "(:>=)"
+#     elif x == idEq:
+#         return "(:==)"
+#     elif x == idEqq:
+#         return "(:===)"
+#     elif x == idNeq:
+#         return "(:!=)"
+#     elif x == idEqTilde:
+#         return "(:=~)"
+#     elif x == idNeqTilde:
+#         return "(:!~)"
+#     elif x == idAREF:
+#         return "(:[])"
+#     elif x == idASET:
+#         return "(:[]=)"
+#     elif x == idCOLON2:
+#         return "(:'::')"
+#     elif x == idANDOP:
+#         return "(:&&)"
+#     elif x == idOROP:
+#         return "(:||)"
+#     elif x == idANDDOT:
+#         return "(:&.)"
+
+#     if x <= tLAST_OP_ID:
+#         type = "O"
+#         serial = id
+#     else:
+#         last_id = syms.GetValueForExpressionPath(".last_id").unsigned
+
+#         id_type = x & RUBY_ID_SCOPE_MASK
+#         if id_type == RUBY_ID_LOCAL:
+#             type = "l"
+#         elif id_type == RUBY_ID_INSTANCE:
+#             type = "i"
+#         elif id_type == RUBY_ID_GLOBAL:
+#             type = "G"
+#         elif id_type == RUBY_ID_ATTRSET:
+#             type = "a"
+#         elif id_type == RUBY_ID_CONST:
+#             type = "C"
+#         elif id_type == RUBY_ID_CLASS:
+#             type = "c"
+#         else:
+#             type = "j"
+#         serial = (id >> RUBY_ID_SCOPE_SHIFT)
+
+#     global_symbols = target.FindFirstGlobalVariable("global_symbols")
+#     if serial && serial <= global_symbols.GetValueForExpressionPath(".last_id").unsigned:
+#         idx = serial / ID_ENTRY_UNIT
+#         tRArray = target.FindFirstType("struct RArray").GetPointerType()
+#         ids = global_symbols.GetValueForExpressionPath(".ids").cast(tRArray)
+#         flags = ids.GetValueForExpressionPath("->basic.flags")
+#     if ($flags & RUBY_FL_USER1)
+#       set $idsptr = $ids->as.ary
+#       set $idslen = (($flags & (RUBY_FL_USER3|RUBY_FL_USER4)) >> (RUBY_FL_USHIFT+3))
+#     else
+#       set $idsptr = $ids->as.heap.ptr
+#       set $idslen = $ids->as.heap.len
+#     end
+#     if $idx < $idslen
+#       set $t = 0
+#       set $ary = (struct RArray *)$idsptr[$idx]
+#       if $ary != RUBY_Qnil
+#         set $flags = $ary->basic.flags
+#         if ($flags & RUBY_FL_USER1)
+#           set $aryptr = $ary->as.ary
+#           set $arylen = (($flags & (RUBY_FL_USER3|RUBY_FL_USER4)) >> (RUBY_FL_USHIFT+3))
+#         else
+#           set $aryptr = $ary->as.heap.ptr
+#           set $arylen = $ary->as.heap.len
+#         end
+#         set $result = $aryptr[($serial % ID_ENTRY_UNIT) * ID_ENTRY_SIZE + $t]
+# 	if $result != RUBY_Qnil
+#           print_string $result
+# 	else
+# 	  echo undef
+#     "(%ld): ", x
+#     print_id x
+
 def append_command_output(debugger, command, result):
     output1 = result.GetOutput()
     debugger.GetCommandInterpreter().HandleCommand(command, result)
@@ -132,15 +247,8 @@ def lldb_rp(debugger, command, result, internal_dict):
             tRSymbol = target.FindFirstType("struct RSymbol").GetPointerType()
             print >> result, val.Cast(tRSymbol).Dereference()
         elif flType == RUBY_T_ARRAY:
-            tRArray = target.FindFirstType("struct RArray").GetPointerType()
-            val = val.Cast(tRArray)
-            if flags & RUBY_FL_USER1:
-                len = ((flags & (RUBY_FL_USER3|RUBY_FL_USER4)) >> (RUBY_FL_USHIFT+3))
-                ptr = val.GetValueForExpressionPath("->as.ary")
-            else:
-                len = val.GetValueForExpressionPath("->as.heap.len").GetValueAsSigned()
-                ptr = val.GetValueForExpressionPath("->as.heap.ptr")
-                #print >> result, val.GetValueForExpressionPath("->as.heap")
+            ptr, len = to_array(target, val)
+            #print >> result, val.GetValueForExpressionPath("->as.heap")
             result.write("T_ARRAY: len=%d" % len)
             if flags & RUBY_FL_USER1:
                 result.write(" (embed)")
