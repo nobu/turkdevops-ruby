@@ -3862,4 +3862,8 @@ __END__
       assert_raise(TypeError) {Marshal.dump(w)}
     }
   end
+
+  def test_bom
+    assert_equal("\uFEFF", IO::BOM)
+  end
 end

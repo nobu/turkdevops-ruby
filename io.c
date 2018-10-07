@@ -13148,6 +13148,8 @@ Init_IO(void)
     rb_define_method(rb_cIO, "autoclose?", rb_io_autoclose_p, 0);
     rb_define_method(rb_cIO, "autoclose=", rb_io_set_autoclose, 1);
 
+    rb_define_const(rb_cIO, "BOM", rb_fstring_enc_cstr("\xEF\xBB\xBF", rb_utf8_encoding()));
+
     rb_define_variable("$stdin", &rb_stdin);
     rb_stdin = prep_stdio(stdin, FMODE_READABLE, rb_cIO, "<STDIN>");
     rb_define_hooked_variable("$stdout", &rb_stdout, 0, stdout_setter);
