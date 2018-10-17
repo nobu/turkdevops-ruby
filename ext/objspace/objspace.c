@@ -915,6 +915,31 @@ objspace_internal_super_of(VALUE self, VALUE obj)
     return wrap_klass_iow(super);
 }
 
+#ifdef HAVE_MALLOC_STATS_PRINT
+static void
+malloc_stats_append(void *cb, const char *s)
+{
+    VALUE result = *(VALUE *)cb;
+    rb_str_cat_cstr(result, s);
+}
+
+static VALUE
+objspace_malloc_stats(int argc, VALUE *argv, VALUE self)
+{
+    VALUE opts, result;
+    const char *optp = NULL;
+
+    if (rb_scan_args(argc, argv, "01", &opts) == 1) {
+        optp = StringValueCStr(opts);
+    }
+    result = rb_str_new(0, 0);
+    malloc_stats_print(malloc_stats_append, &result, optp);
+    return result;
+}
+#else
+#define objspace_malloc_stats rb_f_notimplement
+#endif
+
 void Init_object_tracing(VALUE rb_mObjSpace);
 void Init_objspace_dump(VALUE rb_mObjSpace);
 
@@ -957,6 +982,8 @@ Init_objspace(void)
 
     rb_define_module_function(rb_mObjSpace, "internal_class_of", objspace_internal_class_of, 1);
     rb_define_module_function(rb_mObjSpace, "internal_super_of", objspace_internal_super_of, 1);
+
+    rb_define_module_function(rb_mObjSpace, "malloc_stats", objspace_malloc_stats, -1);
 
     /*
      * This class is used as a return value from
