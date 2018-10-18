@@ -28,7 +28,6 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - gcc-8
       - libffi-dev
       - libgdbm-dev
       - libgmp-dev
@@ -60,6 +59,16 @@ matrix:
       compiler: gcc-8
       env:
         - "JOBS=-j`nproc`"
+      addons:
+        apt:
+          config:
+            retries: true
+          update: true
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-8
+      before_install: *prepare_linux
 
 before_script:
   - "echo JOBS=$JOBS"
