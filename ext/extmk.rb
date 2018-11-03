@@ -30,7 +30,14 @@ unless defined?(CROSS_COMPILING) and CROSS_COMPILING
   $:.replace([File.expand_path("lib", srcdir), Dir.pwd])
 end
 $:.unshift(srcdir)
-require 'rbconfig'
+
+path = File.expand_path('rbconfig.rb')
+rbconfig = File.read(path)
+rbconfig.sub!(/^ *CONFIG\["CC_WRAPPER"\].*/) {|line|
+  line.sub(/\$\(rubyarchdir\)/, '$(top_srcdir)/tool')
+}
+eval(rbconfig, nil, path)
+$". << path
 
 $topdir = "."
 $top_srcdir = srcdir
