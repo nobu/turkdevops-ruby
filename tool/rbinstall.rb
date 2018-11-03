@@ -377,6 +377,11 @@ install?(:local, :arch, :lib, :'lib-arch') do
       install file, archlibdir, :mode => $data_mode
     end
   end
+  if CONFIG["CC_WRAPPER"].start_with?(archlibdir)
+    file = File.basename(CONFIG["CC_WRAPPER"])
+    prepare "CC wrapper #{file}", archlibdir
+    install "#{srcdir}/tool/#{file}", archlibdir, :mode => $prog_mode
+  end
 end
 
 install?(:local, :arch, :data) do
