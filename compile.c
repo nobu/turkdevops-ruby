@@ -4587,7 +4587,7 @@ defined_expr0(rb_iseq_t *iseq, LINK_ANCHOR *const ret,
       case NODE_ATTRASGN:{
 	const int explicit_receiver =
 	    (type == NODE_CALL || type == NODE_OPCALL ||
-             type == NODE_METHREF ||
+             (type == NODE_METHREF && node->nd_recv) ||
 	     (type == NODE_ATTRASGN && !private_recv_p(node)));
 
 	if (!lfinish[1] && (node->nd_args || explicit_receiver)) {
@@ -7555,7 +7555,12 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
 	break;
       }
       case NODE_METHREF:
-        CHECK(COMPILE_(ret, "receiver", node->nd_recv, popped));
+        if (node->nd_recv) {
+            CHECK(COMPILE_(ret, "receiver", node->nd_recv, popped));
+        }
+        else {
+	    ADD_INSN(ret, line, putself);
+        }
         ADD_ELEM(ret, &new_insn_body(iseq, line, BIN(methodref), 1, ID2SYM(node->nd_mid))->link);
         break;
       default:

@@ -938,7 +938,12 @@ dump_node(VALUE buf, VALUE indent, int comment, const NODE * node)
         ANN("method reference");
         ANN("format: [nd_recv].:[nd_mid]");
         ANN("example: foo.:method");
-        F_NODE(nd_recv, "receiver");
+        if (node->nd_recv) {
+            F_NODE(nd_recv, "receiver");
+        }
+        else {
+            F_MSG(nd_recv, "implicit self", "omitted receiver");
+        }
         LAST_NODE;
         F_ID(nd_mid, "method name");
         return;

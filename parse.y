@@ -900,6 +900,7 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %token tDSTAR		"**arg"
 %token tAMPER		"&"
 %token tLAMBDA		"->"
+%token tSMETHREF	"(.:name)"
 %token tSYMBEG tSTRING_BEG tXSTRING_BEG tREGEXP_BEG tWORDS_BEG tQWORDS_BEG tSYMBOLS_BEG tQSYMBOLS_BEG
 %token tSTRING_DBEG tSTRING_DEND tSTRING_DVAR tSTRING_END tLAMBEG tLABEL_END
 
@@ -2717,6 +2718,13 @@ primary		: literal
 			$$ = NEW_METHREF($1, $3, &@$);
 		    /*% %*/
 		    /*% ripper: methref!($1, $3) %*/
+		    }
+		| tSMETHREF operation2
+		    {
+		    /*%%%*/
+			$$ = NEW_METHREF(0, $2, &@$);
+		    /*% %*/
+		    /*% ripper: methref!(Qnil, $2) %*/
 		    }
 		;
 
@@ -8085,6 +8093,7 @@ parser_yylex(struct parser_params *p)
 	      case '[': case '^': case '`': case '|': case '~':
 		pushback(p, c);
 		SET_LEX_STATE(EXPR_DOT);
+		if (IS_lex_state_for(last_state, EXPR_BEG)) return tSMETHREF;
 		return tMETHREF;
 	      case -1:
 		break;
