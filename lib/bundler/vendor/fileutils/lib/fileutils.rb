@@ -1,4 +1,7 @@
 # frozen_string_literal: true
+require 'fileutils'
+Bundler::FileUtils = ::FileUtils
+__END__
 #
 # = fileutils.rb
 #
