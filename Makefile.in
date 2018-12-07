@@ -521,7 +521,7 @@ enc/encinit.$(OBJEXT): enc/encinit.c $(SETUP)
 
 cont.$(OBJEXT): $(COROUTINE_H)
 
-test-bundled-gems-run:
+test-bundled-gems-$(gnumake:yes=unused-)run:
 	$(Q) set -e; while read gem _; do \
 	  echo testing $$gem gem && \
 	  $(XRUBY) -C $(srcdir)/gems/src/$$gem -Ilib ../../../.bundle/bin/rake; \

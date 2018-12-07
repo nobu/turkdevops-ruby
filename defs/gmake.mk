@@ -1,5 +1,4 @@
 # -*- makefile-gmake -*-
-gnumake = yes
 override gnumake_recursive := $(if $(findstring n,$(firstword $(MFLAGS))),,+)
 override mflags := $(filter-out -j%,$(MFLAGS))
 MSPECOPT += $(if $(filter -j%,$(MFLAGS)),-j)
@@ -203,3 +202,15 @@ clean-srcs-ext::
 
 clean-srcs-extra::
 	$(Q)$(RM) $(patsubst $(srcdir)/%,%,$(EXTRA_SRCS))
+
+test-bundled-gems-run:
+	@+ { \
+	echo 'test-bundled-gems-run/%:'; \
+	echo '	$$(ECHO) testing $$(@F) gem'; \
+	echo '	$$(Q)$$(XRUBY) -C $$(srcdir)/gems/src/$$(@F) -Ilib ../../../.bundle/bin/rake'; \
+	sed -n 's|^\([a-zA-Z_0-9][-a-zA-Z_.0-9]*\) .*|test-bundled-gems-run: test-bundled-gems/\1|p' $(srcdir)/gems/bundled_gems; \
+	} | $(MAKE) -f - $(MFLAGS) Q=$(Q) ECHO=$(ECHO) XRUBY="$(XRUBY)" srcdir="$(srcdir)"
+
+test-bundled-gems/%:
+	$(ECHO) testing $(@F) gem
+	$(Q)$(XRUBY) -C $(srcdir)/gems/src/$(@F) -Ilib ../../../.bundle/bin/rake
