@@ -57,8 +57,7 @@ class RDoc::Markup::Parser
   # Use RDoc::Markup#parse instead of this method.
 
   def self.parse str
-    parser = new
-    parser.tokenize str
+    parser = new(str)
     doc = RDoc::Markup::Document.new
     parser.parse doc
   end
@@ -75,7 +74,7 @@ class RDoc::Markup::Parser
   ##
   # Creates a new Parser.  See also ::parse
 
-  def initialize
+  def initialize(input = nil)
     @binary_input   = nil
     @current_token  = nil
     @debug          = false
@@ -85,6 +84,7 @@ class RDoc::Markup::Parser
     @line_pos       = 0
     @s              = nil
     @tokens         = []
+    setup_scanner input
   end
 
   ##
@@ -114,8 +114,7 @@ class RDoc::Markup::Parser
     list = RDoc::Markup::List.new
     label = nil
 
-    until @tokens.empty? do
-      type, data, column, = get
+    while (type, data, column, = get) do
 
       case type
       when *LIST_TOKENS then
@@ -213,8 +212,7 @@ class RDoc::Markup::Parser
 
     paragraph = RDoc::Markup::Paragraph.new
 
-    until @tokens.empty? do
-      type, data, column, = get
+    while (type, data, column, = get) do
 
       if type == :TEXT and column == margin then
         paragraph << data
@@ -251,8 +249,7 @@ class RDoc::Markup::Parser
     generate_leading_spaces = true
     line = ''.dup
 
-    until @tokens.empty? do
-      type, data, column, = get
+    while (type, data, column, = get) do
 
       if type == :NEWLINE then
         line << data
@@ -329,7 +326,8 @@ class RDoc::Markup::Parser
   # Pulls the next token from the stream.
 
   def get
-    @current_token = @tokens.shift
+    nil while !(token = @tokens.shift) and next_token
+    @current_token = token
     p :get => @current_token if @debug
     @current_token
   end
@@ -346,8 +344,7 @@ class RDoc::Markup::Parser
   def parse parent, indent = 0
     p :parse_start => indent if @debug
 
-    until @tokens.empty? do
-      type, data, column, = get
+    while (type, data, column, = get) do
 
       case type
       when :BREAK then
@@ -381,6 +378,31 @@ class RDoc::Markup::Parser
       when :TEXT then
         unget
         parse_text parent, indent
+      when :BLOCKQUOTE then
+        type, _, column = get
+        if type == :NEWLINE
+          type, _, column = get
+        end
+        unget
+        if data
+          _, parser = RDoc::Parser.parsers.find do |_, parser|
+            data.casecmp(parser.name.sub(/.*:/, '')) == 0
+          end
+        end
+        if !parser or parser === self
+          bq = RDoc::Markup::BlockQuote.new
+          p :blockquote_start => [data, column] if @debug
+          parse bq, column
+          p :blockquote_end => indent if @debug
+          parent << bq
+        else
+          @s[0]
+          content = []
+          while @s.scan(/^ {#{column},}(\S.*)\n|^\s*\n/)
+            content << (@s[1] || "\n")
+          end
+          parent << parser.new(content.join('')).parse
+        end
       when *LIST_TOKENS then
         unget
         parent << build_list(indent)
@@ -407,7 +429,8 @@ class RDoc::Markup::Parser
   # Returns the next token on the stream without modifying the stream
 
   def peek_token
-    token = @tokens.first || []
+    nil while !(token = @tokens.first) and next_token
+    tokens ||= []
     p :peek => token if @debug
     token
   end
@@ -443,81 +466,88 @@ class RDoc::Markup::Parser
     setup_scanner input
 
     until @s.eos? do
-      pos = @s.pos
-
-      # leading spaces will be reflected by the column of the next token
-      # the only thing we loose are trailing spaces at the end of the file
-      next if @s.scan(/ +/)
-
-      # note: after BULLET, LABEL, etc.,
-      # indent will be the column of the next non-newline token
-
-      @tokens << case
-                 # [CR]LF => :NEWLINE
-                 when @s.scan(/\r?\n/) then
-                   token = [:NEWLINE, @s.matched, *token_pos(pos)]
-                   @line_pos = char_pos @s.pos
-                   @line += 1
-                   token
-                 # === text => :HEADER then :TEXT
-                 when @s.scan(/(=+)(\s*)/) then
-                   level = @s[1].length
-                   header = [:HEADER, level, *token_pos(pos)]
-
-                   if @s[2] =~ /^\r?\n/ then
-                     @s.pos -= @s[2].length
-                     header
-                   else
-                     pos = @s.pos
-                     @s.scan(/.*/)
-                     @tokens << header
-                     [:TEXT, @s.matched.sub(/\r$/, ''), *token_pos(pos)]
-                   end
-                 # --- (at least 3) and nothing else on the line => :RULE
-                 when @s.scan(/(-{3,}) *\r?$/) then
-                   [:RULE, @s[1].length - 2, *token_pos(pos)]
-                 # * or - followed by white space and text => :BULLET
-                 when @s.scan(/([*-]) +(\S)/) then
-                   @s.pos -= @s[2].bytesize # unget \S
-                   [:BULLET, @s[1], *token_pos(pos)]
-                 # A. text, a. text, 12. text => :UALPHA, :LALPHA, :NUMBER
-                 when @s.scan(/([a-z]|\d+)\. +(\S)/i) then
-                   # FIXME if tab(s), the column will be wrong
-                   # either support tabs everywhere by first expanding them to
-                   # spaces, or assume that they will have been replaced
-                   # before (and provide a check for that at least in debug
-                   # mode)
-                   list_label = @s[1]
-                   @s.pos -= @s[2].bytesize # unget \S
-                   list_type =
-                     case list_label
-                     when /[a-z]/ then :LALPHA
-                     when /[A-Z]/ then :UALPHA
-                     when /\d/    then :NUMBER
-                     else
-                       raise ParseError, "BUG token #{list_label}"
-                     end
-                   [list_type, list_label, *token_pos(pos)]
-                 # [text] followed by spaces or end of line => :LABEL
-                 when @s.scan(/\[(.*?)\]( +|\r?$)/) then
-                   [:LABEL, @s[1], *token_pos(pos)]
-                 # text:: followed by spaces or end of line => :NOTE
-                 when @s.scan(/(.*?)::( +|\r?$)/) then
-                   [:NOTE, @s[1], *token_pos(pos)]
-                 # anything else: :TEXT
-                 else @s.scan(/(.*?)(  )?\r?$/)
-                   token = [:TEXT, @s[1], *token_pos(pos)]
-
-                   if @s[2] then
-                     @tokens << token
-                     [:BREAK, @s[2], *token_pos(pos + @s[1].length)]
-                   else
-                     token
-                   end
-                 end
+      next_token
     end
-
     self
+  end
+
+  def next_token
+    pos = @s.pos
+
+    # leading spaces will be reflected by the column of the next token
+    # the only thing we loose are trailing spaces at the end of the file
+    return if @s.scan(/ +/)
+
+    # note: after BULLET, LABEL, etc.,
+    # indent will be the column of the next non-newline token
+
+    @tokens << case
+               # [CR]LF => :NEWLINE
+               when @s.scan(/\r?\n/) then
+                 token = [:NEWLINE, @s.matched, *token_pos(pos)]
+                 @line_pos = char_pos @s.pos
+                 @line += 1
+                 token
+               # === text => :HEADER then :TEXT
+               when @s.scan(/(=+)(\s*)/) then
+                 level = @s[1].length
+                 header = [:HEADER, level, *token_pos(pos)]
+
+                 if @s[2] =~ /^\r?\n/ then
+                   @s.pos -= @s[2].length
+                   header
+                 else
+                   pos = @s.pos
+                   @s.scan(/.*/)
+                   @tokens << header
+                   [:TEXT, @s.matched.sub(/\r$/, ''), *token_pos(pos)]
+                 end
+               # --- (at least 3) and nothing else on the line => :RULE
+               when @s.scan(/(-{3,}) *\r?$/) then
+                 [:RULE, @s[1].length - 2, *token_pos(pos)]
+               # * or - followed by white space and text => :BULLET
+               when @s.scan(/([*-]) +(\S)/) then
+                 @s.pos -= @s[2].bytesize # unget \S
+                 [:BULLET, @s[1], *token_pos(pos)]
+               # A. text, a. text, 12. text => :UALPHA, :LALPHA, :NUMBER
+               when @s.scan(/([a-z]|\d+)\. +(\S)/i) then
+                 # FIXME if tab(s), the column will be wrong
+                 # either support tabs everywhere by first expanding them to
+                 # spaces, or assume that they will have been replaced
+                 # before (and provide a check for that at least in debug
+                 # mode)
+                 list_label = @s[1]
+                 @s.pos -= @s[2].bytesize # unget \S
+                 list_type =
+                   case list_label
+                   when /[a-z]/ then :LALPHA
+                   when /[A-Z]/ then :UALPHA
+                   when /\d/    then :NUMBER
+                   else
+                     raise ParseError, "BUG token #{list_label}"
+                   end
+                 [list_type, list_label, *token_pos(pos)]
+               # [text] followed by spaces or end of line => :LABEL
+               when @s.scan(/\[(.*?)\]( +|\r?$)/) then
+                 [:LABEL, @s[1], *token_pos(pos)]
+               # text:: followed by spaces or end of line => :NOTE
+               when @s.scan(/(.*?)::( +|\r?$)/) then
+                 [:NOTE, @s[1], *token_pos(pos)]
+               # >>> followed by end of line => :BLOCKQUOTE
+               when @s.scan(/>>>\s*(\w+)?$/) then
+                 [:BLOCKQUOTE, @s[2], *token_pos(pos)]
+               # anything else: :TEXT
+               else
+                 @s.scan(/(.*?)(  )?\r?$/)
+                 token = [:TEXT, @s[1], *token_pos(pos)]
+
+                 if @s[2] then
+                   @tokens << token
+                   [:BREAK, @s[2], *token_pos(pos + @s[1].length)]
+                 else
+                   token
+                 end
+               end
   end
 
   ##
