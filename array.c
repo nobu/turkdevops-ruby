@@ -2355,6 +2355,7 @@ rb_ary_join_m(int argc, VALUE *argv, VALUE ary)
         sep = rb_output_fs;
     }
     else if (NIL_P(sep = argv[0])) {
+        rb_warning("nil is given but $, is used");
         sep = rb_output_fs;
     }
 
