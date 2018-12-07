@@ -66,6 +66,10 @@ def append_command_output(debugger, command, result):
     result.write(output1)
     result.write(output2)
 
+def print_value_struct(debugger, tname, struct, val, result):
+    result.write('T_%s: ' % tname)
+    append_command_output(debugger, "print *(struct %s*)%#x" % (struct, val.GetValueAsUnsigned()), result)
+
 def lldb_rp(debugger, command, result, internal_dict):
     if not ('RUBY_Qfalse' in globals()):
         lldb_init(debugger)
@@ -113,17 +117,13 @@ def lldb_inspect(debugger, target, result, val):
             print >> result, "[PROMOTED] "
         flType = flags & RUBY_T_MASK
         if flType == RUBY_T_NONE:
-            print >> result, 'T_NONE: %s' % val.Dereference()
+            print_value_struct(debugger, 'NONE', 'RBasic', val, result)
         elif flType == RUBY_T_NIL:
             print >> result, 'T_NIL: %s' % val.Dereference()
         elif flType == RUBY_T_OBJECT:
-            tRObject = target.FindFirstType("struct RObject").GetPointerType()
-            val = val.Cast(tRObject)
-            print >> result, 'T_OBJECT: %s' % val.Dereference()
+            print_value_struct(debugger, 'OBJECT', 'RObjcet', val, result)
         elif flType == RUBY_T_CLASS or flType == RUBY_T_MODULE or flType == RUBY_T_ICLASS:
-            tRClass = target.FindFirstType("struct RClass").GetPointerType()
-            val = val.Cast(tRClass)
-            print >> result, 'T_%s: %s' % ('CLASS' if flType == RUBY_T_CLASS else 'MODULE' if flType == RUBY_T_MODULE else 'ICLASS', val.Dereference())
+            print_value_struct(debugger, ('CLASS' if flType == RUBY_T_CLASS else 'MODULE' if flType == RUBY_T_MODULE else 'ICLASS'), 'RClass', val, result)
         elif flType == RUBY_T_STRING:
             tRString = target.FindFirstType("struct RString").GetPointerType()
             val = val.Cast(tRString)
@@ -132,8 +132,7 @@ def lldb_inspect(debugger, target, result, val):
             else:
                 print >> result, val.GetValueForExpressionPath("->as.ary")
         elif flType == RUBY_T_SYMBOL:
-            tRSymbol = target.FindFirstType("struct RSymbol").GetPointerType()
-            print >> result, val.Cast(tRSymbol).Dereference()
+            print_value_struct(debugger, 'SYMBOL', 'RSymbol', val, result)
         elif flType == RUBY_T_ARRAY:
             tRArray = target.FindFirstType("struct RArray").GetPointerType()
             val = val.Cast(tRArray)
@@ -159,7 +158,7 @@ def lldb_inspect(debugger, target, result, val):
                 result.write("\n")
                 append_command_output(debugger, "expression -Z %d -fx -- (const VALUE*)%0#x" % (len, ptr.GetValueAsUnsigned()), result)
         elif flType == RUBY_T_HASH:
-            append_command_output(debugger, "p *(struct RHash *) %0#x" % val.GetValueAsUnsigned(), result)
+            print_value_struct(debugger, 'HASH', 'RHash', val, result)
         elif flType == RUBY_T_BIGNUM:
             tRBignum = target.FindFirstType("struct RBignum").GetPointerType()
             val = val.Cast(tRBignum)
