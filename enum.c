@@ -64,6 +64,24 @@ enum_yield_array(VALUE ary)
     return rb_yield_values2(0, 0);
 }
 
+typedef VALUE block_func(RB_BLOCK_CALL_FUNC_ARGLIST(i, args));
+static VALUE
+enum_call_each(VALUE obj, int argc, const VALUE *argv,
+               block_func bl_proc, VALUE data)
+{
+    if (RB_TYPE_P(obj, T_ARRAY)) {
+        long i;
+        for (i = 0; i < RARRAY_LEN(obj); ++i) {
+            VALUE e = RARRAY_AREF(obj, i);
+            (*bl_proc)(e, data, argc, argv, Qnil);
+        }
+        return obj;
+    }
+    else {
+        return enum_call_each(obj, argc, argv, bl_proc, data);
+    }
+}
+
 static VALUE
 grep_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
 {
@@ -112,7 +130,7 @@ enum_grep(VALUE obj, VALUE pat)
     VALUE ary = rb_ary_new();
     struct MEMO *memo = MEMO_NEW(pat, ary, Qtrue);
 
-    rb_block_call(obj, id_each, 0, 0, rb_block_given_p() ? grep_iter_i : grep_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, rb_block_given_p() ? grep_iter_i : grep_i, (VALUE)memo);
 
     return ary;
 }
@@ -138,7 +156,7 @@ enum_grep_v(VALUE obj, VALUE pat)
     VALUE ary = rb_ary_new();
     struct MEMO *memo = MEMO_NEW(pat, ary, Qfalse);
 
-    rb_block_call(obj, id_each, 0, 0, rb_block_given_p() ? grep_iter_i : grep_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, rb_block_given_p() ? grep_iter_i : grep_i, (VALUE)memo);
 
     return ary;
 }
@@ -246,7 +264,7 @@ enum_count(int argc, VALUE *argv, VALUE obj)
     }
 
     memo = MEMO_NEW(item, 0, 0);
-    rb_block_call(obj, id_each, 0, 0, func, (VALUE)memo);
+    enum_call_each(obj, 0, 0, func, (VALUE)memo);
     return imemo_count_value(memo);
 }
 
@@ -297,7 +315,7 @@ enum_find(int argc, VALUE *argv, VALUE obj)
     if_none = rb_check_arity(argc, 0, 1) ? argv[0] : Qnil;
     RETURN_ENUMERATOR(obj, argc, argv);
     memo = MEMO_NEW(Qundef, 0, 0);
-    rb_block_call(obj, id_each, 0, 0, find_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, find_i, (VALUE)memo);
     if (memo->u3.cnt) {
 	return memo->v1;
     }
@@ -374,7 +392,7 @@ enum_find_index(int argc, VALUE *argv, VALUE obj)
     }
 
     memo = MEMO_NEW(Qnil, condition_value, 0);
-    rb_block_call(obj, id_each, 0, 0, func, (VALUE)memo);
+    enum_call_each(obj, 0, 0, func, (VALUE)memo);
     return memo->v1;
 }
 
@@ -445,7 +463,7 @@ enum_find_all(VALUE obj)
     RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
 
     ary = rb_ary_new();
-    rb_block_call(obj, id_each, 0, 0, find_all_i, ary);
+    enum_call_each(obj, 0, 0, find_all_i, ary);
 
     return ary;
 }
@@ -486,7 +504,7 @@ enum_reject(VALUE obj)
     RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
 
     ary = rb_ary_new();
-    rb_block_call(obj, id_each, 0, 0, reject_i, ary);
+    enum_call_each(obj, 0, 0, reject_i, ary);
 
     return ary;
 }
@@ -582,7 +600,7 @@ enum_flat_map(VALUE obj)
     RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
 
     ary = rb_ary_new();
-    rb_block_call(obj, id_each, 0, 0, flat_map_i, ary);
+    enum_call_each(obj, 0, 0, flat_map_i, ary);
 
     return ary;
 }
@@ -605,7 +623,7 @@ enum_to_a(int argc, VALUE *argv, VALUE obj)
 {
     VALUE ary = rb_ary_new();
 
-    rb_block_call(obj, id_each, argc, argv, collect_all, ary);
+    enum_call_each(obj, argc, argv, collect_all, ary);
     OBJ_INFECT(ary, obj);
 
     return ary;
@@ -649,7 +667,7 @@ enum_to_h(int argc, VALUE *argv, VALUE obj)
 {
     VALUE hash = rb_hash_new();
     rb_block_call_func *iter = rb_block_given_p() ? enum_to_h_ii : enum_to_h_i;
-    rb_block_call(obj, id_each, argc, argv, iter, hash);
+    enum_call_each(obj, argc, argv, iter, hash);
     OBJ_INFECT(hash, obj);
     return hash;
 }
@@ -836,7 +854,7 @@ enum_inject(int argc, VALUE *argv, VALUE obj)
     }
 
     memo = MEMO_NEW(init, Qnil, op);
-    rb_block_call(obj, id_each, 0, 0, iter, (VALUE)memo);
+    enum_call_each(obj, 0, 0, iter, (VALUE)memo);
     if (memo->v1 == Qundef) return Qnil;
     return memo->v1;
 }
@@ -881,7 +899,7 @@ enum_partition(VALUE obj)
     RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
 
     memo = MEMO_NEW(rb_ary_new(), rb_ary_new(), 0);
-    rb_block_call(obj, id_each, 0, 0, partition_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, partition_i, (VALUE)memo);
 
     return rb_assoc_new(memo->v1, memo->v2);
 }
@@ -929,7 +947,7 @@ enum_group_by(VALUE obj)
     RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
 
     hash = rb_hash_new();
-    rb_block_call(obj, id_each, 0, 0, group_by_i, hash);
+    enum_call_each(obj, 0, 0, group_by_i, hash);
     OBJ_INFECT(hash, obj);
 
     return hash;
@@ -976,7 +994,7 @@ enum_first(int argc, VALUE *argv, VALUE obj)
     }
     else {
 	memo = MEMO_NEW(Qnil, 0, 0);
-	rb_block_call(obj, id_each, 0, 0, first_i, (VALUE)memo);
+	enum_call_each(obj, 0, 0, first_i, (VALUE)memo);
 	return memo->v1;
     }
 }
@@ -1164,7 +1182,7 @@ enum_sort_by(VALUE obj)
     RB_OBJ_WRITE(memo, &data->ary, ary);
     RB_OBJ_WRITE(memo, &data->buf, buf);
     data->n = 0;
-    rb_block_call(obj, id_each, 0, 0, sort_by_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, sort_by_i, (VALUE)memo);
     ary = data->ary;
     buf = data->buf;
     if (data->n) {
@@ -1262,7 +1280,7 @@ enum_all(int argc, VALUE *argv, VALUE obj)
 {
     struct MEMO *memo = MEMO_ENUM_NEW(Qtrue);
     WARN_UNUSED_BLOCK(argc);
-    rb_block_call(obj, id_each, 0, 0, ENUMFUNC(all), (VALUE)memo);
+    enum_call_each(obj, 0, 0, ENUMFUNC(all), (VALUE)memo);
     return memo->v1;
 }
 
@@ -1304,7 +1322,7 @@ enum_any(int argc, VALUE *argv, VALUE obj)
 {
     struct MEMO *memo = MEMO_ENUM_NEW(Qfalse);
     WARN_UNUSED_BLOCK(argc);
-    rb_block_call(obj, id_each, 0, 0, ENUMFUNC(any), (VALUE)memo);
+    enum_call_each(obj, 0, 0, ENUMFUNC(any), (VALUE)memo);
     return memo->v1;
 }
 
@@ -1449,7 +1467,7 @@ nmin_filter(struct nmin_data *data)
 }
 
 static VALUE
-nmin_i(VALUE i, VALUE *_data, int argc, VALUE *argv)
+nmin_i(VALUE i, VALUE _data, int argc, const VALUE *argv, VALUE block)
 {
     struct nmin_data *data = (struct nmin_data *)_data;
     VALUE cmpv;
@@ -1509,11 +1527,11 @@ rb_nmin_run(VALUE obj, VALUE num, int by, int rev, int ary)
 	for (i = 0; i < RARRAY_LEN(obj); i++) {
 	    VALUE args[1];
 	    args[0] = RARRAY_AREF(obj, i);
-	    nmin_i(obj, (VALUE*)&data, 1, args);
+	    nmin_i(obj, (VALUE)&data, 1, args, Qnil);
 	}
     }
     else {
-	rb_block_call(obj, id_each, 0, 0, nmin_i, (VALUE)&data);
+	enum_call_each(obj, 0, 0, nmin_i, (VALUE)&data);
     }
     nmin_filter(&data);
     result = data.buf;
@@ -1575,7 +1593,7 @@ enum_one(int argc, VALUE *argv, VALUE obj)
     VALUE result;
 
     WARN_UNUSED_BLOCK(argc);
-    rb_block_call(obj, id_each, 0, 0, ENUMFUNC(one), (VALUE)memo);
+    enum_call_each(obj, 0, 0, ENUMFUNC(one), (VALUE)memo);
     result = memo->v1;
     if (result == Qundef) return Qfalse;
     return result;
@@ -1618,7 +1636,7 @@ enum_none(int argc, VALUE *argv, VALUE obj)
     struct MEMO *memo = MEMO_ENUM_NEW(Qtrue);
 
     WARN_UNUSED_BLOCK(argc);
-    rb_block_call(obj, id_each, 0, 0, ENUMFUNC(none), (VALUE)memo);
+    enum_call_each(obj, 0, 0, ENUMFUNC(none), (VALUE)memo);
     return memo->v1;
 }
 
@@ -1705,10 +1723,10 @@ enum_min(int argc, VALUE *argv, VALUE obj)
     m->cmp_opt.opt_methods = 0;
     m->cmp_opt.opt_inited = 0;
     if (rb_block_given_p()) {
-	rb_block_call(obj, id_each, 0, 0, min_ii, memo);
+	enum_call_each(obj, 0, 0, min_ii, memo);
     }
     else {
-	rb_block_call(obj, id_each, 0, 0, min_i, memo);
+	enum_call_each(obj, 0, 0, min_i, memo);
     }
     result = m->min;
     if (result == Qundef) return Qnil;
@@ -1797,10 +1815,10 @@ enum_max(int argc, VALUE *argv, VALUE obj)
     m->cmp_opt.opt_methods = 0;
     m->cmp_opt.opt_inited = 0;
     if (rb_block_given_p()) {
-	rb_block_call(obj, id_each, 0, 0, max_ii, (VALUE)memo);
+	enum_call_each(obj, 0, 0, max_ii, (VALUE)memo);
     }
     else {
-	rb_block_call(obj, id_each, 0, 0, max_i, (VALUE)memo);
+	enum_call_each(obj, 0, 0, max_i, (VALUE)memo);
     }
     result = m->max;
     if (result == Qundef) return Qnil;
@@ -1944,12 +1962,12 @@ enum_minmax(VALUE obj)
     m->cmp_opt.opt_methods = 0;
     m->cmp_opt.opt_inited = 0;
     if (rb_block_given_p()) {
-	rb_block_call(obj, id_each, 0, 0, minmax_ii, memo);
+	enum_call_each(obj, 0, 0, minmax_ii, memo);
 	if (m->last != Qundef)
 	    minmax_ii_update(m->last, m->last, m);
     }
     else {
-	rb_block_call(obj, id_each, 0, 0, minmax_i, memo);
+	enum_call_each(obj, 0, 0, minmax_i, memo);
 	if (m->last != Qundef)
 	    minmax_i_update(m->last, m->last, m);
     }
@@ -2017,7 +2035,7 @@ enum_min_by(int argc, VALUE *argv, VALUE obj)
         return rb_nmin_run(obj, num, 1, 0, 0);
 
     memo = MEMO_NEW(Qundef, Qnil, 0);
-    rb_block_call(obj, id_each, 0, 0, min_by_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, min_by_i, (VALUE)memo);
     return memo->v2;
 }
 
@@ -2124,7 +2142,7 @@ enum_max_by(int argc, VALUE *argv, VALUE obj)
         return rb_nmin_run(obj, num, 1, 1, 0);
 
     memo = MEMO_NEW(Qundef, Qnil, 0);
-    rb_block_call(obj, id_each, 0, 0, max_by_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, max_by_i, (VALUE)memo);
     return memo->v2;
 }
 
@@ -2230,7 +2248,7 @@ enum_minmax_by(VALUE obj)
     m->max = Qnil;
     m->last_bv = Qundef;
     m->last = Qundef;
-    rb_block_call(obj, id_each, 0, 0, minmax_by_i, memo);
+    enum_call_each(obj, 0, 0, minmax_by_i, memo);
     if (m->last_bv != Qundef)
         minmax_by_i_update(m->last_bv, m->last_bv, m->last, m->last, m);
     m = MEMO_FOR(struct minmax_by_t, memo);
@@ -2269,7 +2287,7 @@ enum_member(VALUE obj, VALUE val)
 {
     struct MEMO *memo = MEMO_NEW(val, Qfalse, 0);
 
-    rb_block_call(obj, id_each, 0, 0, member_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, member_i, (VALUE)memo);
     return memo->v2;
 }
 
@@ -2310,7 +2328,7 @@ enum_each_with_index(int argc, VALUE *argv, VALUE obj)
     RETURN_SIZED_ENUMERATOR(obj, argc, argv, enum_size);
 
     memo = MEMO_NEW(0, 0, 0);
-    rb_block_call(obj, id_each, argc, argv, each_with_index_i, (VALUE)memo);
+    enum_call_each(obj, argc, argv, each_with_index_i, (VALUE)memo);
     return obj;
 }
 
@@ -2392,7 +2410,7 @@ static VALUE
 enum_each_entry(int argc, VALUE *argv, VALUE obj)
 {
     RETURN_SIZED_ENUMERATOR(obj, argc, argv, enum_size);
-    rb_block_call(obj, id_each, argc, argv, each_val_i, 0);
+    enum_call_each(obj, argc, argv, each_val_i, 0);
     return obj;
 }
 
@@ -2483,7 +2501,7 @@ enum_each_slice(VALUE obj, VALUE n)
     ary = rb_ary_new2(size);
     arity = rb_block_arity();
     memo = MEMO_NEW(ary, dont_recycle_block_arg(arity), size);
-    rb_block_call(obj, id_each, 0, 0, each_slice_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, each_slice_i, (VALUE)memo);
     ary = memo->v1;
     if (RARRAY_LEN(ary) > 0) rb_yield(ary);
 
@@ -2561,7 +2579,7 @@ enum_each_cons(VALUE obj, VALUE n)
     arity = rb_block_arity();
     if (enum_size_over_p(obj, size)) return Qnil;
     memo = MEMO_NEW(rb_ary_new2(size), dont_recycle_block_arg(arity), size);
-    rb_block_call(obj, id_each, 0, 0, each_cons_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, each_cons_i, (VALUE)memo);
 
     return Qnil;
 }
@@ -2592,7 +2610,7 @@ enum_each_with_object(VALUE obj, VALUE memo)
 {
     RETURN_SIZED_ENUMERATOR(obj, 1, &memo, enum_size);
 
-    rb_block_call(obj, id_each, 0, 0, each_with_object_i, memo);
+    enum_call_each(obj, 0, 0, each_with_object_i, memo);
 
     return memo;
 }
@@ -2746,7 +2764,7 @@ enum_zip(int argc, VALUE *argv, VALUE obj)
 
     /* TODO: use NODE_DOT2 as memo(v, v, -) */
     memo = MEMO_NEW(result, args, 0);
-    rb_block_call(obj, id_each, 0, 0, allary ? zip_ary : zip_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, allary ? zip_ary : zip_i, (VALUE)memo);
 
     return result;
 }
@@ -2786,7 +2804,7 @@ enum_take(VALUE obj, VALUE n)
     if (len == 0) return rb_ary_new2(0);
     result = rb_ary_new2(len);
     memo = MEMO_NEW(result, 0, len);
-    rb_block_call(obj, id_each, 0, 0, take_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, take_i, (VALUE)memo);
     return result;
 }
 
@@ -2821,7 +2839,7 @@ enum_take_while(VALUE obj)
 
     RETURN_ENUMERATOR(obj, 0, 0);
     ary = rb_ary_new();
-    rb_block_call(obj, id_each, 0, 0, take_while_i, ary);
+    enum_call_each(obj, 0, 0, take_while_i, ary);
     return ary;
 }
 
@@ -2863,7 +2881,7 @@ enum_drop(VALUE obj, VALUE n)
 
     result = rb_ary_new();
     memo = MEMO_NEW(result, 0, len);
-    rb_block_call(obj, id_each, 0, 0, drop_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, drop_i, (VALUE)memo);
     return result;
 }
 
@@ -2908,7 +2926,7 @@ enum_drop_while(VALUE obj)
     RETURN_ENUMERATOR(obj, 0, 0);
     result = rb_ary_new();
     memo = MEMO_NEW(result, 0, FALSE);
-    rb_block_call(obj, id_each, 0, 0, drop_while_i, (VALUE)memo);
+    enum_call_each(obj, 0, 0, drop_while_i, (VALUE)memo);
     return result;
 }
 
@@ -2983,7 +3001,7 @@ enum_cycle(int argc, VALUE *argv, VALUE obj)
     }
     ary = rb_ary_new();
     RBASIC_CLEAR_CLASS(ary);
-    rb_block_call(obj, id_each, 0, 0, cycle_i, ary);
+    enum_call_each(obj, 0, 0, cycle_i, ary);
     len = RARRAY_LEN(ary);
     if (len == 0) return Qnil;
     while (n < 0 || 0 < --n) {
@@ -3065,7 +3083,7 @@ chunk_i(RB_BLOCK_CALL_FUNC_ARGLIST(yielder, enumerator))
     memo->prev_elts = Qnil;
     memo->yielder = yielder;
 
-    rb_block_call(enumerable, id_each, 0, 0, chunk_ii, arg);
+    enum_call_each(enumerable, 0, 0, chunk_ii, arg);
     memo = MEMO_FOR(struct chunk_arg, arg);
     if (!NIL_P(memo->prev_elts)) {
 	arg = rb_assoc_new(memo->prev_value, memo->prev_elts);
@@ -3224,7 +3242,7 @@ slicebefore_i(RB_BLOCK_CALL_FUNC_ARGLIST(yielder, enumerator))
     memo->prev_elts = Qnil;
     memo->yielder = yielder;
 
-    rb_block_call(enumerable, id_each, 0, 0, slicebefore_ii, arg);
+    enum_call_each(enumerable, 0, 0, slicebefore_ii, arg);
     memo = MEMO_FOR(struct slicebefore_arg, arg);
     if (!NIL_P(memo->prev_elts))
         rb_funcallv(memo->yielder, id_lshift, 1, &memo->prev_elts);
@@ -3454,7 +3472,7 @@ sliceafter_i(RB_BLOCK_CALL_FUNC_ARGLIST(yielder, enumerator))
     memo->prev_elts = Qnil;
     memo->yielder = yielder;
 
-    rb_block_call(enumerable, id_each, 0, 0, sliceafter_ii, arg);
+    enum_call_each(enumerable, 0, 0, sliceafter_ii, arg);
     memo = MEMO_FOR(struct sliceafter_arg, arg);
     if (!NIL_P(memo->prev_elts))
         rb_funcallv(memo->yielder, id_lshift, 1, &memo->prev_elts);
@@ -3585,7 +3603,7 @@ slicewhen_i(RB_BLOCK_CALL_FUNC_ARGLIST(yielder, enumerator))
     memo->yielder = yielder;
     memo->inverted = RTEST(rb_attr_get(enumerator, rb_intern("slicewhen_inverted")));
 
-    rb_block_call(enumerable, id_each, 0, 0, slicewhen_ii, arg);
+    enum_call_each(enumerable, 0, 0, slicewhen_ii, arg);
     memo = MEMO_FOR(struct slicewhen_arg, arg);
     if (!NIL_P(memo->prev_elts))
         rb_funcallv(memo->yielder, id_lshift, 1, &memo->prev_elts);
@@ -3966,7 +3984,7 @@ enum_sum(int argc, VALUE* argv, VALUE obj)
             rb_method_basic_definition_p(CLASS_OF(obj), id_each))
         hash_sum(obj, &memo);
     else
-        rb_block_call(obj, id_each, 0, 0, enum_sum_i, (VALUE)&memo);
+        enum_call_each(obj, 0, 0, enum_sum_i, (VALUE)&memo);
 
     if (memo.float_value) {
         return DBL2NUM(memo.f + memo.c);
@@ -4021,7 +4039,7 @@ enum_uniq(VALUE obj)
 	rb_block_given_p() ? uniq_iter : uniq_func;
 
     hash = rb_obj_hide(rb_hash_new());
-    rb_block_call(obj, id_each, 0, 0, func, hash);
+    enum_call_each(obj, 0, 0, func, hash);
     ret = rb_hash_values(hash);
     rb_hash_clear(hash);
     return ret;

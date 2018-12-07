@@ -6172,6 +6172,7 @@ rb_ary_drop_while(VALUE ary)
     return rb_ary_drop(ary, LONG2FIX(i));
 }
 
+#if 0
 /*
  *  call-seq:
  *     ary.any? [{|obj| block}  ]   -> true or false
@@ -6325,6 +6326,7 @@ rb_ary_one_p(int argc, VALUE *argv, VALUE ary)
     }
     return result;
 }
+#endif
 
 /*
  * call-seq:
@@ -6883,10 +6885,12 @@ Init_Array(void)
     rb_define_method(rb_cArray, "drop_while", rb_ary_drop_while, 0);
     rb_define_method(rb_cArray, "bsearch", rb_ary_bsearch, 0);
     rb_define_method(rb_cArray, "bsearch_index", rb_ary_bsearch_index, 0);
+#if 0
     rb_define_method(rb_cArray, "any?", rb_ary_any_p, -1);
     rb_define_method(rb_cArray, "all?", rb_ary_all_p, -1);
     rb_define_method(rb_cArray, "none?", rb_ary_none_p, -1);
     rb_define_method(rb_cArray, "one?", rb_ary_one_p, -1);
+#endif
     rb_define_method(rb_cArray, "dig", rb_ary_dig, -1);
     rb_define_method(rb_cArray, "sum", rb_ary_sum, -1);
 
