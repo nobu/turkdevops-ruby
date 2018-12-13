@@ -923,18 +923,6 @@ struct RObject {
 	VALUE ary[ROBJECT_EMBED_LEN_MAX];
     } as;
 };
-#define ROBJECT_NUMIV(o) \
-    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
-     ROBJECT_EMBED_LEN_MAX : \
-     ROBJECT(o)->as.heap.numiv)
-#define ROBJECT_IVPTR(o) \
-    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
-     ROBJECT(o)->as.ary : \
-     ROBJECT(o)->as.heap.ivptr)
-#define ROBJECT_IV_INDEX_TBL(o) \
-    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
-     RCLASS_IV_INDEX_TBL(rb_obj_class(o)) : \
-     ROBJECT(o)->as.heap.iv_index_tbl)
 
 #define RCLASS_SUPER(c) rb_class_get_superclass(c)
 #define RMODULE_IV_TBL(m) RCLASS_IV_TBL(m)

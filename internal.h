@@ -1024,6 +1024,20 @@ RCLASS_SET_SUPER(VALUE klass, VALUE super)
     RB_OBJ_WRITE(klass, &RCLASS(klass)->super, super);
     return super;
 }
+
+#define ROBJECT_NUMIV(o) \
+    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
+     ROBJECT_EMBED_LEN_MAX : \
+     ROBJECT(o)->as.heap.numiv)
+#define ROBJECT_IVPTR(o) \
+    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
+     ROBJECT(o)->as.ary : \
+     ROBJECT(o)->as.heap.ivptr)
+#define ROBJECT_IV_INDEX_TBL(o) \
+    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
+     RCLASS_IV_INDEX_TBL(rb_obj_class(o)) : \
+     ROBJECT(o)->as.heap.iv_index_tbl)
+
 /* IMEMO: Internal memo object */
 
 #ifndef IMEMO_DEBUG
