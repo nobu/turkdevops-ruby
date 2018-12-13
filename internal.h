@@ -1025,18 +1025,36 @@ RCLASS_SET_SUPER(VALUE klass, VALUE super)
     return super;
 }
 
-#define ROBJECT_NUMIV(o) \
-    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
-     ROBJECT_EMBED_LEN_MAX : \
-     ROBJECT(o)->as.heap.numiv)
-#define ROBJECT_IVPTR(o) \
-    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
-     ROBJECT(o)->as.ary : \
-     ROBJECT(o)->as.heap.ivptr)
-#define ROBJECT_IV_INDEX_TBL(o) \
-    ((RBASIC(o)->flags & ROBJECT_EMBED) ? \
-     RCLASS_IV_INDEX_TBL(rb_obj_class(o)) : \
-     ROBJECT(o)->as.heap.iv_index_tbl)
+#define ROBJECT_NUMIV(o) rb_object_numiv(o)
+#define ROBJECT_IVPTR(o) rb_object_ivptr(o)
+#define ROBJECT_IV_INDEX_TBL(o) rb_object_iv_index_tbl(o)
+
+static inline uint32_t
+rb_object_numiv(VALUE o)
+{
+    if (RBASIC(o)->flags & ROBJECT_EMBED)
+        return ROBJECT_EMBED_LEN_MAX;
+    else
+        return ROBJECT(o)->as.heap.numiv;
+}
+
+static inline VALUE *
+rb_object_ivptr(VALUE o)
+{
+    if (RBASIC(o)->flags & ROBJECT_EMBED)
+        return ROBJECT(o)->as.ary;
+    else
+        return ROBJECT(o)->as.heap.ivptr;
+}
+
+static inline void *
+rb_object_iv_index_tbl(VALUE o)
+{
+    if (RBASIC(o)->flags & ROBJECT_EMBED)
+        return RCLASS_IV_INDEX_TBL(rb_obj_class(o));
+    else
+        return ROBJECT(o)->as.heap.iv_index_tbl;
+}
 
 /* IMEMO: Internal memo object */
 

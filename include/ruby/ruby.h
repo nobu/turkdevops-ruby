@@ -980,21 +980,15 @@ struct RString {
 	char ary[RSTRING_EMBED_LEN_MAX + 1];
     } as;
 };
-#define RSTRING_EMBED_LEN(str) \
-     (long)((RBASIC(str)->flags >> RSTRING_EMBED_LEN_SHIFT) & \
-            (RSTRING_EMBED_LEN_MASK >> RSTRING_EMBED_LEN_SHIFT))
-#define RSTRING_LEN(str) \
-    (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
-     RSTRING_EMBED_LEN(str) : \
-     RSTRING(str)->as.heap.len)
-#define RSTRING_PTR(str) \
-    (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
-     RSTRING(str)->as.ary : \
-     RSTRING(str)->as.heap.ptr)
-#define RSTRING_END(str) \
-    (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
-     (RSTRING(str)->as.ary + RSTRING_EMBED_LEN(str)) : \
-     (RSTRING(str)->as.heap.ptr + RSTRING(str)->as.heap.len))
+
+static long rb_string_embed_len(VALUE str);
+static long rb_string_len(VALUE str);
+static char *rb_string_ptr(VALUE str);
+static char *rb_string_end(VALUE str);
+#define RSTRING_EMBED_LEN(str) rb_string_embed_len(str)
+#define RSTRING_LEN(str) rb_string_len(str)
+#define RSTRING_PTR(str) rb_string_ptr(str)
+#define RSTRING_END(str) rb_string_end(str)
 #define RSTRING_LENINT(str) rb_long2int(RSTRING_LEN(str))
 #define RSTRING_GETMEM(str, ptrvar, lenvar) \
     (!(RBASIC(str)->flags & RSTRING_NOEMBED) ? \
@@ -1040,9 +1034,10 @@ struct RArray {
 	const VALUE ary[RARRAY_EMBED_LEN_MAX];
     } as;
 };
-#define RARRAY_EMBED_LEN(a) \
-    (long)((RBASIC(a)->flags >> RARRAY_EMBED_LEN_SHIFT) & \
-	   (RARRAY_EMBED_LEN_MASK >> RARRAY_EMBED_LEN_SHIFT))
+
+static inline long rb_array_embed_len(VALUE ary);
+static inline void rb_array_aset(const VALUE ary, long i, const VALUE v);
+#define RARRAY_EMBED_LEN(a) rb_array_embed_len(a)
 #define RARRAY_LEN(a) rb_array_len(a)
 #define RARRAY_LENINT(ary) rb_long2int(RARRAY_LEN(ary))
 #define RARRAY_CONST_PTR(a) rb_array_const_ptr(a)
@@ -1075,14 +1070,7 @@ struct RArray {
 } while (0)
 
 #define RARRAY_AREF(a, i) (RARRAY_CONST_PTR_TRANSIENT(a)[i])
-#define RARRAY_ASET(a, i, v) do { \
-    const VALUE _ary = (a); \
-    const VALUE _v = (v); \
-    VALUE *ptr = (VALUE *)RARRAY_PTR_USE_START_TRANSIENT(_ary); \
-    RB_OBJ_WRITE(_ary, &ptr[i], _v); \
-    RARRAY_PTR_USE_END_TRANSIENT(_ary); \
-} while (0)
-
+#define RARRAY_ASET(a, i, v) rb_array_aset(a, i, v)
 #define RARRAY_PTR(a) ((VALUE *)RARRAY_CONST_PTR(RB_OBJ_WB_UNPROTECT_FOR(ARRAY, a)))
 
 struct RRegexp {
@@ -2592,6 +2580,55 @@ __extension__({ \
 	    rb_funcall_nargs ? rb_funcall_args : NULL); \
     })
 #endif
+
+static inline long
+rb_string_embed_len(VALUE str)
+{
+    VALUE f = (RBASIC(str)->flags & RSTRING_EMBED_LEN_MASK);
+    return (long)(f >> RSTRING_EMBED_LEN_SHIFT);
+}
+
+static inline long
+rb_string_len(VALUE str)
+{
+    if (!(RBASIC(str)->flags & RSTRING_NOEMBED))
+        return RSTRING_EMBED_LEN(str);
+    else
+        return RSTRING(str)->as.heap.len;
+}
+
+static inline char *
+rb_string_ptr(VALUE str)
+{
+    if (!(RBASIC(str)->flags & RSTRING_NOEMBED))
+        return RSTRING(str)->as.ary;
+    else
+        return RSTRING(str)->as.heap.ptr;
+}
+
+static inline char *
+rb_string_end(VALUE str)
+{
+    if (!(RBASIC(str)->flags & RSTRING_NOEMBED))
+        return (RSTRING(str)->as.ary + RSTRING_EMBED_LEN(str));
+    else
+        return (RSTRING(str)->as.heap.ptr + RSTRING(str)->as.heap.len);
+}
+
+static inline long
+rb_array_embed_len(VALUE ary)
+{
+    VALUE f = (RBASIC(ary)->flags & RARRAY_EMBED_LEN_MASK);
+    return (long)(f >> RARRAY_EMBED_LEN_SHIFT);
+}
+
+static inline void
+rb_array_aset(const VALUE ary, long i, const VALUE v)
+{
+    VALUE *ptr = (VALUE *)RARRAY_PTR_USE_START_TRANSIENT(ary);
+    RB_OBJ_WRITE(ary, &ptr[i], v);
+    RARRAY_PTR_USE_END_TRANSIENT(ary);
+}
 
 #ifndef RUBY_DONT_SUBST
 #include "ruby/subst.h"
