@@ -936,8 +936,18 @@ dump_node(VALUE buf, VALUE indent, int comment, const NODE * node)
 
       case NODE_METHREF:
         ANN("method reference");
-        ANN("format: [nd_recv].:[nd_mid]");
-        ANN("example: foo.:method");
+        switch (node->nd_aid) {
+          case '&':
+            ANN("format: [nd_recv]&.:[nd_mid]");
+            ANN("example: foo&.:method");
+	    A_INDENT;
+	    rb_str_cat_cstr(buf, "+- type: &.\n");
+            break;
+          default:
+            ANN("format: [nd_recv].:[nd_mid]");
+            ANN("example: foo.:method");
+            break;
+        }
         F_NODE(nd_recv, "receiver");
         LAST_NODE;
         F_NODE(nd_body, "method name");

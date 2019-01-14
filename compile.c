@@ -7566,8 +7566,12 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       }
       case NODE_METHREF:
         CHECK(COMPILE_(ret, "receiver", node->nd_recv, popped));
+        if (node->nd_aid == '&') { /* &. */
+            else_label = qcall_branch_start(iseq, ret, &branches, node, line);
+        }
         CHECK(COMPILE_(ret, "method name", node->nd_body, popped));
         ADD_ELEM(ret, &new_insn_core(iseq, line, BIN(methodref), 0, 0)->link);
+        qcall_branch_end(iseq, ret, else_label, branches, node, line);
         break;
       default:
 	UNKNOWN_NODE("iseq_compile_each", node, COMPILE_NG);

@@ -2708,12 +2708,16 @@ primary		: literal
 		    /*% %*/
 		    /*% ripper: retry! %*/
 		    }
-		| primary_value '.' symbol
+		| primary_value call_op symbol
 		    {
 		    /*%%%*/
-			$$ = NEW_METHREF($1, $3, &@$);
+			ID type = '.';
+			switch ($2) {
+			  case tANDDOT: type = '&'; break;
+			}
+			$$ = NEW_METHREF($1, $3, type, &@$);
 		    /*% %*/
-		    /*% ripper: methref!($1, $3) %*/
+		    /*% ripper: methref!($1, $3, $2) %*/
 		    }
 		;
 

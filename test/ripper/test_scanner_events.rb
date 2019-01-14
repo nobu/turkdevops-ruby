@@ -552,6 +552,8 @@ class TestRipper::ScannerEvents < Test::Unit::TestCase
                  scan('op', ':[]=')
     assert_equal ['&.'],
                  scan('op', 'a&.f')
+    assert_equal ['&.'],
+                 scan('op', 'obj&.:foo')
     assert_equal [],
                  scan('op', %q[`make all`])
   end
@@ -569,6 +571,8 @@ class TestRipper::ScannerEvents < Test::Unit::TestCase
                  scan('symbeg', 'a ? b : c')
     assert_equal [':'],
                  scan('symbeg', 'obj.:foo')
+    assert_equal [':'],
+                 scan('symbeg', 'obj&.:foo')
   end
 
   def test_tstring_beg
