@@ -470,7 +470,7 @@ node_children(rb_ast_t *ast, NODE *node)
         return rb_ary_new_from_args(1, ID2SYM(node->nd_mid));
       case NODE_METHREF:
         return rb_ary_new_from_args(2, NEW_CHILD(ast, node->nd_recv),
-                                    ID2SYM(node->nd_mid));
+                                    NEW_CHILD(ast, node->nd_body));
       case NODE_SUPER:
         return rb_ary_new_from_node_args(ast, 1, node->nd_args);
       case NODE_ZSUPER:

@@ -707,11 +707,11 @@ checktype
 /* get method reference. */
 DEFINE_INSN
 methodref
-(ID id)
-(VALUE val)
+()
+(VALUE val, VALUE mid)
 (VALUE ret)
 {
-    ret = rb_obj_method(val, ID2SYM(id));
+    ret = rb_obj_method(val, mid);
 }
 
 /**********************************************************/

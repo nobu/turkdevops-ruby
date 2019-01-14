@@ -1113,5 +1113,9 @@ class TestMethod < Test::Unit::TestCase
     def o.method(m); nil; end
     assert_equal(m, o.:foo)
     assert_nil(o.method(:foo))
+
+    m = 1.:"#{'SUCC'.downcase}"
+    assert_equal(1.method(:succ), m)
+    assert_equal(2, m.())
   end
 end

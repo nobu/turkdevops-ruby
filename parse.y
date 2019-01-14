@@ -886,7 +886,6 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %token tRSHFT		RUBY_TOKEN(RSHFT)  ">>"
 %token <id> tANDDOT	RUBY_TOKEN(ANDDOT) "&."
 %token <id> tCOLON2	RUBY_TOKEN(COLON2) "::"
-%token <id> tMETHREF	RUBY_TOKEN(METHREF) ".:"
 %token tCOLON3		":: at EXPR_BEG"
 %token <id> tOP_ASGN	/* +=, -=  etc. */
 %token tASSOC		"=>"
@@ -2709,7 +2708,7 @@ primary		: literal
 		    /*% %*/
 		    /*% ripper: retry! %*/
 		    }
-		| primary_value tMETHREF operation2
+		| primary_value '.' symbol
 		    {
 		    /*%%%*/
 			$$ = NEW_METHREF($1, $3, &@$);
@@ -5251,7 +5250,8 @@ pushback(struct parser_params *p, int c)
     }
 }
 
-#define was_bol(p) ((p)->lex.pcur == (p)->lex.pbeg + 1)
+#define was_boln(p, n) ((p)->lex.pcur == (p)->lex.pbeg + (n) + 1)
+#define was_bol(p) was_boln(p, 0)
 
 #define tokfix(p) ((p)->tokenbuf[(p)->tokidx]='\0')
 #define tok(p) (p)->tokenbuf
@@ -8070,23 +8070,6 @@ parser_yylex(struct parser_params *p)
 	    }
 	    pushback(p, c);
 	    return tDOT2;
-	  case ':':
-	    switch (c = nextc(p)) {
-	      default:
-		if (!parser_is_identchar(p)) break;
-		/* fallthru */
-	      case '!': case '%': case '&': case '*': case '+':
-	      case '-': case '/': case '<': case '=': case '>':
-	      case '[': case '^': case '`': case '|': case '~':
-		pushback(p, c);
-		SET_LEX_STATE(EXPR_DOT);
-		return tMETHREF;
-	      case -1:
-		break;
-	    }
-	    pushback(p, c);
-	    c = ':';
-	    break;
 	}
 	pushback(p, c);
 	if (c != -1 && ISDIGIT(c)) {
@@ -8139,6 +8122,11 @@ parser_yylex(struct parser_params *p)
 	    c = warn_balanced(':', ":", "symbol literal");
 	    SET_LEX_STATE(EXPR_BEG);
 	    return c;
+	}
+	if (IS_lex_state(EXPR_DOT) && (space_seen || was_boln(p, 1))) {
+	    pushback(p, c);
+	    SET_LEX_STATE(EXPR_FNAME);
+	    return ':';
 	}
 	switch (c) {
 	  case '\'':

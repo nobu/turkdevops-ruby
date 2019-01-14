@@ -940,7 +940,7 @@ dump_node(VALUE buf, VALUE indent, int comment, const NODE * node)
         ANN("example: foo.:method");
         F_NODE(nd_recv, "receiver");
         LAST_NODE;
-        F_ID(nd_mid, "method name");
+        F_NODE(nd_body, "method name");
         return;
 
       case NODE_LAMBDA:

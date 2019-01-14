@@ -7566,7 +7566,8 @@ iseq_compile_each0(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, in
       }
       case NODE_METHREF:
         CHECK(COMPILE_(ret, "receiver", node->nd_recv, popped));
-        ADD_ELEM(ret, &new_insn_body(iseq, line, BIN(methodref), 1, ID2SYM(node->nd_mid))->link);
+        CHECK(COMPILE_(ret, "method name", node->nd_body, popped));
+        ADD_ELEM(ret, &new_insn_core(iseq, line, BIN(methodref), 0, 0)->link);
         break;
       default:
 	UNKNOWN_NODE("iseq_compile_each", node, COMPILE_NG);

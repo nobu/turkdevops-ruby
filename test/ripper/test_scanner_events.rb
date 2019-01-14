@@ -178,6 +178,8 @@ class TestRipper::ScannerEvents < Test::Unit::TestCase
                  scan('period', 'a.b')
     assert_equal ['.'],
                  scan('period', 'Object.new')
+    assert_equal ['.'],
+                 scan('period', 'obj.:foo')
     assert_equal [],
                  scan('period', '"."')
     assert_equal [],
@@ -550,8 +552,6 @@ class TestRipper::ScannerEvents < Test::Unit::TestCase
                  scan('op', ':[]=')
     assert_equal ['&.'],
                  scan('op', 'a&.f')
-    assert_equal %w(.:),
-                 scan('op', 'obj.:foo')
     assert_equal [],
                  scan('op', %q[`make all`])
   end
@@ -567,6 +567,8 @@ class TestRipper::ScannerEvents < Test::Unit::TestCase
                  scan('symbeg', '":sym"')
     assert_equal [],
                  scan('symbeg', 'a ? b : c')
+    assert_equal [':'],
+                 scan('symbeg', 'obj.:foo')
   end
 
   def test_tstring_beg

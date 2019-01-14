@@ -264,7 +264,8 @@ class TestAst < Test::Unit::TestCase
     assert_equal(:METHREF, body.type)
     recv, mid = body.children
     assert_equal(:VCALL, recv.type)
-    assert_equal(:foo, mid)
+    assert_equal(:LIT, mid.type)
+    assert_equal([:foo], mid.children)
   end
 
   def test_dstr

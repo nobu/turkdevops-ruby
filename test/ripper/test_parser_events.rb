@@ -438,7 +438,7 @@ class TestRipper::ParserEvents < Test::Unit::TestCase
     thru_methref = false
     tree = parse("obj.:foo", :on_methref) {thru_methref = true}
     assert_equal true, thru_methref
-    assert_equal "[methref(vcall(obj),foo)]", tree
+    assert_equal "[methref(vcall(obj),symbol_literal(symbol(foo)))]", tree
   end
 
   def test_excessed_comma
