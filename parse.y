@@ -168,6 +168,7 @@ struct local_vars {
 };
 
 #define NUMPARAM_MAX 100 /* INT_MAX */
+#define NUMPARAM_ALL (NUMPARAM_MAX+1)
 
 #define DVARS_INHERIT ((void*)1)
 #define DVARS_TOPSCOPE NULL
@@ -8334,6 +8335,18 @@ parser_numbered_param(struct parser_params *p, unsigned long n)
 	compile_error(p, "ordinary parameter is defined");
 	return false;
     }
+    if (n == NUMPARAM_ALL) {
+	if (p->max_numparam > 0 && p->max_numparam != (int)n) {
+	    compile_error(p, "cannot use @ and @%d together", p->max_numparam);
+	    return false;
+	}
+    }
+    else {
+	if (p->max_numparam == NUMPARAM_ALL) {
+	    compile_error(p, "cannot use @ and @%lu together", n);
+	    return false;
+	}
+    }
     set_yylval_name(numparam_id(p, (int)n));
     SET_LEX_STATE(EXPR_ARG);
     return true;
@@ -8359,7 +8372,8 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
 	pushback(p, c);
 	RUBY_SET_YYLLOC(loc);
 	if (result == tIVAR) {
-	    compile_error(p, "`@' without identifiers is not allowed as an instance variable name");
+	    if (parser_numbered_param(p, NUMPARAM_ALL))
+		return tNUMPARAM;
 	}
 	else {
 	    compile_error(p, "`@@' without identifiers is not allowed as a class variable name");
@@ -11064,8 +11078,14 @@ args_with_numbered(struct parser_params *p, NODE *args, int max_numparam)
 {
     if (max_numparam > 0) {
 	if (!args) args = new_args_tail(p, 0, 0, 0, 0);
-	args->nd_ainfo->pre_args_num = max_numparam;
-	args->nd_ainfo->rest_arg = excessed_comma;
+	if (max_numparam == NUMPARAM_ALL) {
+	    args->nd_ainfo->pre_args_num = 1;
+	    args->nd_ainfo->rest_arg = 0;
+	}
+	else {
+	    args->nd_ainfo->pre_args_num = max_numparam;
+	    args->nd_ainfo->rest_arg = excessed_comma;
+	}
     }
     return args;
 }
@@ -11078,6 +11098,7 @@ rb_parser_numparam_id(struct parser_params *p, int idx)
     if (p->max_numparam < idx) {
 	p->max_numparam = idx;
     }
+    if (idx == NUMPARAM_ALL) idx = 1;
     args = p->lvtbl->args;
     while (idx > args->pos) {
 	vtable_add(args, internal_id(p));
