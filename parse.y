@@ -8433,6 +8433,30 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
 	SET_LEX_STATE(EXPR_END);
     }
 
+#ifdef CIRCLE_NUMBERED_PARAMETER
+    if (p->lex.state != EXPR_FNAME &&
+	!ISASCII(tok(p)[0]) && rb_enc_unicode_p(p->enc) &&
+	rb_enc_precise_mbclen(tok(p), tok(p)+toklen(p), p->enc) == toklen(p)) {
+	c = rb_enc_codepoint(tok(p), tok(p)+toklen(p), p->enc);
+# define CIRCLED_NUMBER(code, beg, end) \
+	if (code <= c && c <= code + (end - beg)) { \
+	    c -= code - beg; goto circled_number; \
+	}
+	if (0) {
+	  circled_number:
+	    ;
+	    const YYLTYPE loc = RUBY_INIT_YYLLOC();
+	    if (parser_numbered_param(p, c)) {
+		return tNUMPARAM;
+	    }
+	    parser_show_error_line(p, &loc);
+	    return 0;
+	}
+	CIRCLED_NUMBER(0x2460, 1, 20);
+	CIRCLED_NUMBER(0x3251, 21, 35);
+	CIRCLED_NUMBER(0x32B1, 36, 50);
+    }
+#endif
     ident = tokenize_ident(p, last_state);
     if (result == tCONSTANT && is_local_id(ident)) result = tIDENTIFIER;
     if (!IS_lex_state_for(last_state, EXPR_DOT|EXPR_FNAME) &&
