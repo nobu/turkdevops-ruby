@@ -62,6 +62,10 @@ CSV::
   * Upgrade to 3.0.4.
     See https://github.com/ruby/csv/blob/master/NEWS.md.
 
+Date::
+
+  * Date.jisx0301, Date#jisx0301, and Date.parse support new Japanese era.
+
 ERB::
 
   * Prohibit marshaling ERB instance.
