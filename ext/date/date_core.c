@@ -4172,6 +4172,12 @@ d_new_by_frags(VALUE klass, VALUE hash, VALUE sg)
     }
 }
 
+VALUE
+date_new_by_frags(VALUE klass, VALUE hash, VALUE sg)
+{
+    return d_new_by_frags(klass, hash, sg);
+}
+
 VALUE date__strptime(const char *str, size_t slen,
 		     const char *fmt, size_t flen, VALUE hash);
 
@@ -4289,7 +4295,8 @@ date_s_strptime(int argc, VALUE *argv, VALUE klass)
     }
 }
 
-VALUE date__parse(VALUE str, VALUE comp);
+VALUE date__parse(VALUE self, VALUE str, VALUE comp);
+VALUE date___parse(VALUE self, VALUE str, VALUE hash, VALUE ec);
 
 static VALUE
 date_s__parse_internal(int argc, VALUE *argv, VALUE klass)
@@ -4304,7 +4311,7 @@ date_s__parse_internal(int argc, VALUE *argv, VALUE klass)
     if (argc < 2)
 	vcomp = Qtrue;
 
-    hash = date__parse(vstr, vcomp);
+    hash = date__parse(klass, vstr, vcomp);
 
     return hash;
 }
@@ -4375,7 +4382,6 @@ VALUE date__rfc3339(VALUE);
 VALUE date__xmlschema(VALUE);
 VALUE date__rfc2822(VALUE);
 VALUE date__httpdate(VALUE);
-VALUE date__jisx0301(VALUE);
 
 /*
  * call-seq:
@@ -4588,6 +4594,18 @@ date_s_httpdate(int argc, VALUE *argv, VALUE klass)
     }
 }
 
+#define REQUIRE_JISX0301 require_jisx0301()
+static void
+require_jisx0301(void)
+{
+    if (!RTEST(rb_require("date/jisx0301.so"))) {
+        rb_raise(rb_eRuntimeError, "date/jisx0301 is already loaded");
+    }
+    else {
+        rb_warning("require \"date/jisx0301\" explicitly");
+    }
+}
+
 /*
  * call-seq:
  *    Date._jisx0301(string)  ->  hash
@@ -4597,7 +4615,8 @@ date_s_httpdate(int argc, VALUE *argv, VALUE klass)
 static VALUE
 date_s__jisx0301(VALUE klass, VALUE str)
 {
-    return date__jisx0301(str);
+    REQUIRE_JISX0301;
+    return rb_funcall(klass, rb_intern("_jisx0301"), 1, str);
 }
 
 /*
@@ -4612,21 +4631,8 @@ date_s__jisx0301(VALUE klass, VALUE str)
 static VALUE
 date_s_jisx0301(int argc, VALUE *argv, VALUE klass)
 {
-    VALUE str, sg;
-
-    rb_scan_args(argc, argv, "02", &str, &sg);
-
-    switch (argc) {
-      case 0:
-	str = rb_str_new2("-4712-01-01");
-      case 1:
-	sg = INT2FIX(DEFAULT_SG);
-    }
-
-    {
-	VALUE hash = date_s__jisx0301(klass, str);
-	return d_new_by_frags(klass, hash, sg);
-    }
+    REQUIRE_JISX0301;
+    return rb_funcallv(klass, rb_intern("jisx0301"), argc, argv);
 }
 
 static VALUE
@@ -6464,6 +6470,17 @@ d_lite_hash(VALUE self)
 static void set_tmx(VALUE, struct tmx *);
 static VALUE strftimev(const char *, VALUE,
 		       void (*)(VALUE, struct tmx *));
+VALUE datetime_strftime_tmx(const char *fmt, VALUE self,
+                            void (*func)(VALUE, struct tmx *))
+{
+    return strftimev(fmt, self, func);
+}
+
+void
+datetime_set_tmx(VALUE self, struct tmx *tmx)
+{
+    set_tmx(self, tmx);
+}
 
 /*
  * call-seq:
@@ -7009,42 +7026,6 @@ d_lite_httpdate(VALUE self)
     return strftimev("%a, %d %b %Y %T GMT", dup, set_tmx);
 }
 
-enum {
-    DECIMAL_SIZE_OF_LONG = DECIMAL_SIZE_OF_BITS(CHAR_BIT*sizeof(long)),
-    JISX0301_DATE_SIZE = DECIMAL_SIZE_OF_LONG+8
-};
-
-static const char *
-jisx0301_date_format(char *fmt, size_t size, VALUE jd, VALUE y)
-{
-    if (FIXNUM_P(jd)) {
-	long d = FIX2INT(jd);
-	long s;
-	char c;
-	if (d < 2405160)
-	    return "%Y-%m-%d";
-	if (d < 2419614) {
-	    c = 'M';
-	    s = 1867;
-	}
-	else if (d < 2424875) {
-	    c = 'T';
-	    s = 1911;
-	}
-	else if (d < 2447535) {
-	    c = 'S';
-	    s = 1925;
-	}
-	else {
-	    c = 'H';
-	    s = 1988;
-	}
-	snprintf(fmt, size, "%c%02ld" ".%%m.%%d", c, FIX2INT(y) - s);
-	return fmt;
-    }
-    return "%Y-%m-%d";
-}
-
 /*
  * call-seq:
  *    d.jisx0301  ->  string
@@ -7056,14 +7037,8 @@ jisx0301_date_format(char *fmt, size_t size, VALUE jd, VALUE y)
 static VALUE
 d_lite_jisx0301(VALUE self)
 {
-    char fmtbuf[JISX0301_DATE_SIZE];
-    const char *fmt;
-
-    get_d1(self);
-    fmt = jisx0301_date_format(fmtbuf, sizeof(fmtbuf),
-			       m_real_local_jd(dat),
-			       m_real_year(dat));
-    return strftimev(fmt, self, set_tmx);
+    REQUIRE_JISX0301;
+    return rb_funcallv(self, rb_intern("jisx0301"), 0, 0);
 }
 
 #ifndef NDEBUG
@@ -7869,6 +7844,12 @@ dt_new_by_frags(VALUE klass, VALUE hash, VALUE sg)
     }
 }
 
+VALUE
+datetime_new_by_frags(VALUE klass, VALUE hash, VALUE sg)
+{
+    return dt_new_by_frags(klass, hash, sg);
+}
+
 /*
  * call-seq:
  *    DateTime._strptime(string[, format='%FT%T%z'])  ->  hash
@@ -8149,21 +8130,8 @@ datetime_s_httpdate(int argc, VALUE *argv, VALUE klass)
 static VALUE
 datetime_s_jisx0301(int argc, VALUE *argv, VALUE klass)
 {
-    VALUE str, sg;
-
-    rb_scan_args(argc, argv, "02", &str, &sg);
-
-    switch (argc) {
-      case 0:
-	str = rb_str_new2("-4712-01-01T00:00:00+00:00");
-      case 1:
-	sg = INT2FIX(DEFAULT_SG);
-    }
-
-    {
-	VALUE hash = date_s__jisx0301(klass, str);
-	return dt_new_by_frags(klass, hash, sg);
-    }
+    REQUIRE_JISX0301;
+    return rb_funcallv(klass, rb_intern("jisx0301"), argc, argv);
 }
 
 /*
@@ -8373,7 +8341,7 @@ iso8601_timediv(VALUE self, long n)
     static const char timefmt[] = "T%H:%M:%S";
     static const char zone[] = "%:z";
     char fmt[sizeof(timefmt) + sizeof(zone) + rb_strlen_lit(".%N") +
-	     DECIMAL_SIZE_OF_LONG];
+	     DECIMAL_SIZE_OF_BITS(CHAR_BIT*sizeof(long))];
     char *p = fmt;
 
     memcpy(p, timefmt, sizeof(timefmt)-1);
@@ -8381,6 +8349,12 @@ iso8601_timediv(VALUE self, long n)
     if (n > 0) p += snprintf(p, fmt+sizeof(fmt)-p, ".%%%ldN", n);
     memcpy(p, zone, sizeof(zone));
     return strftimev(fmt, self, set_tmx);
+}
+
+VALUE
+datetime_iso8601_timediv(VALUE self, long n)
+{
+    return iso8601_timediv(self, n);
 }
 
 /*
@@ -8436,14 +8410,8 @@ dt_lite_rfc3339(int argc, VALUE *argv, VALUE self)
 static VALUE
 dt_lite_jisx0301(int argc, VALUE *argv, VALUE self)
 {
-    long n = 0;
-
-    rb_check_arity(argc, 0, 1);
-    if (argc >= 1)
-	n = NUM2LONG(argv[0]);
-
-    return rb_str_append(d_lite_jisx0301(self),
-			 iso8601_timediv(self, n));
+    REQUIRE_JISX0301;
+    return rb_funcallv(self, rb_intern("jisx0301"), argc, argv);
 }
 
 /* conversions */
@@ -9066,7 +9034,7 @@ Init_date_core(void)
      *
      * == Terms and Definitions
      *
-     * Some terms and definitions are based on ISO 8601 and JIS X 0301.
+     * Some terms and definitions are based on ISO 8601.
      *
      * === Calendar Date
      *
@@ -9310,6 +9278,7 @@ Init_date_core(void)
     rb_define_singleton_method(cDate, "today", date_s_today, -1);
     rb_define_singleton_method(cDate, "_strptime", date_s__strptime, -1);
     rb_define_singleton_method(cDate, "strptime", date_s_strptime, -1);
+    rb_define_singleton_method(cDate, "__parse", date___parse, 3); /* in date_parse.c */
     rb_define_singleton_method(cDate, "_parse", date_s__parse, -1);
     rb_define_singleton_method(cDate, "parse", date_s_parse, -1);
     rb_define_singleton_method(cDate, "_iso8601", date_s__iso8601, 1);

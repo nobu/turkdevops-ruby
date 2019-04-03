@@ -1212,64 +1212,6 @@ parse_iso2(VALUE str, VALUE hash)
     return 1;
 }
 
-#define JISX0301_ERA_INITIALS "mtsh"
-#define JISX0301_DEFAULT_ERA 'H' /* obsolete */
-
-static int
-gengo(int c)
-{
-    int e;
-
-    switch (c) {
-      case 'M': case 'm': e = 1867; break;
-      case 'T': case 't': e = 1911; break;
-      case 'S': case 's': e = 1925; break;
-      case 'H': case 'h': e = 1988; break;
-      default:  e = 0; break;
-    }
-    return e;
-}
-
-static int
-parse_jis_cb(VALUE m, VALUE hash)
-{
-    VALUE e, y, mon, d;
-    int ep;
-
-    e = rb_reg_nth_match(1, m);
-    y = rb_reg_nth_match(2, m);
-    mon = rb_reg_nth_match(3, m);
-    d = rb_reg_nth_match(4, m);
-
-    ep = gengo(*RSTRING_PTR(e));
-
-    set_hash("year", f_add(str2num(y), INT2FIX(ep)));
-    set_hash("mon", str2num(mon));
-    set_hash("mday", str2num(d));
-
-    return 1;
-}
-
-static int
-parse_jis(VALUE str, VALUE hash)
-{
-    static const char pat_source[] =
-#ifndef TIGHT_PARSER
-        "\\b([" JISX0301_ERA_INITIALS "])(\\d+)\\.(\\d+)\\.(\\d+)"
-#else
-	BOS
-	FPW_COM FPT_COM
-        "([" JISX0301_ERA_INITIALS "])(\\d+)\\.(\\d+)\\.(\\d+)"
-	TEE_FPT COM_FPW
-	EOS
-#endif
-	;
-    static VALUE pat = Qnil;
-
-    REGCOMP_I(pat);
-    SUBS(str, pat, parse_jis_cb);
-}
-
 static int
 parse_vms11_cb(VALUE m, VALUE hash)
 {
@@ -2054,14 +1996,16 @@ check_class(VALUE s)
     return flags;
 }
 
-#define HAVE_ELEM_P(x) ((check_class(str) & (x)) == (x))
+#define HAVE_ELEM_P(x) ((elem_class & (x)) == (x))
 
 #ifdef TIGHT_PARSER
 #define PARSER_ERROR return rb_hash_new()
 #endif
 
+static VALUE date_parse_finish(VALUE str, VALUE hash, unsigned elem_class);
+
 VALUE
-date__parse(VALUE str, VALUE comp)
+date__parse(VALUE self, VALUE str, VALUE comp)
 {
     VALUE backref, hash;
 
@@ -2091,6 +2035,23 @@ date__parse(VALUE str, VALUE comp)
     hash = rb_hash_new();
     set_hash("_comp", comp);
 
+    unsigned elem_class = check_class(str);
+    if (!RTEST(rb_funcall(self, rb_intern("__parse"), 3,
+                          str, hash, UINT2NUM(elem_class)))) {
+#ifdef TIGHT_PARSER
+        PARSER_ERROR; /* not found */
+#endif
+    }
+
+    return date_parse_finish(str, hash, elem_class);
+}
+
+/* :nodoc: */
+VALUE
+date___parse(VALUE self, VALUE str, VALUE hash, VALUE ec)
+{
+    unsigned elem_class = NUM2UINT(ec);
+
     if (HAVE_ELEM_P(HAVE_ALPHA))
 	parse_day(str, hash);
     if (HAVE_ELEM_P(HAVE_DIGIT))
@@ -2109,9 +2070,6 @@ date__parse(VALUE str, VALUE comp)
     }
     if (HAVE_ELEM_P(HAVE_DIGIT|HAVE_DASH))
 	if (parse_iso(str, hash))
-	    goto ok;
-    if (HAVE_ELEM_P(HAVE_DIGIT|HAVE_DOT))
-	if (parse_jis(str, hash))
 	    goto ok;
     if (HAVE_ELEM_P(HAVE_ALPHA|HAVE_DIGIT|HAVE_DASH))
 	if (parse_vms(str, hash))
@@ -2161,11 +2119,17 @@ date__parse(VALUE str, VALUE comp)
 	    goto ok;
     if (parse_wday_and_time(str, hash))
 	goto ok;
-
-    PARSER_ERROR; /* not found */
 #endif
 
+    return Qnil; /* not found */
+
   ok:
+    return hash;
+}
+
+static VALUE
+date_parse_finish(VALUE str, VALUE hash, unsigned elem_class)
+{
 #ifndef TIGHT_PARSER
     if (HAVE_ELEM_P(HAVE_ALPHA))
 	parse_bc(str, hash);
@@ -2935,73 +2899,6 @@ date__httpdate(VALUE str)
 }
 
 #undef SNUM
-#define SNUM 9
-
-static int
-jisx0301_cb(VALUE m, VALUE hash)
-{
-    VALUE s[SNUM + 1];
-    int ep;
-
-    {
-	int i;
-	s[0] = Qnil;
-	for (i = 1; i <= SNUM; i++)
-	    s[i] = rb_reg_nth_match(i, m);
-    }
-
-    ep = gengo(NIL_P(s[1]) ? JISX0301_DEFAULT_ERA : *RSTRING_PTR(s[1]));
-    set_hash("year", f_add(str2num(s[2]), INT2FIX(ep)));
-    set_hash("mon", str2num(s[3]));
-    set_hash("mday", str2num(s[4]));
-    if (!NIL_P(s[5])) {
-	set_hash("hour", str2num(s[5]));
-	if (!NIL_P(s[6]))
-	    set_hash("min", str2num(s[6]));
-	if (!NIL_P(s[7]))
-	    set_hash("sec", str2num(s[7]));
-    }
-    if (!NIL_P(s[8]))
-	set_hash("sec_fraction", sec_fraction(s[8]));
-    if (!NIL_P(s[9])) {
-	set_hash("zone", s[9]);
-	set_hash("offset", date_zone_to_diff(s[9]));
-    }
-
-    return 1;
-}
-
-static int
-jisx0301(VALUE str, VALUE hash)
-{
-    static const char pat_source[] =
-        "\\A\\s*([" JISX0301_ERA_INITIALS "])?(\\d{2})\\.(\\d{2})\\.(\\d{2})"
-	"(?:t"
-	"(?:(\\d{2}):(\\d{2})(?::(\\d{2})(?:[,.](\\d*))?)?"
-	"(z|[-+]\\d{2}(?::?\\d{2})?)?)?)?\\s*\\z";
-    static VALUE pat = Qnil;
-
-    REGCOMP_I(pat);
-    MATCH(str, pat, jisx0301_cb);
-}
-
-VALUE
-date__jisx0301(VALUE str)
-{
-    VALUE backref, hash;
-
-    backref = rb_backref_get();
-    rb_match_busy(backref);
-
-    hash = rb_hash_new();
-    if (jisx0301(str, hash))
-	goto ok;
-    hash = date__iso8601(str);
-
-  ok:
-    rb_backref_set(backref);
-    return hash;
-}
 
 /*
 Local variables:
