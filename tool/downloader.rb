@@ -77,6 +77,8 @@ class Downloader
       if $VERBOSE # temporary, for debugging only
         $stdout.puts "Downloader::Unicode#download, name='#{name}', dir='#{dir}', since='#{since}', options='#{options.inspect}'"
       end
+      file_base = File.basename(name, '.txt')
+      return if file_base == '.' # Use pre-generated headers and tables
       options = options.dup
       unicode_beta = options.delete(:unicode_beta)
       name_dir_part = name.sub(/[^\/]+$/, '')
@@ -87,7 +89,6 @@ class Downloader
           index_file = super(UNICODE_PUBLIC+name_dir_part, "#{name_dir_part}index.html", dir, true, index_options)
           INDEX[:index] = IO.read index_file
         end
-        file_base = File.basename(name, '.txt')
         beta_name = INDEX[:index][/#{Regexp.quote(file_base)}(-[0-9.]+d\d+)?\.txt/]
         # make sure we always check for new versions of files,
         # because they can easily change in the beta period
