@@ -1045,6 +1045,7 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %token <id> tCOLON2	RUBY_TOKEN(COLON2) "::"
 %token <id> tMETHREF	RUBY_TOKEN(METHREF) ".:"
 %token tPIPE		RUBY_TOKEN(PIPE) "|>"
+%token tRASSGN		RUBY_TOKEN(RASSGN) "|>="
 %token tCOLON3		":: at EXPR_BEG"
 %token <id> tOP_ASGN	"operator-assignment" /* +=, -=  etc. */
 %token tASSOC		"=>"
@@ -1080,7 +1081,7 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %nonassoc  modifier_if modifier_unless modifier_while modifier_until
 %left  keyword_or keyword_and
 %right keyword_not
-%left  tPIPE
+%left  tPIPE tRASSGN
 %nonassoc keyword_defined
 %right '=' tOP_ASGN
 %left modifier_rescue
@@ -1517,6 +1518,20 @@ pipeline	: expr tPIPE operation2 opt_paren_args
 			$$ = new_command_qcall(p, ID2VAL(idPIPE), $1, $3, $4, $5, &@3, &@$);
 		    /*% %*/
 		    /*% ripper: method_add_block!(command_call!($1, ID2VAL(idPIPE), $3, $4), $5) %*/
+		    }
+		| expr tRASSGN lhs
+		    {
+		    /*%%%*/
+			$$ = node_assign(p, $3, $1, &@$);
+		    /*% %*/
+		    /*% ripper: assign!($3, $1) %*/
+		    }
+		| expr tRASSGN mlhs
+		    {
+		    /*%%%*/
+			$$ = node_assign(p, $3, $1, &@$);
+		    /*% %*/
+		    /*% ripper: massign!($3, $1) %*/
 		    }
 		;
 
@@ -8856,6 +8871,10 @@ parser_yylex(struct parser_params *p)
 	}
 	if (c == '>') {
 	    SET_LEX_STATE(EXPR_DOT);
+	    if (peek(p, '=')) {
+		nextc(p);
+		return tRASSGN;
+	    }
 	    return tPIPE;
 	}
 	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);

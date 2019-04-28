@@ -112,6 +112,7 @@ token_ops = %[\
   ANDDOT        &.
   METHREF       .:
   PIPE          |>
+  RASSGN        |>=
 ]
 
 class KeywordError < RuntimeError
