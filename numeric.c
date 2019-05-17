@@ -332,7 +332,7 @@ num_funcall_op_0(VALUE x, VALUE arg, int recursive)
 			  ID2SYM(func), x);
 	}
     }
-    return rb_funcallv(x, func, 0, 0);
+    return rb_check_funcall_default(x, func, 0, 0, Qnil);
 }
 
 static VALUE
@@ -365,7 +365,7 @@ num_funcall_op_1(VALUE y, VALUE arg, int recursive)
     if (recursive) {
 	num_funcall_op_1_recursion(x, func, y);
     }
-    return rb_funcall(x, func, 1, y);
+    return rb_check_funcall_default(x, func, 1, &y, Qnil);
 }
 
 static VALUE
@@ -444,14 +444,14 @@ VALUE
 rb_num_coerce_bin(VALUE x, VALUE y, ID func)
 {
     do_coerce(&x, &y, TRUE);
-    return rb_funcall(x, func, 1, y);
+    return rb_check_funcall_default(x, func, 1, &y, Qnil);
 }
 
 VALUE
 rb_num_coerce_cmp(VALUE x, VALUE y, ID func)
 {
     if (do_coerce(&x, &y, FALSE))
-	return rb_funcall(x, func, 1, y);
+	return rb_check_funcall_default(x, func, 1, &y, Qnil);
     return Qnil;
 }
 
@@ -461,7 +461,7 @@ rb_num_coerce_relop(VALUE x, VALUE y, ID func)
     VALUE c, x0 = x, y0 = y;
 
     if (!do_coerce(&x, &y, FALSE) ||
-	NIL_P(c = rb_funcall(x, func, 1, y))) {
+	NIL_P(c = rb_check_funcall_default(x, func, 1, &y, Qnil))) {
 	rb_cmperr(x0, y0);
 	return Qnil;		/* not reached */
     }

@@ -2228,7 +2228,6 @@ Init_Complex(void)
 
     rb_undef_methods_from(rb_cComplex, rb_mComparable);
     rb_undef_method(rb_cComplex, "%");
-    rb_undef_method(rb_cComplex, "<=>");
     rb_undef_method(rb_cComplex, "div");
     rb_undef_method(rb_cComplex, "divmod");
     rb_undef_method(rb_cComplex, "floor");

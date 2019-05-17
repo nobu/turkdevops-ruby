@@ -518,9 +518,9 @@ class Complex_Test < Test::Unit::TestCase
   end
 
   def test_cmp
-    assert_raise(NoMethodError){1 <=> Complex(1,1)}
-    assert_raise(NoMethodError){Complex(1,1) <=> 1}
-    assert_raise(NoMethodError){Complex(1,1) <=> Complex(1,1)}
+    assert_nil(1 <=> Complex(1,1))
+    assert_nil(Complex(1,1) <=> 1)
+    assert_nil(Complex(1,1) <=> Complex(1,1))
   end
 
   def test_eqeq
@@ -891,7 +891,7 @@ class Complex_Test < Test::Unit::TestCase
   def test_respond
     c = Complex(1,1)
     assert_not_respond_to(c, :%)
-    assert_not_respond_to(c, :<=>)
+    assert_respond_to(c, :<=>)
     assert_not_respond_to(c, :div)
     assert_not_respond_to(c, :divmod)
     assert_not_respond_to(c, :floor)
