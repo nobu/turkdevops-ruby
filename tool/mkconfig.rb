@@ -53,99 +53,100 @@ File.foreach "config.status" do |line|
     val = continued_line.join
     name = continued_name
     continued_line = nil
-  when /^(?:ac_given_)?INSTALL=(.*)/
-    v_fast << "  CONFIG[\"INSTALL\"] = " + $1 + "\n"
+  when /^(?:ac_given_)?INSTALL=(['"])(.*)\1/
+    name = "INSTALL"
+    val = $2
+  else
+    next
   end
 
-  if name
-    case name
-    when /^(?:ac_.*|configure_input|(?:top_)?srcdir|\w+OBJS)$/; next
-    when /^(?:X|(?:MINI|RUN|(?:HAVE_)?BASE|BOOTSTRAP|BTEST)RUBY(?:_COMMAND)?$)/; next
-    when /^INSTALLDOC|TARGET$/; next
-    when /^DTRACE/; next
-    when /^MJIT_(CC|SUPPORT)$/; # pass
-    when /^MJIT_/; next
-    when /^(?:MAJOR|MINOR|TEENY)$/; vars[name] = val; next
-    when /^LIBRUBY_D?LD/; next
-    when /^RUBY_INSTALL_NAME$/; next vars[name] = (install_name = val).dup if $install_name
-    when /^RUBY_SO_NAME$/; next vars[name] = (so_name = val).dup if $so_name
-    when /^arch$/; if val.empty? then val = arch else arch = val end
-    when /^sitearch$/; val = '$(arch)' if val.empty?
-    when /^DESTDIR$/; next
-    when /RUBYGEMS/; next
+  case name
+  when /^(?:ac_.*|configure_input|(?:top_)?srcdir|\w+OBJS)$/; next
+  when /^(?:X|(?:MINI|RUN|(?:HAVE_)?BASE|BOOTSTRAP|BTEST)RUBY(?:_COMMAND)?$)/; next
+  when /^INSTALLDOC|TARGET$/; next
+  when /^DTRACE/; next
+  when /^MJIT_(CC|SUPPORT)$/; # pass
+  when /^MJIT_/; next
+  when /^(?:MAJOR|MINOR|TEENY)$/; vars[name] = val; next
+  when /^LIBRUBY_D?LD/; next
+  when /^RUBY_INSTALL_NAME$/; next vars[name] = (install_name = val).dup if $install_name
+  when /^RUBY_SO_NAME$/; next vars[name] = (so_name = val).dup if $so_name
+  when /^arch$/; if val.empty? then val = arch else arch = val end
+  when /^sitearch$/; val = '$(arch)' if val.empty?
+  when /^DESTDIR$/; next
+  when /RUBYGEMS/; next
+  end
+  case val
+  when /^\$\(ac_\w+\)$/; next
+  when /^\$\{ac_\w+\}$/; next
+  when /^\$ac_\w+$/; next
+  end
+  if /^program_transform_name$/ =~ name
+    val.sub!(/\As(\\?\W)(?:\^|\${1,2})\1\1(;|\z)/, '')
+    if val.empty?
+      $install_name ||= "ruby"
+      next
     end
-    case val
-    when /^\$\(ac_\w+\)$/; next
-    when /^\$\{ac_\w+\}$/; next
-    when /^\$ac_\w+$/; next
-    end
-    if /^program_transform_name$/ =~ name
-      val.sub!(/\As(\\?\W)(?:\^|\${1,2})\1\1(;|\z)/, '')
-      if val.empty?
-        $install_name ||= "ruby"
-        next
-      end
-      unless $install_name
-        $install_name = "ruby"
-        val.gsub!(/\$\$/, '$')
-        val.scan(%r[\G[\s;]*(/(?:\\.|[^/])*+/)?([sy])(\\?\W)((?:(?!\3)(?:\\.|.))*+)\3((?:(?!\3)(?:\\.|.))*+)\3([gi]*)]) do
-          |addr, cmd, sep, pat, rep, opt|
-          if addr
-            Regexp.new(addr[/\A\/(.*)\/\z/, 1]) =~ $install_name or next
+    unless $install_name
+      $install_name = "ruby"
+      val.gsub!(/\$\$/, '$')
+      val.scan(%r[\G[\s;]*(/(?:\\.|[^/])*+/)?([sy])(\\?\W)((?:(?!\3)(?:\\.|.))*+)\3((?:(?!\3)(?:\\.|.))*+)\3([gi]*)]) do
+        |addr, cmd, sep, pat, rep, opt|
+        if addr
+          Regexp.new(addr[/\A\/(.*)\/\z/, 1]) =~ $install_name or next
+        end
+        case cmd
+        when 's'
+          pat = Regexp.new(pat, opt.include?('i'))
+          if opt.include?('g')
+            $install_name.gsub!(pat, rep)
+          else
+            $install_name.sub!(pat, rep)
           end
-          case cmd
-          when 's'
-            pat = Regexp.new(pat, opt.include?('i'))
-            if opt.include?('g')
-              $install_name.gsub!(pat, rep)
-            else
-              $install_name.sub!(pat, rep)
-            end
-          when 'y'
-            $install_name.tr!(Regexp.quote(pat), rep)
-          end
+        when 'y'
+          $install_name.tr!(Regexp.quote(pat), rep)
         end
       end
     end
-    eq = win32 && vars[name] ? '<< "\n"' : '='
-    vars[name] = val
-    if name == "configure_args"
-      val.gsub!(/--with-out-ext/, "--without-ext")
-    end
-    val = val.gsub(/\$(?:\$|\{?(\w+)\}?)/) {$1 ? "$(#{$1})" : $&}.dump
-    case name
-    when /^prefix$/
-      val = "(TOPDIR || DESTDIR + #{val})"
-    when /^ARCH_FLAG$/
-      val = "arch_flag || #{val}" if universal
-    when /^UNIVERSAL_ARCHNAMES$/
-      universal, val = val, 'universal' if universal
-    when /^arch$/
-      if universal
-        platform = val.sub(/universal/, '$(arch)')
-      end
-    when /^target_cpu$/
-      if universal
-        val = 'cpu'
-      end
-    when /^target$/
-      val = '"$(target_cpu)-$(target_vendor)-$(target_os)"'
-    when /^host(?:_(?:os|vendor|cpu|alias))?$/
-      val = %["$(#{name.sub(/^host/, 'target')})"]
-    when /^includedir$/
-      val = '"$(SDKROOT)"'+val if /darwin/ =~ arch
-    end
-    v = "  CONFIG[\"#{name}\"] #{eq} #{val}\n"
-    if fast[name]
-      v_fast << v
-    else
-      v_others << v
-    end
-    #case name
-    #when "RUBY_PROGRAM_VERSION"
-    #  version = val[/\A"(.*)"\z/, 1]
-    #end
   end
+  eq = win32 && vars[name] ? '<< "\n"' : '='
+  vars[name] = val
+  if name == "configure_args"
+    val.gsub!(/--with-out-ext/, "--without-ext")
+  end
+  val = val.gsub(/\$(?:\$|\{?(\w+)\}?)/) {$1 ? "$(#{$1})" : $&}.dump
+  case name
+  when /^prefix$/
+    val = "(TOPDIR || DESTDIR + #{val})"
+  when /^ARCH_FLAG$/
+    val = "arch_flag || #{val}" if universal
+  when /^UNIVERSAL_ARCHNAMES$/
+    universal, val = val, 'universal' if universal
+  when /^arch$/
+    if universal
+      platform = val.sub(/universal/, '$(arch)')
+    end
+  when /^target_cpu$/
+    if universal
+      val = 'cpu'
+    end
+  when /^target$/
+    val = '"$(target_cpu)-$(target_vendor)-$(target_os)"'
+  when /^host(?:_(?:os|vendor|cpu|alias))?$/
+    val = %["$(#{name.sub(/^host/, 'target')})"]
+  when /^includedir$/
+    val = '"$(SDKROOT)"'+val if /darwin/ =~ arch
+  end
+  v = "  CONFIG[\"#{name}\"] #{eq} #{val}\n"
+  if fast[name]
+    v_fast << v
+  else
+    v_others << v
+  end
+  #case name
+  #when "RUBY_PROGRAM_VERSION"
+  #  version = val[/\A"(.*)"\z/, 1]
+  #end
 #  break if /^CEOF/
 end
 
