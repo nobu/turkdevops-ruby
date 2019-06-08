@@ -5454,9 +5454,7 @@ rb_io_fmode_modestr(int fmode)
 }
 
 static const char bom_prefix[] = "bom|";
-static const char utf_prefix[] = "utf-";
 enum {bom_prefix_len = (int)sizeof(bom_prefix) - 1};
-enum {utf_prefix_len = (int)sizeof(utf_prefix) - 1};
 
 static int
 io_encname_bom_p(const char *name, long len)
@@ -5693,13 +5691,7 @@ parse_mode_enc(const char *estr, rb_encoding *estr_enc,
     if ((fmode & FMODE_SETENC_BY_BOM) || io_encname_bom_p(estr, len)) {
 	estr += bom_prefix_len;
 	len -= bom_prefix_len;
-	if (!STRNCASECMP(estr, utf_prefix, utf_prefix_len)) {
-	    fmode |= FMODE_SETENC_BY_BOM;
-	}
-	else {
-	    rb_enc_warn(estr_enc, "BOM with non-UTF encoding %s is nonsense", estr);
-	    fmode &= ~FMODE_SETENC_BY_BOM;
-	}
+        fmode |= FMODE_SETENC_BY_BOM;
     }
     if (len == 0 || len > ENCODING_MAXNAMELEN) {
 	idx = -1;

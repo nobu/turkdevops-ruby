@@ -2080,8 +2080,9 @@ EOT
     }
   end
 
-  %w/UTF-8 UTF-16BE UTF-16LE UTF-32BE UTF-32LE/.each do |name|
-    define_method("test_strip_bom:#{name}") do
+  %w/UTF-8 UTF-16BE UTF-16LE UTF-32BE UTF-32LE
+  /.product(%w/UTF-8 CP932/) do |name, fallback|
+    define_method("test_strip_bom:#{name}:#{fallback}") do
       path = "#{name}-bom.txt"
       with_tmpdir {
         text = "\uFEFFa"
@@ -2093,7 +2094,7 @@ EOT
         assert_equal(content[1..-1].b, result.b, name)
         %w[rb rt r].each do |mode|
           message = "#{name}, mode: #{mode.dump}"
-          result = File.read(path, mode: "#{mode}:BOM|UTF-8:UTF-8")
+          result = File.read(path, mode: "#{mode}:BOM|#{fallback}:UTF-8")
           assert_equal(Encoding::UTF_8, result.encoding, message)
           assert_equal(stripped, result, message)
         end
@@ -2101,45 +2102,56 @@ EOT
     end
   end
 
-  def test_strip_bom_no_conv
-    with_tmpdir {
-      path = 'UTF-8-bom.txt'
-      generate_file(path, "\uFEFFa")
+  %w/UTF-8 CP932/.each do |enc|
+    define_method("test_strip_bom_no_conv:#{enc}") do
+      with_tmpdir {
+        path = 'UTF-8-bom.txt'
+        generate_file(path, "\uFEFFa")
 
-      bug3407 = '[ruby-core:30641]'
-      result = File.read(path, encoding: 'BOM|UTF-8')
-      assert_equal("a", result.b, bug3407)
-    }
-  end
+        bug3407 = '[ruby-core:30641]'
+        result = File.read(path, encoding: "BOM|#{enc}")
+        assert_equal("a", result.b, bug3407)
+        assert_equal(Encoding::UTF_8, result.encoding)
+      }
+    end
 
-  def test_strip_bom_invalid
-    with_tmpdir {
-      path = 'UTF-8-bom.txt'
-      generate_file(path, "\uFEFFa")
+    define_method("test_strip_bom_invalid:#{enc}") do
+      with_tmpdir {
+        path = 'UTF-8-bom.txt'
+        generate_file(path, "\uFEFFa")
 
-      bug8323 = '[ruby-core:54563] [Bug #8323]'
-      expected = "a\xff".force_encoding("utf-8")
-      open(path, 'ab') {|f| f.write("\xff")}
-      result = File.read(path, encoding: 'BOM|UTF-8')
-      assert_not_predicate(result, :valid_encoding?, bug8323)
-      assert_equal(expected, result, bug8323)
-      result = File.read(path, encoding: 'BOM|UTF-8:UTF-8')
-      assert_not_predicate(result, :valid_encoding?, bug8323)
-      assert_equal(expected, result, bug8323)
-    }
-  end
+        bug8323 = '[ruby-core:54563] [Bug #8323]'
+        expected = "a\xff".force_encoding("utf-8")
+        open(path, 'ab') {|f| f.write("\xff")}
 
-  def test_strip_bom_no_bom
-    with_tmpdir {
-      bug8323 = '[ruby-core:54563] [Bug #8323]'
-      path = 'ascii.txt'
-      stripped = "a"
-      generate_file(path, stripped)
-      result = File.read(path, encoding: 'BOM|UTF-8')
-      assert_equal(stripped, result, bug8323)
-      result = File.read(path, encoding: 'BOM|UTF-8:UTF-8')
-      assert_equal(stripped, result, bug8323)
-    }
+        result = File.read(path, encoding: "BOM|#{enc}")
+        assert_not_predicate(result, :valid_encoding?, bug8323)
+        assert_equal(expected, result, bug8323)
+        assert_equal(Encoding::UTF_8, result.encoding)
+
+        result = File.read(path, encoding: "BOM|#{enc}:UTF-8")
+        assert_not_predicate(result, :valid_encoding?, bug8323)
+        assert_equal(expected, result, bug8323)
+        assert_equal(Encoding::UTF_8, result.encoding)
+      }
+    end
+
+    define_method("test_strip_bom_no_bom:#{enc}") do
+      with_tmpdir {
+        bug8323 = '[ruby-core:54563] [Bug #8323]'
+        path = 'ascii.txt'
+        stripped = "a"
+        generate_file(path, stripped)
+
+        result = File.read(path, encoding: "BOM|#{enc}")
+        assert_equal(stripped, result, bug8323)
+        assert_equal(Encoding.find(enc), result.encoding)
+
+        result = File.read(path, encoding: "BOM|#{enc}:UTF-8")
+        assert_equal(stripped, result, bug8323)
+        assert_equal(Encoding::UTF_8, result.encoding)
+      }
+    end
   end
 
   def test_bom_too_long_utfname
@@ -2160,25 +2172,25 @@ EOT
   def test_bom_non_utf
     enc = nil
 
-    assert_warn(/BOM/) {
+    assert_warn('') {
       open(__FILE__, "r:bom|us-ascii") {|f| enc = f.external_encoding}
     }
     assert_equal(Encoding::US_ASCII, enc)
 
     enc = nil
-    assert_warn(/BOM/) {
+    assert_warn('') {
       open(__FILE__, "r", encoding: "bom|us-ascii") {|f| enc = f.external_encoding}
     }
     assert_equal(Encoding::US_ASCII, enc)
 
     enc = nil
-    assert_warn(/BOM/) {
+    assert_warn('') {
       open(IO::NULL, "w:bom|us-ascii") {|f| enc = f.external_encoding}
     }
     assert_equal(Encoding::US_ASCII, enc)
 
     enc = nil
-    assert_warn(/BOM/) {
+    assert_warn('') {
       open(IO::NULL, "w", encoding: "bom|us-ascii") {|f| enc = f.external_encoding}
     }
     assert_equal(Encoding::US_ASCII, enc)
