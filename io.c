@@ -6155,20 +6155,23 @@ io_strip_bom(VALUE io)
     return 0;
 }
 
-static void
+static rb_encoding *
 io_set_encoding_by_bom(VALUE io)
 {
     int idx = io_strip_bom(io);
     rb_io_t *fptr;
+    rb_encoding *extenc = NULL;
 
     GetOpenFile(io, fptr);
     if (idx) {
-	io_encoding_set(fptr, rb_enc_from_encoding(rb_enc_from_index(idx)),
-		rb_io_internal_encoding(io), Qnil);
+        extenc = rb_enc_from_index(idx);
+        io_encoding_set(fptr, rb_enc_from_encoding(extenc),
+                        rb_io_internal_encoding(io), Qnil);
     }
     else {
 	fptr->encs.enc2 = NULL;
     }
+    return extenc;
 }
 
 static VALUE
@@ -8289,6 +8292,22 @@ rb_io_initialize(int argc, VALUE *argv, VALUE io)
 
     if (fmode & FMODE_SETENC_BY_BOM) io_set_encoding_by_bom(io);
     return io;
+}
+
+/*
+ *  call-seq:
+ *     ios.detect_bom   -> encoding or nil
+ */
+static VALUE
+io_detect_bom(VALUE io)
+{
+    rb_io_t *fptr;
+
+    GetOpenFile(io, fptr);
+    if (!(fptr->mode & FMODE_BINMODE)) return Qnil;
+    if (fptr->encs.enc2) return Qnil;
+    if (!io_set_encoding_by_bom(io)) return Qnil;
+    return rb_enc_from_encoding(fptr->encs.enc);
 }
 
 /*
@@ -13303,6 +13322,7 @@ Init_IO(void)
     rb_define_method(rb_cIO, "external_encoding", rb_io_external_encoding, 0);
     rb_define_method(rb_cIO, "internal_encoding", rb_io_internal_encoding, 0);
     rb_define_method(rb_cIO, "set_encoding", rb_io_set_encoding, -1);
+    rb_define_method(rb_cIO, "detect_bom", io_detect_bom, 0);
 
     rb_define_method(rb_cIO, "autoclose?", rb_io_autoclose_p, 0);
     rb_define_method(rb_cIO, "autoclose=", rb_io_set_autoclose, 1);
