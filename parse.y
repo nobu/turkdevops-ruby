@@ -1021,7 +1021,7 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %type <node> p_case_body p_cases p_top_expr p_top_expr_body
 %type <node> p_expr p_as p_alt p_expr_basic
 %type <node> p_args p_args_head p_args_tail p_args_post p_arg
-%type <node> p_value p_primitive p_variable p_var_ref p_const
+%type <node> p_value p_primitive p_variable p_value_ref p_const
 %type <node> p_kwargs p_kwarg p_kw
 %type <id>   keyword_variable user_variable sym operation operation2 operation3
 %type <id>   cname fname op f_rest_arg f_block_arg opt_f_block_arg f_norm_arg f_bad_arg
@@ -4037,7 +4037,7 @@ p_value	: p_primitive
 		    /*% ripper: dot3!($1, Qnil) %*/
 		    }
 		| p_variable
-		| p_var_ref
+		| p_value_ref
 		| p_const
 		| tBDOT2 p_primitive
 		    {
@@ -4102,16 +4102,9 @@ p_variable	: tIDENTIFIER
 		    }
 		;
 
-p_var_ref	: '^' tIDENTIFIER
+p_value_ref	: '^' primary_value
 		    {
-		    /*%%%*/
-			NODE *n = gettable(p, $2, &@$);
-			if (!(nd_type(n) == NODE_LVAR || nd_type(n) == NODE_DVAR)) {
-			    compile_error(p, "%"PRIsVALUE": no such local variable", rb_id2str($2));
-			}
-			$$ = n;
-		    /*% %*/
-		    /*% ripper: var_ref!($2) %*/
+			$$ = call_uni_op(p, $2, '^', &@1, &@$);
 		    }
 		;
 

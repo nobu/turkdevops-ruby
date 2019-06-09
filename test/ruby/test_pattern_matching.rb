@@ -216,11 +216,18 @@ class TestPatternMatching < Test::Unit::TestCase
       flunk
     end
 
-    assert_syntax_error(%q{
+    assert_block do
       case 0
-      in ^a
+      in ^(1-1)
+        true
       end
-    }, /no such local variable/)
+    end
+
+    assert_raise(NoMatchingPatternError) do
+      case 0
+      in ^(1+1)
+      end
+    end
   end
 
   def test_literal_value_pattern

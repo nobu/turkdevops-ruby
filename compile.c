@@ -5577,6 +5577,11 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *c
         ADD_LABEL(ret, fin);
         break;
       }
+      case NODE_OPCALL:
+        if (node->nd_mid != '^' || node->nd_args) goto unknown;
+        CHECK(COMPILE(ret, "case in expr", node->nd_recv));
+        ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
+        break;
       case NODE_LIT:
       case NODE_STR:
       case NODE_XSTR:
@@ -5709,6 +5714,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *c
         ADD_LABEL(ret, fin);
         break;
       }
+      unknown:
       default:
         UNKNOWN_NODE("NODE_IN", node, COMPILE_NG);
     }
