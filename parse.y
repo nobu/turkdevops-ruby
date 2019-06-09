@@ -4102,9 +4102,23 @@ p_variable	: tIDENTIFIER
 		    }
 		;
 
-p_value_ref	: '^' primary_value
+p_value_ref	: '^' tIDENTIFIER
 		    {
-			$$ = call_uni_op(p, $2, '^', &@1, &@$);
+		    /*%%%*/
+			NODE *n = gettable(p, $2, &@$);
+			if (!(nd_type(n) == NODE_LVAR || nd_type(n) == NODE_DVAR)) {
+			    compile_error(p, "%"PRIsVALUE": no such local variable", rb_id2str($2));
+			}
+			$$ = n;
+		    /*% %*/
+		    /*% ripper: var_ref!($2) %*/
+		    }
+		| '^' tLPAREN compstmt ')'
+		    {
+		    /*%%%*/
+			$$ = call_uni_op(p, $3, '^', &@1, &@$);
+		    /*% %*/
+		    /*% ripper: paren!($3) %*/
 		    }
 		;
 

@@ -216,6 +216,12 @@ class TestPatternMatching < Test::Unit::TestCase
       flunk
     end
 
+    assert_syntax_error(%q{
+      case 0
+      in ^a
+      end
+    }, /no such local variable/)
+
     assert_block do
       case 0
       in ^(1-1)
