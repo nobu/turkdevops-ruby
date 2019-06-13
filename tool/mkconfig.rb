@@ -1,4 +1,4 @@
-#!./miniruby -s
+#!./miniruby
 
 # This script, which is run when ruby is built, generates rbconfig.rb by
 # parsing information from config.status.  rbconfig.rb contains build
@@ -6,30 +6,36 @@
 # mkmf to build compatible native extensions.
 
 # avoid warnings with -d.
-$install_name ||= nil
-$so_name ||= nil
-$unicode_version ||= nil
-$unicode_emoji_version ||= nil
-arch = $arch or raise "missing -arch"
-version = $version or raise "missing -version"
+
+args = {}
+ARGV.each do |arg|
+  if /\A-(\w+)=(.*)/ =~ arg
+    k, v = $1, $2
+    k = k.upcase if k.start_with?("unicode_")
+    args[k] = v
+  end
+end
+
+version = args.delete('version') or raise "missing -version"
+install_name = args.delete('install_name')
+so_name = args.delete('so_name')
 
 srcdir = File.expand_path('../..', __FILE__)
+$:.replace [srcdir+"/lib"] unless args['cross_compiling'] == "yes"
 $:.unshift(".")
 
 mkconfig = File.basename($0)
 
-fast = {'prefix'=>true, 'ruby_install_name'=>true, 'INSTALL'=>true, 'EXEEXT'=>true}
-
-win32 = /mswin/ =~ arch
-universal = /universal.*darwin/ =~ arch
-v_fast = []
-v_others = []
+fast = %w[
+  MAJOR MINOR TEENY PATCHLEVEL
+  ruby_install_name RUBY_INSTALL_NAME INSTALL
+]
 vars = {}
 continued_name = nil
 continued_line = nil
-install_name = nil
-so_name = nil
 platform = nil
+drive = File::PATH_SEPARATOR == ';'
+dest = drive ? %r'= "(?!\$[\(\{])(?i:[a-z]:)' : %r'= "(?!\$[\(\{])'
 File.foreach "config.status" do |line|
   next if /^#/ =~ line
   name = nil
@@ -61,6 +67,15 @@ File.foreach "config.status" do |line|
   end
 
   case name
+  when 'RUBY_INSTALL_NAME'
+  when 'RUBY_SO_NAME'
+  when 'DESTDIR'; next
+  when 'prefix'
+    val.sub!(%r[/\.\z], '/')
+  when 'sitearch'; val = '$(arch)' if val.empty?
+  when 'configure_args'
+    val.gsub!(/--with-out-ext/, "--without-ext")
+  when /RUBYGEMS/; next
   when /^(?:ac_.*|configure_input|(?:top_)?srcdir|\w+OBJS)$/; next
   when /^(?:X|(?:MINI|RUN|(?:HAVE_)?BASE|BOOTSTRAP|BTEST)RUBY(?:_COMMAND)?$)/; next
   when /^INSTALLDOC|TARGET$/; next
@@ -69,90 +84,52 @@ File.foreach "config.status" do |line|
   when /^MJIT_/; next
   when /^(?:MAJOR|MINOR|TEENY)$/; vars[name] = val; next
   when /^LIBRUBY_D?LD/; next
-  when /^RUBY_INSTALL_NAME$/; next vars[name] = (install_name = val).dup if $install_name
-  when /^RUBY_SO_NAME$/; next vars[name] = (so_name = val).dup if $so_name
-  when /^arch$/; if val.empty? then val = arch else arch = val end
-  when /^sitearch$/; val = '$(arch)' if val.empty?
-  when /^DESTDIR$/; next
-  when /RUBYGEMS/; next
   end
+
   case val
   when /^\$\(ac_\w+\)$/; next
   when /^\$\{ac_\w+\}$/; next
   when /^\$ac_\w+$/; next
   end
-  if /^program_transform_name$/ =~ name
-    val.sub!(/\As(\\?\W)(?:\^|\${1,2})\1\1(;|\z)/, '')
-    if val.empty?
-      $install_name ||= "ruby"
-      next
-    end
-    unless $install_name
-      $install_name = "ruby"
-      val.gsub!(/\$\$/, '$')
-      val.scan(%r[\G[\s;]*(/(?:\\.|[^/])*+/)?([sy])(\\?\W)((?:(?!\3)(?:\\.|.))*+)\3((?:(?!\3)(?:\\.|.))*+)\3([gi]*)]) do
-        |addr, cmd, sep, pat, rep, opt|
-        if addr
-          Regexp.new(addr[/\A\/(.*)\/\z/, 1]) =~ $install_name or next
-        end
-        case cmd
-        when 's'
-          pat = Regexp.new(pat, opt.include?('i'))
-          if opt.include?('g')
-            $install_name.gsub!(pat, rep)
-          else
-            $install_name.sub!(pat, rep)
-          end
-        when 'y'
-          $install_name.tr!(Regexp.quote(pat), rep)
-        end
-      end
-    end
+
+  if /^(?!abs_|old)[a-z]+(?:_prefix|dir)$/ =~ name
+    next if val == "no"
+    val.sub!(dest, '"$(DESTDIR)')
   end
-  eq = win32 && vars[name] ? '<< "\n"' : '='
-  vars[name] = val
-  if name == "configure_args"
-    val.gsub!(/--with-out-ext/, "--without-ext")
-  end
-  val = val.gsub(/\$(?:\$|\{?(\w+)\}?)/) {$1 ? "$(#{$1})" : $&}.dump
-  case name
-  when /^prefix$/
-    val = "(TOPDIR || DESTDIR + #{val})"
-  when /^ARCH_FLAG$/
-    val = "arch_flag || #{val}" if universal
-  when /^UNIVERSAL_ARCHNAMES$/
-    universal, val = val, 'universal' if universal
-  when /^arch$/
-    if universal
-      platform = val.sub(/universal/, '$(arch)')
-    end
-  when /^target_cpu$/
-    if universal
-      val = 'cpu'
-    end
-  when /^target$/
-    val = '"$(target_cpu)-$(target_vendor)-$(target_os)"'
-  when /^host(?:_(?:os|vendor|cpu|alias))?$/
-    val = %["$(#{name.sub(/^host/, 'target')})"]
-  when /^includedir$/
-    val = '"$(SDKROOT)"'+val if /darwin/ =~ arch
-  end
-  v = "  CONFIG[\"#{name}\"] #{eq} #{val}\n"
-  if fast[name]
-    v_fast << v
+
+  val = val.gsub(/\$(?:\$|\{?(\w+)\}?)/) {$1 ? "$(#{$1})" : $&}
+
+  if vars[name]
+    vars[name] << "\n" << val
   else
-    v_others << v
+    vars[name] = val
   end
-  #case name
-  #when "RUBY_PROGRAM_VERSION"
-  #  version = val[/\A"(.*)"\z/, 1]
-  #end
-#  break if /^CEOF/
 end
 
-drive = File::PATH_SEPARATOR == ';'
+IO.foreach(File.join(srcdir, "version.h")) do |l|
+  m = /^\s*#\s*define\s+RUBY_(PATCHLEVEL|VERSION_(\w+))\s+(-?\d+)/.match(l)
+  if m
+    vars[m[2] || m[1]] = m[3]
+  end
+end
+IO.foreach(File.join(srcdir, "include/ruby/version.h")) do |l|
+  m = /^\s*#\s*define\s+RUBY_API_VERSION_(\w+)\s+(-?\d+)/.match(l)
+  if m
+    vars[m[1]] ||= m[2]
+    next
+  end
+end
 
-def vars.expand(val, config = self)
+vars.update(args)
+
+vars['MAJOR'], vars['MINOR'], vars['TEENY'] = version.split('.')
+vars['target'] = '$(target_cpu)-$(target_vendor)-$(target_os)'
+vars['host'] = '$(host_cpu)-$(host_vendor)-$(host_os)'
+vars.keys.grep(/\Ahost(_(?:os|vendor|cpu|alias))?\z/) {vars[$&] = "$(target#{$1})"}
+vars["archdir"] = "$(rubyarchdir)"
+
+vconf = {}
+def vconf.expand(val, config = self)
   newval = val.gsub(/\$\$|\$\(([^()]+)\)|\$\{([^{}]+)\}/) {
     var = $&
     if !(v = $1 || $2)
@@ -170,8 +147,62 @@ def vars.expand(val, config = self)
   val.replace(newval) unless newval == val
   val
 end
-prefix = vars.expand(vars["prefix"] ||= "")
-rubyarchdir = vars.expand(vars["rubyarchdir"] ||= "")
+
+arch = vars['arch']
+if /universal/ =~ arch
+  vars['ARCH_FLAG'][0, 0] = "arch_flag || "
+  universal = vars['UNIVERSAL_ARCHNAMES']
+  vars['UNIVERSAL_ARCHNAMES'] = 'universal'
+  arch.sub!(/universal/, %q[#{universal[/(?:\A|\s)#{Regexp.quote(arch)}=(\S+)/, 1] || '\&'}])
+  vars['target_cpu'] = 'cpu'
+end
+if /darwin/ =~ arch
+  vars['includedir'][0, 0] = '$(SDKROOT)'
+end
+
+val = vars['program_transform_name']
+val.sub!(/\As(\\?\W)(?:\^|\${1,2})\1\1(;|\z)/, '')
+if val.empty?
+  install_name ||= "ruby"
+elsif !install_name
+  install_name = "ruby"
+  val.gsub!(/\$\$/, '$')
+  val.scan(%r[\G[\s;]*(/(?:\\.|[^/])*+/)?([sy])(\\?\W)((?:(?!\3)(?:\\.|.))*)\3((?:(?!\3)(?:\\.|.))*+)\3([gi]*+)]) do
+    |addr, cmd, sep, pat, rep, opt|
+    if addr
+      Regexp.new(addr[/\A\/(.*)\/\z/, 1]) =~ install_name or next
+    end
+    case cmd
+    when 's'
+      pat = Regexp.new(pat, opt.include?('i'))
+      if opt.include?('g')
+        install_name.gsub!(pat, rep)
+      else
+        install_name.sub!(pat, rep)
+      end
+    when 'y'
+      install_name.tr!(Regexp.quote(pat), rep)
+    end
+  end
+end
+
+if install_name
+  vars['RUBY_INSTALL_NAME'] = install_name
+else
+  install_name = vars['RUBY_INSTALL_NAME'] ||= 'ruby'
+end
+vars['ruby_install_name'] ||= vars['RUBY_INSTALL_NAME']
+if so_name
+  vars['RUBY_SO_NAME'] = so_name
+end
+
+prefix = (vars["prefix"] ||= "").dup
+rubyarchdir = (vars["rubyarchdir"] ||= "").dup
+
+vars.each {|k, v| vconf[k] = v.dup}
+
+vconf.expand(prefix)
+vconf.expand(rubyarchdir)
 relative_archdir = rubyarchdir.rindex(prefix, 0) ? rubyarchdir[prefix.size..-1] : rubyarchdir
 
 puts %[\
@@ -195,7 +226,7 @@ print "  TOPDIR = File.dirname(__FILE__).chomp!(#{relative_archdir.dump})\n"
 print "  # DESTDIR on make install.\n"
 print "  DESTDIR = ", (drive ? "TOPDIR && TOPDIR[/\\A[a-z]:/i] || " : ""), "'' unless defined? DESTDIR\n"
 print <<"UNIVERSAL", <<'ARCH' if universal
-  universal = #{universal}
+  universal = #{universal.dump}
 UNIVERSAL
   arch_flag = ENV['ARCHFLAGS'] || ((e = ENV['RC_ARCHS']) && e.split.uniq.map {|a| "-arch #{a}"}.join(' '))
   arch = arch_flag && arch_flag[/\A\s*-arch\s+(\S+)\s*\z/, 1]
@@ -204,81 +235,24 @@ ARCH
 print "  # The hash configurations stored.\n"
 print "  CONFIG = {}\n"
 print "  CONFIG[\"DESTDIR\"] = DESTDIR\n"
+print "  CONFIG[\"prefix\"] = (TOPDIR || DESTDIR + #{vars.delete('prefix').dump})\n"
 
-versions = {}
-IO.foreach(File.join(srcdir, "version.h")) do |l|
-  m = /^\s*#\s*define\s+RUBY_(PATCHLEVEL)\s+(-?\d+)/.match(l)
-  if m
-    versions[m[1]] = m[2]
-    break if versions.size == 4
+fast.each do |n|
+  v = vars.delete(n)
+  print "  CONFIG[#{n.dump}] = #{(v || "").dump}\n"
+end
+
+vars.each do |n, v|
+  unless v.include?("\n")
+    print "  CONFIG[#{n.dump}] = #{v.dump}\n"
     next
   end
-  m = /^\s*#\s*define\s+RUBY_VERSION_(\w+)\s+(-?\d+)/.match(l)
-  if m
-    versions[m[1]] = m[2]
-    break if versions.size == 4
-    next
-  end
-  m = /^\s*#\s*define\s+RUBY_VERSION\s+\W?([.\d]+)/.match(l)
-  if m
-    versions['MAJOR'], versions['MINOR'], versions['TEENY'] = m[1].split('.')
-    break if versions.size == 4
-    next
+  sep = "="
+  v.each_line do |_|
+    print "  CONFIG[#{n.dump}] #{sep} #{_.dump}\n"
+    sep = :<<
   end
 end
-if versions.size != 4
-  IO.foreach(File.join(srcdir, "include/ruby/version.h")) do |l|
-    m = /^\s*#\s*define\s+RUBY_API_VERSION_(\w+)\s+(-?\d+)/.match(l)
-    if m
-      versions[m[1]] ||= m[2]
-      break if versions.size == 4
-      next
-    end
-  end
-end
-%w[MAJOR MINOR TEENY PATCHLEVEL].each do |v|
-  print "  CONFIG[#{v.dump}] = #{(versions[v]||vars[v]).dump}\n"
-end
-
-dest = drive ? %r'= "(?!\$[\(\{])(?i:[a-z]:)' : %r'= "(?!\$[\(\{])'
-v_disabled = {}
-v_others.collect! do |x|
-  if /^\s*CONFIG\["((?!abs_|old)[a-z]+(?:_prefix|dir))"\]/ === x
-    name = $1
-    if /= "no"$/ =~ x
-      v_disabled[name] = true
-      v_others.delete(name)
-      next
-    end
-    x.sub(dest, '= "$(DESTDIR)')
-  else
-    x
-  end
-end
-v_others.compact!
-
-if $install_name
-  if install_name and vars.expand("$(RUBY_INSTALL_NAME)") == $install_name
-    $install_name = install_name
-  end
-  v_fast << "  CONFIG[\"ruby_install_name\"] = \"" + $install_name + "\"\n"
-  v_fast << "  CONFIG[\"RUBY_INSTALL_NAME\"] = \"" + $install_name + "\"\n"
-end
-if $so_name
-  if so_name and vars.expand("$(RUBY_SO_NAME)") == $so_name
-    $so_name = so_name
-  end
-  v_fast << "  CONFIG[\"RUBY_SO_NAME\"] = \"" + $so_name + "\"\n"
-end
-
-print(*v_fast)
-print(*v_others)
-print <<EOS if $unicode_version
-  CONFIG["UNICODE_VERSION"] = #{$unicode_version.dump}
-EOS
-print <<EOS if $unicode_emoji_version
-  CONFIG["UNICODE_EMOJI_VERSION"] = #{$unicode_emoji_version.dump}
-EOS
 print <<EOS if /darwin/ =~ arch
   if sdkroot = ENV["SDKROOT"]
     sdkroot = sdkroot.dup
@@ -294,6 +268,7 @@ print <<EOS
   CONFIG["platform"] = #{platform || '"$(arch)"'}
   CONFIG["archdir"] = "$(rubyarchdir)"
   CONFIG["topdir"] = File.dirname(__FILE__)
+
   # Almost same with CONFIG. MAKEFILE_CONFIG has other variable
   # reference like below.
   #
