@@ -242,6 +242,8 @@ struct parser_params {
     VALUE debug_buffer;
     VALUE debug_output;
 
+    ID placeholder;
+
     ID cur_arg;
 
     rb_ast_t *ast;
@@ -266,7 +268,7 @@ struct parser_params {
 # endif
     unsigned int error_p: 1;
     unsigned int cr_seen: 1;
-    unsigned int has_placeholder: 1;
+    unsigned int in_pipeline: 1;
 
 #ifndef RIPPER
     /* Ruby core only */
@@ -277,7 +279,6 @@ struct parser_params {
     unsigned int do_split: 1;
     unsigned int warn_location: 1;
 
-    NODE *placeholder;
     NODE *eval_tree_begin;
     NODE *eval_tree;
     VALUE error_buffer;
@@ -290,7 +291,6 @@ struct parser_params {
     int delayed_line;
     int delayed_col;
 
-    VALUE placeholder;
     VALUE value;
     VALUE result;
     VALUE parsing_thread;
@@ -377,6 +377,8 @@ set_line_body(NODE *body, int line)
 }
 
 #define yyparse ruby_yyparse
+
+static int vtable_included(const struct vtable * tbl, ID id);
 
 static NODE* cond(struct parser_params *p, NODE *node, const YYLTYPE *loc);
 static NODE* method_cond(struct parser_params *p, NODE *node, const YYLTYPE *loc);
@@ -1504,44 +1506,56 @@ expr		: command_call
 
 pipeline	: expr tPIPE
 		    {
-			$<num>2 = p->has_placeholder;
-			/*%%%*/
-			$<node>$ = p->placeholder;
-			/*%
-			$<val>$ = p->placeholder;
-			%*/
-			p->has_placeholder = 1;
-			p->placeholder = $1;
+			$<num>2 = p->in_pipeline;
+			$<id>$ = p->placeholder;
+			p->in_pipeline = 1;
+			p->placeholder = 0;
 		    }
 		  expr
 		    {
-			$$ = $4;
 			/*%%%*/
-			if (p->has_placeholder) {
-			    NODE *n = $4;
-			    if (nd_type(n) == NODE_ITER) {
-				n = n->nd_iter;
+			ID vid = p->placeholder;
+			if (vid) {
+			    NODE *assgn;
+			    if (vtable_included(p->lvtbl->args, vid)) {
+				assgn = NEW_DASGN_CURR(vid, $1, &@2);
 			    }
-			    switch (nd_type(n)) {
-			      case NODE_LVAR:
-			      case NODE_DVAR:
-				n->nd_mid = n->nd_vid;
-				/* fall through */
-			      case NODE_VCALL:
-			      case NODE_FCALL:
-				nd_set_type(n, NODE_CALL);
-				n->nd_recv = p->placeholder;
+			    else {
+				assgn = NEW_LASGN(vid, $1, &@2);
+			    }
+			    $$ = list_append(p, NEW_LIST(assgn, &@2), $4);
+			}
+			else {
+			    NODE *n = $4;
+			    $$ = n;
+			    while (n) {
+				if (nd_type(n) == NODE_ITER) {
+				    n = n->nd_iter;
+				}
+				switch (nd_type(n)) {
+				  case NODE_CALL:
+				    n = n->nd_recv;
+				    continue;
+				  case NODE_LVAR:
+				  case NODE_DVAR:
+				    n->nd_mid = n->nd_vid;
+				    /* fall through */
+				  case NODE_VCALL:
+				  case NODE_FCALL:
+				    nd_set_type(n, NODE_CALL);
+				    n->nd_recv = $1;
+				    break;
+				  default:
+				    yyerror1(&@4, "no placeholder");
+				    $$ = NEW_BEGIN(0, &@4);
+				}
 				break;
-			      default:
-				yyerror1(&@4, "no placeholder");
-				$$ = 0;
 			    }
 			}
-			p->placeholder = $<node>3;
-			/*%
-			p->placeholder = $<val>3;
-			%*/
-			p->has_placeholder = $<num>2;
+			/*% %*/
+			/*% ripper: pipeline!($1, $4) %*/
+			p->placeholder = $<id>3;
+			p->in_pipeline = $<num>2 & 1;
 		    }
 		;
 
@@ -8467,6 +8481,22 @@ parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
 	pushback(p, c);
 	RUBY_SET_YYLLOC(loc);
 	if (result == tIVAR) {
+	    if (p->in_pipeline) {
+		ID vid = p->placeholder;
+		if (last_state) {
+		    SET_LEX_STATE(EXPR_CMDARG);
+		}
+		else {
+		    SET_LEX_STATE(EXPR_ARG);
+		}
+		if (!vid) {
+		    vid = ifndef_ripper(internal_id(p) - '@') + '@';
+		    p->placeholder = vid;
+		    local_var(p, vid);
+		}
+		set_yylval_name(vid);
+		return tIDENTIFIER;
+	    }
 	    compile_error(p, "`@' without identifiers is not allowed as an instance variable name");
 	}
 	else {
@@ -8975,7 +9005,7 @@ parser_yylex(struct parser_params *p)
 	    return tOP_ASGN;
 	}
 	if (c == '>') {
-	    SET_LEX_STATE(EXPR_ARG);
+	    SET_LEX_STATE(EXPR_BEG);
 	    return tPIPE;
 	}
 	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
@@ -9284,17 +9314,6 @@ parser_yylex(struct parser_params *p)
 	return parse_gvar(p, last_state);
 
       case '@':
-	if (p->has_placeholder && !parser_is_identchar(p)) {
-	    p->has_placeholder = 0;
-	    if (cmd_state) {
-		SET_LEX_STATE(EXPR_CMDARG);
-	    }
-	    else {
-		SET_LEX_STATE(EXPR_ARG);
-	    }
-	    set_yylval_name('@');
-	    return tIDENTIFIER;
-	}
 	return parse_atmark(p, last_state);
 
       case '_':
@@ -9784,15 +9803,14 @@ gettable(struct parser_params *p, ID id, const YYLTYPE *loc)
 	return NEW_LIT(INT2FIX(p->tokline), loc);
       case keyword__ENCODING__:
 	return NEW_LIT(add_mark_object(p, rb_enc_from_encoding(p->enc)), loc);
-      case '@':
-	if (!p->placeholder) break;
-	return p->placeholder;
     }
     switch (id_type(id)) {
       case ID_INTERNAL:
 	{
 	    int idx = vtable_included(p->lvtbl->args, id);
 	    if (idx) return NEW_DVAR(id, loc);
+	    idx = vtable_included(p->lvtbl->vars, id);
+	    if (idx) return NEW_LVAR(id, loc);
 	}
 	break;
       case ID_LOCAL:
