@@ -266,6 +266,7 @@ struct parser_params {
 # endif
     unsigned int error_p: 1;
     unsigned int cr_seen: 1;
+    unsigned int has_placeholder: 1;
 
 #ifndef RIPPER
     /* Ruby core only */
@@ -276,6 +277,7 @@ struct parser_params {
     unsigned int do_split: 1;
     unsigned int warn_location: 1;
 
+    NODE *placeholder;
     NODE *eval_tree_begin;
     NODE *eval_tree;
     VALUE error_buffer;
@@ -288,6 +290,7 @@ struct parser_params {
     int delayed_line;
     int delayed_col;
 
+    VALUE placeholder;
     VALUE value;
     VALUE result;
     VALUE parsing_thread;
@@ -1499,33 +1502,46 @@ expr		: command_call
 		| pipeline
 		;
 
-pipeline	: expr tPIPE operation opt_paren_args
+pipeline	: expr tPIPE
 		    {
-		    /*%%%*/
-			$$ = new_command_qcall(p, ID2VAL(idPIPE), $1, $3, $4, Qnull, &@3, &@$);
-		    /*% %*/
-		    /*% ripper: command_call!($1, ID2VAL(idPIPE), $3, $4) %*/
+			$<num>2 = p->has_placeholder;
+			/*%%%*/
+			$<node>$ = p->placeholder;
+			/*%
+			$<val>$ = p->placeholder;
+			%*/
+			p->has_placeholder = 1;
+			p->placeholder = $1;
 		    }
-		| expr tPIPE operation opt_paren_args brace_block
+		  expr
 		    {
-		    /*%%%*/
-			$$ = new_command_qcall(p, ID2VAL(idPIPE), $1, $3, $4, $5, &@3, &@$);
-		    /*% %*/
-		    /*% ripper: method_add_block!(command_call!($1, ID2VAL(idPIPE), $3, $4), $5) %*/
-		    }
-		| expr tPIPE operation command_args
-		    {
-		    /*%%%*/
-			$$ = new_command_qcall(p, ID2VAL(idPIPE), $1, $3, $4, Qnull, &@3, &@$);
-		    /*% %*/
-		    /*% ripper: command_call!($1, ID2VAL(idPIPE), $3, $4) %*/
-		    }
-		| expr tPIPE operation command_args do_block
-		    {
-		    /*%%%*/
-			$$ = new_command_qcall(p, ID2VAL(idPIPE), $1, $3, $4, $5, &@3, &@$);
-		    /*% %*/
-		    /*% ripper: method_add_block!(command_call!($1, ID2VAL(idPIPE), $3, $4), $5) %*/
+			$$ = $4;
+			/*%%%*/
+			if (p->has_placeholder) {
+			    NODE *n = $4;
+			    if (nd_type(n) == NODE_ITER) {
+				n = n->nd_iter;
+			    }
+			    switch (nd_type(n)) {
+			      case NODE_LVAR:
+			      case NODE_DVAR:
+				n->nd_mid = n->nd_vid;
+				/* fall through */
+			      case NODE_VCALL:
+			      case NODE_FCALL:
+				nd_set_type(n, NODE_CALL);
+				n->nd_recv = p->placeholder;
+				break;
+			      default:
+				yyerror1(&@4, "no placeholder");
+				$$ = 0;
+			    }
+			}
+			p->placeholder = $<node>3;
+			/*%
+			p->placeholder = $<val>3;
+			%*/
+			p->has_placeholder = $<num>2;
 		    }
 		;
 
@@ -2594,7 +2610,7 @@ primary		: literal
 		| tLPAREN_ARG stmt {SET_LEX_STATE(EXPR_ENDARG);} rparen
 		    {
 		    /*%%%*/
-			$$ = $2;
+			$$ = NEW_BEGIN($2, &@$);
 		    /*% %*/
 		    /*% ripper: paren!($2) %*/
 		    }
@@ -8959,7 +8975,7 @@ parser_yylex(struct parser_params *p)
 	    return tOP_ASGN;
 	}
 	if (c == '>') {
-	    SET_LEX_STATE(EXPR_DOT);
+	    SET_LEX_STATE(EXPR_ARG);
 	    return tPIPE;
 	}
 	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
@@ -9268,6 +9284,17 @@ parser_yylex(struct parser_params *p)
 	return parse_gvar(p, last_state);
 
       case '@':
+	if (p->has_placeholder && !parser_is_identchar(p)) {
+	    p->has_placeholder = 0;
+	    if (cmd_state) {
+		SET_LEX_STATE(EXPR_CMDARG);
+	    }
+	    else {
+		SET_LEX_STATE(EXPR_ARG);
+	    }
+	    set_yylval_name('@');
+	    return tIDENTIFIER;
+	}
 	return parse_atmark(p, last_state);
 
       case '_':
@@ -9757,6 +9784,9 @@ gettable(struct parser_params *p, ID id, const YYLTYPE *loc)
 	return NEW_LIT(INT2FIX(p->tokline), loc);
       case keyword__ENCODING__:
 	return NEW_LIT(add_mark_object(p, rb_enc_from_encoding(p->enc)), loc);
+      case '@':
+	if (!p->placeholder) break;
+	return p->placeholder;
     }
     switch (id_type(id)) {
       case ID_INTERNAL:
