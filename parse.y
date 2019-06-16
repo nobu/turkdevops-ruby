@@ -995,7 +995,7 @@ static void token_info_pop_gen(struct parser_params*, const char *token, size_t 
 %}
 
 %expect 0
-%pure-parser
+%define api.pure
 %lex-param {struct parser_params *parser}
 %parse-param {struct parser_params *parser}
 
