@@ -201,6 +201,15 @@ class Binding
     irb
   end
 
+  def drb(uri = ENV['BINDING_DRB_URI'])
+    require 'drb'
+    require 'irb'
+    s = DRb::DRbServer.new(uri, self)
+    singleton_class.define_method(:stop_service) {s.stop_service}
+    STDERR.puts s.uri unless uri
+    s.thread.join
+  end
+
   # suppress redefinition warning
   alias irb irb # :nodoc:
 end
