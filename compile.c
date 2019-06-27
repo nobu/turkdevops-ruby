@@ -1757,6 +1757,14 @@ iseq_set_local_table(rb_iseq_t *iseq, const ID *tbl)
     return COMPILE_OK;
 }
 
+NORETURN(static void unexpected_cdhash_type(int t));
+static void
+unexpected_cdhash_type(int t)
+{
+    rb_fatal("unexpected type \"%s\" for case-dispatch",
+             rb_builtin_type_name(t));
+}
+
 static int
 cdhash_cmp(VALUE val, VALUE lit)
 {
@@ -1791,7 +1799,14 @@ cdhash_cmp(VALUE val, VALUE lit)
     else if (tlit == T_FLOAT) {
         return rb_float_cmp(lit, val);
     }
+    else if (tlit == T_RATIONAL) {
+        return !rb_rational_eql(lit, val);
+    }
+    else if (tlit == T_COMPLEX) {
+        return !rb_complex_eql(lit, val);
+    }
     else {
+        unexpected_cdhash_type(tlit);
         UNREACHABLE_RETURN(-1);
     }
 }
@@ -1799,7 +1814,8 @@ cdhash_cmp(VALUE val, VALUE lit)
 static st_index_t
 cdhash_hash(VALUE a)
 {
-    switch (OBJ_BUILTIN_TYPE(a)) {
+    int t = OBJ_BUILTIN_TYPE(a);
+    switch (t) {
       case -1:
       case T_SYMBOL:
         return (st_index_t)a;
@@ -1809,7 +1825,12 @@ cdhash_hash(VALUE a)
         return FIX2LONG(rb_big_hash(a));
       case T_FLOAT:
         return rb_dbl_long_hash(RFLOAT_VALUE(a));
+      case T_RATIONAL:
+        return FIX2LONG(rb_rational_hash(a));
+      case T_COMPLEX:
+        return FIX2LONG(rb_complex_hash(a));
       default:
+        unexpected_cdhash_type(t);
         UNREACHABLE_RETURN(0);
     }
 }

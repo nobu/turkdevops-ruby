@@ -1178,15 +1178,7 @@ nurat_eqeq_p(VALUE self, VALUE other)
 	return f_boolcast(FIXNUM_ZERO_P(rb_dbl_cmp(d, RFLOAT_VALUE(other))));
     }
     else if (RB_TYPE_P(other, T_RATIONAL)) {
-	{
-	    get_dat2(self, other);
-
-	    if (INT_ZERO_P(adat->num) && INT_ZERO_P(bdat->num))
-		return Qtrue;
-
-	    return f_boolcast(rb_int_equal(adat->num, bdat->num) &&
-			      rb_int_equal(adat->den, bdat->den));
-	}
+        return rb_rational_eql(self, other);
     }
     else {
 	return rb_equal(other, self);
@@ -1731,8 +1723,8 @@ nurat_rationalize(int argc, VALUE *argv, VALUE self)
 }
 
 /* :nodoc: */
-static VALUE
-nurat_hash(VALUE self)
+VALUE
+rb_rational_hash(VALUE self)
 {
     st_index_t v, h[2];
     VALUE n;
@@ -1744,6 +1736,21 @@ nurat_hash(VALUE self)
     h[1] = NUM2LONG(n);
     v = rb_memhash(h, sizeof(h));
     return ST2FIX(v);
+}
+
+VALUE
+rb_rational_eql(VALUE self, VALUE other)
+{
+    if (RB_TYPE_P(other, T_RATIONAL)) {
+        get_dat2(self, other);
+
+        if (INT_ZERO_P(adat->num) && INT_ZERO_P(bdat->num))
+            return Qtrue;
+
+        return f_boolcast(rb_int_equal(adat->num, bdat->num) &&
+                          rb_int_equal(adat->den, bdat->den));
+    }
+    return Qfalse;
 }
 
 static VALUE
@@ -2759,7 +2766,8 @@ Init_Rational(void)
     rb_define_method(rb_cRational, "to_r", nurat_to_r, 0);
     rb_define_method(rb_cRational, "rationalize", nurat_rationalize, -1);
 
-    rb_define_method(rb_cRational, "hash", nurat_hash, 0);
+    rb_define_method(rb_cRational, "hash", rb_rational_hash, 0);
+    rb_define_method(rb_cRational, "eql?", rb_rational_eql, 1);
 
     rb_define_method(rb_cRational, "to_s", nurat_to_s, 0);
     rb_define_method(rb_cRational, "inspect", nurat_inspect, 0);

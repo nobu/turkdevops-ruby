@@ -143,4 +143,16 @@ class TestCase < Test::Unit::TestCase
   def test_deoptimize_nil
     assert_equal :not_nil, NilEqqClass.new.eqq(nil)
   end
+
+  def test_numeric
+    assert_separately([], "#{<<~"begin;"}\n#{<<~'end;'}")
+    begin;
+      a = nil
+      case 6r
+      when 6r
+        a = :ok
+      end
+      assert_equal(:ok, a)
+    end;
+  end
 end

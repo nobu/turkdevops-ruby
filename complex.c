@@ -1243,8 +1243,8 @@ nucomp_numerator(VALUE self)
 }
 
 /* :nodoc: */
-static VALUE
-nucomp_hash(VALUE self)
+VALUE
+rb_complex_hash(VALUE self)
 {
     st_index_t v, h[2];
     VALUE n;
@@ -1259,8 +1259,8 @@ nucomp_hash(VALUE self)
 }
 
 /* :nodoc: */
-static VALUE
-nucomp_eql_p(VALUE self, VALUE other)
+VALUE
+rb_complex_eql(VALUE self, VALUE other)
 {
     if (RB_TYPE_P(other, T_COMPLEX)) {
 	get_dat2(self, other);
@@ -2310,8 +2310,8 @@ Init_Complex(void)
     rb_define_method(rb_cComplex, "numerator", nucomp_numerator, 0);
     rb_define_method(rb_cComplex, "denominator", nucomp_denominator, 0);
 
-    rb_define_method(rb_cComplex, "hash", nucomp_hash, 0);
-    rb_define_method(rb_cComplex, "eql?", nucomp_eql_p, 1);
+    rb_define_method(rb_cComplex, "hash", rb_complex_hash, 0);
+    rb_define_method(rb_cComplex, "eql?", rb_complex_eql, 1);
 
     rb_define_method(rb_cComplex, "to_s", nucomp_to_s, 0);
     rb_define_method(rb_cComplex, "inspect", nucomp_inspect, 0);

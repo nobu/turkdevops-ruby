@@ -1427,6 +1427,8 @@ int rb_vm_insn_addr2insn(const void *);
 
 /* complex.c */
 VALUE rb_dbl_complex_new_polar_pi(double abs, double ang);
+VALUE rb_complex_hash(VALUE self);
+VALUE rb_complex_eql(VALUE self, VALUE other);
 
 struct rb_thread_struct;
 /* cont.c */
@@ -2030,6 +2032,8 @@ VALUE rb_cstr_to_rat(const char *, int);
 VALUE rb_rational_abs(VALUE self);
 VALUE rb_rational_cmp(VALUE self, VALUE other);
 VALUE rb_rational_pow(VALUE self, VALUE other);
+VALUE rb_rational_hash(VALUE self);
+VALUE rb_rational_eql(VALUE self, VALUE other);
 VALUE rb_numeric_quo(VALUE x, VALUE y);
 
 /* re.c */
