@@ -1401,6 +1401,47 @@ rb_lastline_set(VALUE val)
     vm_svar_set(GET_EC(), VM_SVAR_LASTLINE, val);
 }
 
+int
+rb_block_set_svar(VALUE lastline, VALUE backref)
+{
+    const rb_execution_context_t *ec = GET_EC();
+    rb_control_frame_t *cfp = ec->cfp;
+    struct vm_svar *svar;
+    const VALUE *lep = 0;
+    VALUE block_handler;
+    enum rb_block_handler_type bhtype;
+
+    if (lastline == Qundef && backref == Qundef) return FALSE;
+    if ((block_handler = rb_vm_frame_block_handler(cfp)) == VM_BLOCK_HANDLER_NONE) {
+        return FALSE;
+    }
+    while ((bhtype = vm_block_handler_type(block_handler)) ==
+           block_handler_type_proc) {
+	block_handler = vm_proc_to_block_handler(VM_BH_TO_PROC(block_handler));
+    }
+    if (bhtype != block_handler_type_iseq) {
+        //rb_raise(rb_eArgError, "Can't set special variables in C level Proc");
+        return FALSE;
+    }
+
+    lep = VM_EP_LEP(VM_BH_TO_ISEQ_BLOCK(block_handler)->ep);
+    if (!lep) return FALSE;
+    svar = lep_svar(ec, lep);
+
+    if ((VALUE)svar == Qfalse || imemo_type((VALUE)svar) != imemo_svar) {
+	lep_svar_write(ec, lep, svar = svar_new((VALUE)svar));
+    }
+
+    if (lastline != Qundef) {
+	RB_OBJ_WRITE(svar, &svar->lastline, lastline);
+    }
+    if (backref != Qundef) {
+	RB_OBJ_WRITE(svar, &svar->backref, backref);
+    }
+
+    return TRUE;
+}
+
 /* misc */
 
 /* in intern.h */
