@@ -88,6 +88,7 @@ grep_iter_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
     ENUM_WANT_SVALUE();
 
     if (RTEST(rb_funcallv(memo->v1, id_eqq, 1, &i)) == RTEST(memo->u3.value)) {
+        rb_block_set_svar(Qundef, rb_backref_get());
 	rb_ary_push(memo->v2, enum_yield(argc, i));
     }
     return Qnil;

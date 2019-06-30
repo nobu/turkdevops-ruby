@@ -63,6 +63,22 @@ class TestEnumerable < Test::Unit::TestCase
     assert_equal([[2, 1], [2, 4]], a)
   end
 
+  def test_grep_backref
+    klass = Class.new do
+      include Enumerable
+      def each
+        return enum_for(:each) unless block_given?
+        yield "Hello"
+        yield "World"
+      end
+    end
+
+    result = []
+    klass.new.grep(/^(.)/) {result << $1}
+
+    assert_equal(%w[H W], result)
+  end
+
   def test_count
     assert_equal(5, @obj.count)
     assert_equal(2, @obj.count(1))
