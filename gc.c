@@ -2961,9 +2961,8 @@ struct should_not_capture_data {
 };
 
 static void
-should_not_capture_callback(VALUE child, void *dp)
+should_not_capture_callback(const VALUE child, struct should_not_capture_data *data)
 {
-    struct should_not_capture_data *data = dp;
     if (child == data->obj)
         data->found = true;
 
@@ -2971,20 +2970,22 @@ should_not_capture_callback(VALUE child, void *dp)
         return;
 
     // Maintain a set of objects already searched, so that we don't follow a cycle
-    if (rb_hash_lookup2(data->set, child, Qfalse))
+    VALUE key = rb_obj_id(child);
+    if (rb_hash_has_key(data->set, key))
         return;
-    rb_hash_aset(data->set, child, Qtrue);
+    rb_hash_aset(data->set, key, Qtrue);
 
-    rb_objspace_reachable_objects_from(child, should_not_capture_callback, data);
+    rb_objspace_reachable_objects_from(child, (void (*)(unsigned long, void *)) &should_not_capture_callback, (void *)data);
 }
 
 static void
 should_not_capture(VALUE block, VALUE obj)
 {
-    struct should_not_capture_data data = {obj, rb_ident_hash_new()};
-    rb_obj_hide(data.set);
-    rb_objspace_reachable_objects_from(block, should_not_capture_callback, &data);
-    rb_hash_clear(data.set);
+    struct should_not_capture_data data;
+    data.obj = obj;
+    data.set = rb_hash_new();
+    data.found = false;
+    rb_objspace_reachable_objects_from(block, (void (*)(unsigned long, void *)) &should_not_capture_callback, (void *)&data);
     if (data.found)
         rb_warn("object is reachable from finalizer - it may never be run");
 }
@@ -3018,9 +3019,8 @@ define_final(int argc, VALUE *argv, VALUE os)
 	should_be_callable(block);
     }
 
-    if (RTEST(ruby_verbose)) {
+    if (ruby_verbose)
         should_not_capture(block, obj);
-    }
 
     return define_final0(obj, block);
 }
