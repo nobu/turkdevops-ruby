@@ -445,16 +445,16 @@ class TestSH < Test::Unit::TestCase
     (from..to).each do |j|
       d = Date.jd(j, sg)
       d2 = Date.new(d.year, d.mon, d.mday, sg)
-      assert_equal(d2.jd, j)
-      assert_equal(d2.ajd, d.ajd)
-      assert_equal(d2.year, d.year)
+      assert_equal(j, d.jd)
+      assert_equal(d.ajd, d2.ajd)
+      assert_equal(d.year, d2.year)
 
       d = DateTime.jd(j, 12,0,0, '+12:00', sg)
       d2 = DateTime.new(d.year, d.mon, d.mday,
 			d.hour, d.min, d.sec, d.offset, sg)
-      assert_equal(d2.jd, j)
-      assert_equal(d2.ajd, d.ajd)
-      assert_equal(d2.year, d.year)
+      assert_equal(j, d.jd)
+      assert_equal(d.ajd, d2.ajd)
+      assert_equal(d.year, d2.year)
     end
   end
 

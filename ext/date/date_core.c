@@ -34,7 +34,6 @@ static double positive_inf, negative_inf;
 #define f_mul(x,y) rb_funcall(x, '*', 1, y)
 #define f_div(x,y) rb_funcall(x, '/', 1, y)
 #define f_quo(x,y) rb_funcall(x, rb_intern("quo"), 1, y)
-#define f_idiv(x,y) rb_funcall(x, rb_intern("div"), 1, y)
 #define f_mod(x,y) rb_funcall(x, '%', 1, y)
 #define f_remainder(x,y) rb_funcall(x, rb_intern("remainder"), 1, y)
 #define f_expt(x,y) rb_funcall(x, rb_intern("**"), 1, y)
@@ -53,6 +52,18 @@ static double positive_inf, negative_inf;
 
 static VALUE date_initialize(int argc, VALUE *argv, VALUE self);
 static VALUE datetime_initialize(int argc, VALUE *argv, VALUE self);
+
+static inline VALUE
+f_idiv(VALUE x, VALUE y)
+{
+    VALUE d = rb_check_funcall(x, rb_intern("div"), 1, &y);
+    if (d == Qundef) {
+	long ix = NUM2INT(x);
+	long iy = NUM2INT(y);
+	d = INT2NUM(ix / iy);
+    }
+    return d;
+}
 
 inline static int
 f_cmp(VALUE x, VALUE y)
@@ -1382,15 +1393,24 @@ inline static double
 guess_style(VALUE y, double sg) /* -/+oo or zero */
 {
     double style = 0;
+    long iy;
 
     if (isinf(sg))
 	style = sg;
-    else if (!FIXNUM_P(y))
-	style = f_positive_p(y) ? negative_inf : positive_inf;
+    else if (!FIXNUM_P(y)) {
+	VALUE zero = INT2FIX(0);
+	VALUE neg = rb_check_funcall(y, '<', 1, &zero);
+	if (neg == Qundef) {
+	    iy = NUM2LONG(y);
+	    goto fixnum;
+	}
+	style = !neg ? negative_inf : positive_inf;
+    }
     else {
-	long iy = FIX2LONG(y);
+	iy = FIX2LONG(y);
 
 	assert(FIXNUM_P(y));
+      fixnum:
 	if (iy < REFORM_BEGIN_YEAR)
 	    style = positive_inf;
 	else if (iy > REFORM_END_YEAR)
@@ -3398,22 +3418,13 @@ date_initialize(int argc, VALUE *argv, VALUE self)
 	rb_raise(rb_eTypeError, "Date expected");
     }
 
-    int i = rb_scan_args(argc, argv, "04", &vy, &vm, &vd, &vsg);
+    argc = rb_scan_args(argc, argv, "04", &vy, &vm, &vd, &vsg);
 
     y = INT2FIX(-4712);
     m = 1;
     d = 1;
     fr2 = INT2FIX(0);
     sg = DEFAULT_SG;
-
-    if (i >= 1 && NIL_P(vy))
-        rb_raise(rb_eArgError, "invalid date");
-
-    if (i >= 2 && NIL_P(vm))
-        rb_raise(rb_eArgError, "invalid date");
-
-    if (i >= 3 && NIL_P(vd))
-        rb_raise(rb_eArgError, "invalid date");
 
     switch (argc) {
       case 4:
