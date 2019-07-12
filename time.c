@@ -40,6 +40,7 @@ static ID id_quo, id_div;
 static ID id_nanosecond, id_microsecond, id_millisecond, id_nsec, id_usec;
 static ID id_local_to_utc, id_utc_to_local, id_find_timezone;
 static ID id_year, id_mon, id_mday, id_hour, id_min, id_sec, id_isdst, id_name;
+static ID idRationalize;
 #define UTC_ZONE Qundef
 
 #ifndef TM_IS_TIME
@@ -507,7 +508,8 @@ num_exact(VALUE v)
         goto typeerror;
     }
     else {
-        if ((tmp = rb_check_funcall(v, idTo_r, 0, NULL)) != Qundef) {
+        if ((tmp = rb_check_funcall(v, idRationalize, 0, NULL)) != Qundef ||
+            (tmp = rb_check_funcall(v, idTo_r, 0, NULL)) != Qundef) {
             /* test to_int method availability to reject non-Numeric
              * objects such as String, Time, etc which have to_r method. */
             if (!rb_respond_to(v, idTo_int)) goto typeerror;
@@ -569,10 +571,7 @@ rb_time_unmagnify_to_float(wideval_t w)
     }
 #endif
     v = w2v(w);
-    if (RB_TYPE_P(v, T_RATIONAL))
-        return rb_Float(quov(v, INT2FIX(TIME_SCALE)));
-    else
-        return quov(v, DBL2NUM(TIME_SCALE));
+    return rb_Float(quov(v, INT2FIX(TIME_SCALE)));
 }
 
 static void
@@ -5742,6 +5741,7 @@ Init_Time(void)
     id_isdst = rb_intern("isdst");
     id_name = rb_intern("name");
     id_find_timezone = rb_intern("find_timezone");
+    idRationalize = rb_intern("rationalize");
 
     rb_cTime = rb_define_class("Time", rb_cObject);
     rb_include_module(rb_cTime, rb_mComparable);

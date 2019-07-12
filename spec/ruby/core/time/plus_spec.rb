@@ -12,7 +12,7 @@ describe "Time#+" do
 
   it "adds a negative Float" do
     t = Time.at(100) + -1.3
-    t.usec.should == 699999
+    t.usec.should be_close(700000, 1)
     t.to_i.should == 98
   end
 
