@@ -9,6 +9,8 @@ module Digest
     case name
     when :SHA256, :SHA384, :SHA512
       lib = 'digest/sha2.so'
+    when /\ASHA3_\d+\z/
+      lib = 'digest/sha3.so'
     else
       lib = File.join('digest', name.to_s.downcase)
     end
