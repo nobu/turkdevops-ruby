@@ -120,6 +120,10 @@ for:
     # separately execute tests without -j which may crash worker with -j.
     - mingw32-make test-all TESTOPTS="--retry --job-status=normal --show-skip --timeout-scale=1.5 --excludes=../ruby/test/excludes/_appveyor" TESTS="../ruby/test/win32ole ../ruby/test/open-uri/test_open-uri.rb ../ruby/test/ruby/test_gc_compact.rb"
     - mingw32-make test-spec MSPECOPT=-fs # not using `-j` because sometimes `mspec -j` silently dies on Windows
+    - cd %APPVEYOR_BUILD_FOLDER%
+    - sh ./configure --disable-install-doc --prefix=/. --build=%MINGW_CHOST% --host=%MINGW_CHOST% --target=%MINGW_CHOST% --disable-rubygems 'optflags=-O0' 'debugflags=-save-temps=obj -g'
+    - ruby tool/update-deps --fix
+    - git diff --no-ext-diff --ignore-submodules --exit-code
 notifications:
   # Using "Webhook" with templated body to skip notification on Pull Request
   - provider: Webhook
