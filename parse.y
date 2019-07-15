@@ -327,6 +327,8 @@ struct parser_params {
     NODE *eval_tree;
     VALUE error_buffer;
     VALUE debug_lines;
+    VALUE suspicious;
+
     const struct rb_iseq_struct *parent_iseq;
 #else
     /* Ripper only */
@@ -452,6 +454,9 @@ set_line_body(NODE *body, int line)
 }
 
 #define yyparse ruby_yyparse
+
+static void push_suspicious(struct parser_params *p, int lineno, VALUE mesg);
+#define SUSPICIOUS(n, m) push_suspicious(p, n, rb_fstring_cstr(m))
 
 static NODE* cond(struct parser_params *p, NODE *node, const YYLTYPE *loc);
 static NODE* method_cond(struct parser_params *p, NODE *node, const YYLTYPE *loc);
@@ -1250,6 +1255,7 @@ program		:  {
 top_compstmt	: top_stmts opt_terms
 		    {
 			$$ = void_stmts(p, $1);
+			@$.end_pos = @1.end_pos;
 		    }
 		;
 
@@ -1281,6 +1287,12 @@ top_stmts	: none
 		;
 
 top_stmt	: stmt
+		    {
+		    /*%%%*/
+			if (p->suspicious) rb_ary_clear(p->suspicious);
+		    /*% %*/
+			$$ = $1;
+		    }
 		| keyword_BEGIN begin_block
 		    {
 			$$ = $2;
@@ -1323,6 +1335,7 @@ bodystmt	: compstmt
 compstmt	: stmts opt_terms
 		    {
 			$$ = void_stmts(p, $1);
+			@$.end_pos = @1.end_pos;
 		    }
 		;
 
@@ -3317,6 +3330,13 @@ opt_else	: none
 		| k_else compstmt
 		    {
 		    /*%%%*/
+			if (nd_type($2) == NODE_IF) {
+			    if (@1.beg_pos.lineno == @2.beg_pos.lineno &&
+				@1.beg_pos.column == @2.end_pos.column - rb_strlen_lit("end")) {
+				SUSPICIOUS(@2.end_pos.lineno, "`end' of `if' matched `else' before `if'");
+				SUSPICIOUS(@1.beg_pos.lineno, "maybe `elsif'?");
+			    }
+			}
 			$$ = $2;
 		    /*% %*/
 		    /*% ripper: else!($2) %*/
@@ -5706,6 +5726,16 @@ parser_precise_mbclen(struct parser_params *p, const char *ptr)
 #ifndef RIPPER
 static void ruby_show_error_line(VALUE errbuf, const YYLTYPE *yylloc, int lineno, VALUE str);
 
+static void
+push_suspicious(struct parser_params *p, int lineno, VALUE mesg)
+{
+    VALUE m = p->suspicious;
+    if (!m) {
+	p->suspicious = m = rb_ary_tmp_new(1);
+    }
+    rb_ary_push(m, rb_assoc_new(INT2NUM(lineno), mesg));
+}
+
 static inline void
 parser_show_error_line(struct parser_params *p, const YYLTYPE *yylloc)
 {
@@ -5739,6 +5769,27 @@ parser_yyerror(struct parser_params *p, const YYLTYPE *yylloc, const char *msg)
     }
     compile_error(p, "%s", msg);
     parser_show_error_line(p, yylloc);
+    if (p->suspicious) {
+	VALUE messages = p->suspicious;
+	VALUE errbuf = p->error_buffer;
+	long i;
+	if (RTEST(errbuf)) {
+	    errbuf = rb_attr_get(errbuf, idMesg);
+	    if (RSTRING_LEN(errbuf) > 0 && *(RSTRING_END(errbuf)-1) != '\n')
+		rb_str_cat_cstr(errbuf, "\n");
+	}
+	else {
+	    errbuf = rb_str_new(0, 0);
+	}
+	for (i = 0; i < RARRAY_LEN(messages); ++i) {
+	    VALUE m = rb_ary_entry(messages, i);
+	    int lineno = NUM2INT(rb_ary_entry(m, 0));
+	    m = rb_ary_entry(m, 1);
+	    rb_str_catf(errbuf, "%"PRIsVALUE":%d: %"PRIsVALUE"\n",
+			p->ruby_sourcefile_string, lineno, m);
+	}
+	if (!p->error_buffer) rb_write_error_str(errbuf);
+    }
     return 0;
 }
 
@@ -12402,6 +12453,7 @@ parser_mark(void *ptr)
     rb_gc_mark(p->debug_lines);
     rb_gc_mark(p->compile_option);
     rb_gc_mark(p->error_buffer);
+    rb_gc_mark(p->suspicious);
 #else
     rb_gc_mark(p->delayed.token);
     rb_gc_mark(p->value);
