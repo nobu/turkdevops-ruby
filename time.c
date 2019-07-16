@@ -5014,7 +5014,7 @@ time_mdump(VALUE time)
 {
     struct time_object *tobj;
     unsigned long p, s;
-    char buf[8];
+    char buf[sizeof(long) + 9];
     int i;
     VALUE str;
 
@@ -5081,7 +5081,6 @@ time_mdump(VALUE time)
 	s = RSHIFT(s, 8);
     }
 
-    str = rb_str_new(buf, 8);
     if (!NIL_P(year_extend)) {
         /*
          * Append extended year distance from 1900..(1900+0xffff).  In
@@ -5090,17 +5089,21 @@ time_mdump(VALUE time)
          * binary (like as Fixnum and Bignum).
          */
         size_t ysize = rb_absint_size(year_extend, NULL);
-        char *p, buf_year_extend[9];
+        char *p, *const buf_year_extend = buf + 8;
         if (ysize > LONG_MAX ||
             (i = ruby_marshal_write_long((long)ysize, buf_year_extend)) < 0) {
             rb_raise(rb_eArgError, "year too %s to marshal: %"PRIsVALUE" UTC",
                      (year == 1900 ? "small" : "big"), vtm.year);
         }
-        rb_str_resize(str, sizeof(buf) + i + ysize);
-        p = RSTRING_PTR(str) + sizeof(buf);
-        memcpy(p, buf_year_extend, i);
+        i += 8;
+        str = rb_str_new(NULL, i + ysize);
+        p = RSTRING_PTR(str);
+        memcpy(p, buf, i);
         p += i;
         rb_integer_pack(year_extend, p, ysize, 1, 0, INTEGER_PACK_LITTLE_ENDIAN);
+    }
+    else {
+        str = rb_str_new(buf, 8);
     }
     rb_copy_generic_ivar(str, time);
     if (!rb_equal(nano, INT2FIX(0))) {
