@@ -45,12 +45,8 @@ def prelude(f, out)
   while line = f.gets
     case line
     when /\A%%/
-      out << '%%' << $/
+      out << line
       return
-    when /\A%token/
-      out << line.sub(/<\w+>/, '<val>')
-    when /\A%type/
-      out << line.sub(/<\w+>/, '<val>')
     when /^enum lex_state_(?:bits|e) \{/
       lex_state_def = true
       out << line
@@ -79,18 +75,20 @@ def grammar(f, out)
   while line = f.gets
     case line
     when %r</\*% *ripper(?:\[(.*?)\])?: *(.*?) *%\*/>
-      out << DSL.new($2, ($1 || "").split(",")).generate << $/
+      out << $` << "    " << DSL.new($2, ($1 || "").split(",")).generate << $'
     when %r</\*%%%\*/>
-      out << '#if 0' << $/
+      out << $/
     when %r</\*%>
-      out << '#endif' << $/
+      out << $/
     when %r<%\*/>
       out << $/
     when /\A%%/
-      out << '%%' << $/
+      out << line
       return
     else
-      out << line
+      out << line.sub(/\$\$\s*=\s(?:\$(\d+)|(Qnull)|Qnone|Qnil|0)(?=;)/) {
+        "#$&, $<ripper.value>$ = #{($1 ? "$<ripper.value>#$1" : $2 ? "Qundef" : "Qnil")}"
+      }
     end
   end
 end

@@ -5,7 +5,10 @@
 #   VALUE v1, v2;
 #   v1 = dispatch0(stmts_new);
 #   v2 = dispatch0(void_stmt);
-#   $$ = dispatch2(stmts_add, v1, v2);
+#   $<ripper.value>$ = dispatch2(stmts_add, v1, v2);
+
+$RIPPER_VALUE = "$<ripper.value>$"
+alias $$ $RIPPER_VALUE
 
 class DSL
   def initialize(code, options)
@@ -15,13 +18,10 @@ class DSL
     @final = options.include?("final")
     @vars = 0
 
-    # create $1 == "$1", $2 == "$2", ...
-    re, s = "", ""
-    1.upto(9) do |n|
-      re << "(..)"
-      s << "$#{ n }"
-    end
-    /#{ re }/ =~ s
+    # create $1 == "$<ripper.value>1", $2 == "$<ripper.value>2", ...
+    s = (1..9).map {|n| "$<ripper.value>#{ n }" }
+    re = Array.new(s.size, "([^\0]+)")
+    /#{ re.join("\0") }/ =~ s.join("\0")
 
     # struct parser_params *p
     p = "p"
@@ -37,13 +37,16 @@ class DSL
   undef class
 
   def generate
-    s = "$$"
+    s = "$<ripper.value>$"
     s = "p->result" if @final
     s = "#@code#{ s }=#@last_value;"
-    s = "{VALUE #{ (1..@vars).map {|v| "v#{ v }" }.join(",") };#{ s }}" if @vars > 0
+    if @vars > 0
+      vars = (1..@vars).map {|v| "v#{ v }" }.join(",")
+      s = "{VALUE #{vars};#{s}}"
+    end
     s << "ripper_error(p);" if @error
     s = "{#{ s }}" if @brace
-    "\t\t\t#{s}"
+    s
   end
 
   def new_var
@@ -74,6 +77,8 @@ class DSL
       add_event(event, args)
     elsif args.empty? and /\Aid[A-Z_]/ =~ event.to_s
       event
+    elsif /\AID2/ =~ event and args.size == 1 and String === args[0] and args[0].size == 1
+      "#{event}('#{args[0]}')"
     else
       "#{ event }(#{ args.join(", ") })"
     end
