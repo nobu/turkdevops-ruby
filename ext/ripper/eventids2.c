@@ -1,5 +1,6 @@
 enum {
     tIGNORED_NL  = tLAST_TOKEN + 1,
+    tIGNORED_SP,
     tCOMMENT,
     tEMBDOC_BEG,
     tEMBDOC,
@@ -53,6 +54,7 @@ typedef struct {
     ID ripper_id_tlambeg;
 
     ID ripper_id_ignored_nl;
+    ID ripper_id_ignored_sp;
     ID ripper_id_comment;
     ID ripper_id_embdoc_beg;
     ID ripper_id_embdoc;
@@ -115,6 +117,7 @@ ripper_init_eventids2(void)
     set_id2(tlambeg);
 
     set_id2(ignored_nl);
+    set_id2(ignored_sp);
     set_id2(comment);
     set_id2(embdoc_beg);
     set_id2(embdoc);
@@ -279,6 +282,7 @@ static const struct token_assoc {
 
     /* ripper specific tokens */
     {tIGNORED_NL,		O(ignored_nl)},
+    {tIGNORED_SP,		O(ignored_sp)},
     {tCOMMENT,			O(comment)},
     {tEMBDOC_BEG,		O(embdoc_beg)},
     {tEMBDOC,			O(embdoc)},

@@ -7216,7 +7216,17 @@ heredoc_dedent(struct parser_params *p, NODE *root)
     while (str_node) {
 	VALUE lit = str_node->nd_lit;
 	if (str_node->flags & NODE_FL_NEWLINE) {
-	    dedent_string(lit, indent);
+	    VALUE origlit = rb_str_dup_frozen(lit);
+	    int width = dedent_string(lit, indent);
+	    if (width) {
+#ifdef RIPPER
+		VALUE sp = rb_str_subseq(origlit, 0, width);
+		yylval_rval =
+		    add_mark_object(p, ripper_dispatch1(p, ripper_token2eventid(tIGNORED_SP), sp));
+#else
+		(void)origlit;
+#endif
+	    }
 	}
 	if (!prev_lit) {
 	    prev_lit = lit;
