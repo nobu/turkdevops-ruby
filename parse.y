@@ -4362,20 +4362,28 @@ string		: tCHAR
 
 string1		: tSTRING_BEG string_contents tSTRING_END
 		    {
+			int indent = p->heredoc_indent;
 		    /*%%%*/
 			$$ = heredoc_dedent(p, $2);
 			if ($$) nd_set_loc($$, &@$);
 		    /*% %*/
-		    /*% ripper: string_literal!(heredoc_dedent!($2)) %*/
+			if (indent > 0) {
+			    /*% ripper: heredoc_dedent!($2, INT2NUM('indent')) %*/
+			}
+		    /*% ripper: string_literal!($2) %*/
 		    }
 		;
 
 xstring		: tXSTRING_BEG xstring_contents tSTRING_END
 		    {
+			int indent = p->heredoc_indent;
 		    /*%%%*/
 			$$ = new_xstring(p, heredoc_dedent(p, $2), &@$);
 		    /*% %*/
-		    /*% ripper: xstring_literal!(heredoc_dedent!($2)) %*/
+			if (indent > 0) {
+			    /*% ripper: heredoc_dedent!($2, INT2NUM('indent')) %*/
+			}
+		    /*% ripper: xstring_literal!($2) %*/
 		    }
 		;
 
@@ -7215,16 +7223,17 @@ heredoc_dedent(struct parser_params *p, NODE *root)
 
     while (str_node) {
 	VALUE lit = str_node->nd_lit;
-	if (str_node->flags & NODE_FL_NEWLINE) {
+	if ((str_node->flags & NODE_FL_NEWLINE) &&
+	    (RSTRING_LEN(lit) > 0) &&
+	    ISSPACE(RSTRING_PTR(lit)[0])) {
+#ifdef RIPPER
 	    VALUE origlit = rb_str_dup_frozen(lit);
+#endif
 	    int width = dedent_string(lit, indent);
 	    if (width) {
 #ifdef RIPPER
 		VALUE sp = rb_str_subseq(origlit, 0, width);
-		yylval_rval =
-		    add_mark_object(p, ripper_dispatch1(p, ripper_token2eventid(tIGNORED_SP), sp));
-#else
-		(void)origlit;
+		ripper_dispatch1(p, ripper_token2eventid(tIGNORED_SP), sp);
 #endif
 	    }
 	}
@@ -7232,7 +7241,8 @@ heredoc_dedent(struct parser_params *p, NODE *root)
 	    prev_lit = lit;
 	}
 	else if (!literal_concat0(p, prev_lit, lit)) {
-	    return 0;
+	    root = 0;
+	    break;
 	}
 	else {
 	    NODE *end = node->nd_end;
@@ -7511,9 +7521,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
 		str = STR_NEW3(tok(p), toklen(p), enc, func);
 	      flush_str:
 		set_yylval_str(str);
-#ifndef RIPPER
 		if (bol) yylval.node->flags |= NODE_FL_NEWLINE;
-#endif
 		flush_string_content(p, enc);
 		return tSTRING_CONTENT;
 	    }
@@ -7532,9 +7540,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
     token_flush(p);
     p->lex.strterm = NEW_STRTERM(func | STR_FUNC_TERM, 0, 0);
     set_yylval_str(str);
-#ifndef RIPPER
     if (bol) yylval.node->flags |= NODE_FL_NEWLINE;
-#endif
     return tSTRING_CONTENT;
 }
 
