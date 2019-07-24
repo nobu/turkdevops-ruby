@@ -7233,7 +7233,31 @@ heredoc_dedent(struct parser_params *p, NODE *root)
 	    if (width) {
 #ifdef RIPPER
 		VALUE sp = rb_str_subseq(origlit, 0, width);
+		const char *pbeg = p->lex.pbeg;
+		const char *pcur = p->lex.pcur;
+		const char *pend = p->lex.pend;
+		const char *ptok = p->lex.ptok;
+		VALUE lastline = p->lex.lastline;
+		int sourceline = p->ruby_sourceline;
+		enum lex_state_e state = p->lex.state;
+		p->lex.lastline = origlit;
+		p->lex.pbeg = RSTRING_PTR(origlit);
+		p->lex.pend = RSTRING_END(origlit);
+		p->lex.ptok = p->lex.pbeg;
+		p->lex.pcur = p->lex.pbeg + width;
+		p->ruby_sourceline = nd_line(str_node);
+		SET_LEX_STATE(EXPR_BEG);
 		ripper_dispatch1(p, ripper_token2eventid(tIGNORED_SP), sp);
+		p->lex.ptok = p->lex.pcur;
+		p->lex.pcur = p->lex.pend;
+		ripper_dispatch1(p, ripper_token2eventid(tSTRING_CONTENT), lit);
+		p->lex.pbeg = pbeg;
+		p->lex.pcur = pcur;
+		p->lex.pend = pend;
+		p->lex.ptok = ptok;
+		p->lex.lastline = lastline;
+		p->ruby_sourceline = sourceline;
+		SET_LEX_STATE(state);
 #endif
 	    }
 	}
@@ -7522,6 +7546,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
 	      flush_str:
 		set_yylval_str(str);
 		if (bol) yylval.node->flags |= NODE_FL_NEWLINE;
+		if (p->heredoc_indent > 0) token_flush(p);
 		flush_string_content(p, enc);
 		return tSTRING_CONTENT;
 	    }
