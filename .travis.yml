@@ -342,7 +342,7 @@ env:
       # Disabling -j3 because it seems to cause a hang on building Ruby: https://travis-ci.org/ruby/ruby/jobs/471021727
       - JOBS=
       # Reset timestamps early, before updating Homebrew etc.
-      - _=$(touch NEWS && find . -type f -exec touch -r NEWS {} +)
+      - _=$(touch -t `date +%Y%m%d%H%M.%S` NEWS && find . -type f -exec touch -r NEWS {} +)
 
   - &dependency
     name: Check dependencies in makefiles
