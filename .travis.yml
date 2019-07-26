@@ -341,6 +341,7 @@ env:
       - TEST_ALL_ISOLATED_TESTS="../test/ruby/test_gc_compact.rb"
       # Disabling -j3 because it seems to cause a hang on building Ruby: https://travis-ci.org/ruby/ruby/jobs/471021727
       - JOBS=
+      - CHECKEDOUT_TIME=$(date; ls -lT tool/generic_erb.rb template/unicode_norm_gen.tmpl)
       # Reset timestamps early, before updating Homebrew etc.
       - _=$(touch -t `date +%Y%m%d%H%M.%S` NEWS && find . -type f -exec touch -r NEWS {} +)
 
@@ -425,7 +426,10 @@ before_script:
   - date; make touch-unicode-files
   - |-
     [ ${TRAVIS_OS_NAME} != osx ] ||
+    {
+    echo "${CHECKEDOUT_TIME}"
     ls -ltT tool/generic_erb.rb template/unicode_norm_gen.tmpl enc/unicode/data/*/ucd/.unicode-tables.time
+    }
   - date; make -s $JOBS $UPDATE_UNICODE up
   - date; make -s $JOBS srcs
   - rm -f config.status Makefile rbconfig.rb .rbconfig.time
