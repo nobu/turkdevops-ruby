@@ -7546,7 +7546,7 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
 	      flush_str:
 		set_yylval_str(str);
 		if (bol) yylval.node->flags |= NODE_FL_NEWLINE;
-		if (p->heredoc_indent > 0) token_flush(p);
+		if (p->heredoc_line_indent > 0) token_flush(p);
 		flush_string_content(p, enc);
 		return tSTRING_CONTENT;
 	    }
