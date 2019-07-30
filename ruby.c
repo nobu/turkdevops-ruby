@@ -1705,7 +1705,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
     rb_enc_associate(opt->script_name,
 		     IF_UTF8_PATH(uenc = rb_utf8_encoding(), lenc));
     if (!opt->e_script && strcmp(opt->script, "-")) {
-        script_realpath = rb_realpath_internal(Qnil, opt->script_name, 0);
+        script_realpath = rb_check_realpath(Qnil, opt->script_name);
         if (!ENCODING_GET(script_realpath)) { /* ASCII-8BIT */
             rb_enc_copy(script_realpath, opt->script_name);
         }
