@@ -2322,12 +2322,12 @@ int ruby_vsnprintf(char *str, size_t n, char const *fmt, va_list ap);
         rb_scan_args0(argc,argvp,fmt,\
 		      (sizeof((VALUE*[]){__VA_ARGS__})/sizeof(VALUE*)), \
 		      ((VALUE*[]){__VA_ARGS__})), \
-        rb_scan_args(argc,argvp,fmt,__VA_ARGS__))
+        rb_scan_args(argc,argvp,fmt,##__VA_ARGS__))
 # if HAVE_ATTRIBUTE_ERRORFUNC
 ERRORFUNC(("bad scan arg format"), int rb_scan_args_bad_format(const char*));
 ERRORFUNC(("variable argument length doesn't match"), int rb_scan_args_length_mismatch(const char*,int));
 # else
-#   define rb_scan_args_bad_format(fmt) 0
+#   define rb_scan_args_bad_format(fmt) -1
 #   define rb_scan_args_length_mismatch(fmt, varc) 0
 # endif
 
@@ -2361,7 +2361,7 @@ ERRORFUNC(("variable argument length doesn't match"), int rb_scan_args_length_mi
      rb_scan_args_count_trail(fmt, ofs+1, vari+1))
 
 # define rb_scan_args_count_opt(fmt, ofs, vari) \
-    (!rb_scan_args_isdigit(fmt[1]) ? \
+    (!rb_scan_args_isdigit(fmt[ofs]) ? \
      rb_scan_args_count_var(fmt, ofs, vari) : \
      rb_scan_args_count_var(fmt, ofs+1, vari+fmt[ofs]-'0'))
 
@@ -2502,7 +2502,7 @@ rb_scan_args_set(int argc, const VALUE *argv,
 		 int f_var, int f_hash, int f_block,
 		 VALUE *vars[], RB_UNUSED_VAR(char *fmt), RB_UNUSED_VAR(int varc))
 # if defined(__has_attribute) && __has_attribute(diagnose_if)
-    __attribute__((diagnose_if(rb_scan_args_count(fmt)==0,"bad scan arg format","error")))
+    __attribute__((diagnose_if(rb_scan_args_count(fmt)<0,"bad scan arg format","error")))
     __attribute__((diagnose_if(rb_scan_args_count(fmt)!=varc,"variable argument length doesn't match","error")))
 # endif
 {
