@@ -43,8 +43,17 @@ DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_compile_error);
 DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_compile_error_with_enc);
 DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_compile_error_append);
 
+/* gc.c */
+DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_gc_call_finalizer_at_exit);
+
+/* signal.c */
+DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_trap_exit);
+
 /* struct.c */
 DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_struct_ptr);
+
+/* thread.c */
+DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_clear_trace_func);
 
 /* variable.c */
 DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_generic_ivar_table);

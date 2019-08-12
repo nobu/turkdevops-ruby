@@ -25,6 +25,7 @@
 #endif
 
 NORETURN(void rb_raise_jump(VALUE, VALUE));
+void rb_ec_clear_current_thread_trace_func(const rb_execution_context_t *ec);
 
 VALUE rb_eLocalJumpError;
 VALUE rb_eSysStackError;
@@ -109,17 +110,18 @@ ruby_init(void)
 void *
 ruby_options(int argc, char **argv)
 {
+    rb_execution_context_t *ec = GET_EC();
     enum ruby_tag_type state;
     void *volatile iseq = 0;
 
     ruby_init_stack((void *)&iseq);
-    EC_PUSH_TAG(GET_EC());
+    EC_PUSH_TAG(ec);
     if ((state = EC_EXEC_TAG()) == TAG_NONE) {
 	SAVE_ROOT_JMPBUF(GET_THREAD(), iseq = ruby_process_options(argc, argv));
     }
     else {
-	rb_clear_trace_func();
-	state = error_handle(state);
+	rb_ec_clear_current_thread_trace_func(ec);
+	state = error_handle(ec, state);
 	iseq = (void *)INT2FIX(state);
     }
     EC_POP_TAG();
@@ -135,15 +137,15 @@ rb_ec_teardown(rb_execution_context_t *ec)
     }
     EC_POP_TAG();
     rb_ec_exec_end_proc(ec);
-    rb_clear_trace_func();
+    rb_ec_clear_current_thread_trace_func(ec);
 }
 
 static void
-ruby_finalize_1(void)
+rb_ec_finalize(rb_execution_context_t *ec)
 {
     ruby_sig_finalize();
-    GET_EC()->errinfo = Qnil;
-    rb_gc_call_finalizer_at_exit();
+    ec->errinfo = Qnil;
+    rb_objspace_call_finalizer(rb_ec_vm_ptr(ec)->objspace);
 }
 
 /** Runs the VM finalization processes.
@@ -158,7 +160,7 @@ ruby_finalize(void)
 {
     rb_execution_context_t *ec = GET_EC();
     rb_ec_teardown(ec);
-    ruby_finalize_1();
+    rb_ec_finalize(ec);
 }
 
 /** Destructs the VM.
@@ -210,7 +212,7 @@ ruby_cleanup(volatile int ex)
 	if (ex == 0) ex = state;
     }
     th->ec->errinfo = errs[1];
-    sysex = error_handle(ex);
+    sysex = error_handle(th->ec, ex);
 
     state = 0;
     for (nerr = 0; nerr < numberof(errs); ++nerr) {
@@ -237,13 +239,13 @@ ruby_cleanup(volatile int ex)
 
     mjit_finish(true); // We still need ISeqs here.
 
-    ruby_finalize_1();
+    rb_ec_finalize(th->ec);
 
     /* unlock again if finalizer took mutexes. */
-    rb_threadptr_unlock_all_locking_mutexes(GET_THREAD());
+    rb_threadptr_unlock_all_locking_mutexes(th);
     EC_POP_TAG();
     rb_thread_stop_timer_thread();
-    ruby_vm_destruct(GET_VM());
+    ruby_vm_destruct(th->vm);
     if (state) ruby_default_signal(state);
 
     return sysex;
