@@ -107,11 +107,10 @@ exec_end_procs_chain(struct end_proc_data *volatile *procs, VALUE *errp)
     }
 }
 
-void
-rb_exec_end_proc(void)
+static void
+rb_ec_exec_end_proc(rb_execution_context_t *ec)
 {
     enum ruby_tag_type state;
-    rb_execution_context_t * volatile ec = GET_EC();
     volatile VALUE errinfo = ec->errinfo;
 
     EC_PUSH_TAG(ec);

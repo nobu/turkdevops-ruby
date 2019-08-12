@@ -134,7 +134,7 @@ rb_ec_teardown(rb_execution_context_t *ec)
 	rb_vm_trap_exit(rb_ec_vm_ptr(ec));
     }
     EC_POP_TAG();
-    rb_exec_end_proc();
+    rb_ec_exec_end_proc(ec);
     rb_clear_trace_func();
 }
 

@@ -461,7 +461,6 @@ int rb_mod_method_arity(VALUE, ID);
 int rb_obj_method_arity(VALUE, ID);
 VALUE rb_protect(VALUE (*)(VALUE), VALUE, int*);
 void rb_set_end_proc(void (*)(VALUE), VALUE);
-void rb_exec_end_proc(void);
 void rb_thread_schedule(void);
 void rb_thread_wait_fd(int);
 int rb_thread_fd_writable(int);

@@ -36,6 +36,7 @@ DECLARE_DEPRECATED_FEATURE(2.2, rb_frame_pop);
 
 /* eval.c */
 NORETURN(ERRORFUNC(("internal function"), void rb_frozen_class_p(VALUE)));
+DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_exec_end_proc);
 
 /* error.c */
 DECLARE_DEPRECATED_INTERNAL_FEATURE(rb_compile_error);
