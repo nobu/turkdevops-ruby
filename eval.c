@@ -127,11 +127,11 @@ ruby_options(int argc, char **argv)
 }
 
 static void
-ruby_finalize_0(void)
+rb_ec_teardown(rb_execution_context_t *ec)
 {
-    EC_PUSH_TAG(GET_EC());
+    EC_PUSH_TAG(ec);
     if (EC_EXEC_TAG() == TAG_NONE) {
-	rb_vm_trap_exit(GET_VM());
+	rb_vm_trap_exit(rb_ec_vm_ptr(ec));
     }
     EC_POP_TAG();
     rb_exec_end_proc();
@@ -156,7 +156,8 @@ ruby_finalize_1(void)
 void
 ruby_finalize(void)
 {
-    ruby_finalize_0();
+    rb_execution_context_t *ec = GET_EC();
+    rb_ec_teardown(ec);
     ruby_finalize_1();
 }
 
@@ -192,7 +193,7 @@ ruby_cleanup(volatile int ex)
 	rb_set_safe_level_force(0);
 	ruby_init_stack(&errs[STACK_UPPER(errs, 0, 1)]);
 
-	SAVE_ROOT_JMPBUF(th, ruby_finalize_0());
+	SAVE_ROOT_JMPBUF(th, rb_ec_teardown(th->ec));
 
       step_1: step++;
 	/* protect from Thread#raise */
