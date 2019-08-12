@@ -131,7 +131,7 @@ ruby_finalize_0(void)
 {
     EC_PUSH_TAG(GET_EC());
     if (EC_EXEC_TAG() == TAG_NONE) {
-	rb_trap_exit();
+	rb_vm_trap_exit(GET_VM());
     }
     EC_POP_TAG();
     rb_exec_end_proc();

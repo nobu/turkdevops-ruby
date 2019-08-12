@@ -1830,6 +1830,7 @@ void rb_execution_context_update(const rb_execution_context_t *ec);
 void rb_execution_context_mark(const rb_execution_context_t *ec);
 void rb_fiber_close(rb_fiber_t *fib);
 void Init_native_thread(rb_thread_t *th);
+void rb_vm_trap_exit(rb_vm_t *);
 
 #define RUBY_VM_CHECK_INTS(ec) rb_vm_check_ints(ec)
 static inline void

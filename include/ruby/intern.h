@@ -719,7 +719,6 @@ VALUE rb_f_kill(int, const VALUE*);
 #define posix_signal ruby_posix_signal
 RETSIGTYPE (*posix_signal(int, RETSIGTYPE (*)(int)))(int);
 #endif
-void rb_trap_exit(void);
 const char *ruby_signal_name(int);
 void ruby_default_signal(int);
 /* sprintf.c */
