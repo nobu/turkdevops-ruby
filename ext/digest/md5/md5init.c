@@ -49,18 +49,5 @@ static const rb_digest_metadata_t md5 = {
 void
 Init_md5(void)
 {
-    VALUE mDigest, cDigest_Base, cDigest_MD5;
-
-#if 0
-    mDigest = rb_define_module("Digest"); /* let rdoc know */
-#endif
-    mDigest = rb_digest_namespace();
-    cDigest_Base = rb_path2class("Digest::Base");
-
-    cDigest_MD5 = rb_define_class_under(mDigest, "MD5", cDigest_Base);
-
-#undef RUBY_UNTYPED_DATA_WARNING
-#define RUBY_UNTYPED_DATA_WARNING 0
-    rb_iv_set(cDigest_MD5, "metadata",
-	      Data_Wrap_Struct(0, 0, 0, (void *)&md5));
+    DEFINE_DIGEST_CLASS("MD5", md5);
 }

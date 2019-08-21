@@ -25,6 +25,10 @@ static ID id_metadata;
 
 RUBY_EXTERN void Init_digest_base(void);
 
+static const rb_data_type_t rb_digest_data_type = {
+    DIGEST_METADATA_NAME,
+};
+
 /*
  * Document-module: Digest
  *
@@ -532,9 +536,11 @@ rb_digest_class_init(VALUE self)
  *      (rb_digest_hash_finish_func_t)SHA1_Finish,
  *  };
  *
- *
- *  rb_ivar_set(cDigest_SHA1, rb_intern("metadata"),
- *		Data_Wrap_Struct(0, 0, 0, (void *)&sha1));
+ *  void
+ *  Init_sha1(void)
+ *  {
+ *      DEFINE_DIGEST_CLASS("SHA1", sha1);
+ *  }
  */
 
 static rb_digest_metadata_t *
@@ -554,9 +560,11 @@ get_digest_base_metadata(VALUE klass)
     if (NIL_P(p))
         rb_raise(rb_eRuntimeError, "Digest::Base cannot be directly inherited in Ruby");
 
-#undef RUBY_UNTYPED_DATA_WARNING
-#define RUBY_UNTYPED_DATA_WARNING 0
-    Data_Get_Struct(obj, rb_digest_metadata_t, algo);
+    TypedData_Get_Struct(obj, rb_digest_metadata_t, &rb_digest_data_type, algo);
+    if (!algo) {
+        rb_raise(rb_eTypeError, "%"PRIsVALUE" is not initialized properly",
+                 klass);
+    }
 
     switch (algo->api_version) {
       case 3:
@@ -800,4 +808,7 @@ InitVM_digest(void)
     rb_define_private_method(rb_cDigest_Base, "finish", rb_digest_base_finish, 0);
     rb_define_method(rb_cDigest_Base, "digest_length", rb_digest_base_digest_length, 0);
     rb_define_method(rb_cDigest_Base, "block_length", rb_digest_base_block_length, 0);
+
+    rb_ivar_set(rb_mDigest, id_metadata,
+                rb_obj_freeze(TypedData_Wrap_Struct(0, &rb_digest_data_type, (void *)rb_cDigest_Base)));
 }

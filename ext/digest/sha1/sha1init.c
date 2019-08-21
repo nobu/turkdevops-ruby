@@ -51,18 +51,5 @@ static const rb_digest_metadata_t sha1 = {
 void
 Init_sha1(void)
 {
-    VALUE mDigest, cDigest_Base, cDigest_SHA1;
-
-#if 0
-    mDigest = rb_define_module("Digest"); /* let rdoc know */
-#endif
-    mDigest = rb_digest_namespace();
-    cDigest_Base = rb_path2class("Digest::Base");
-
-    cDigest_SHA1 = rb_define_class_under(mDigest, "SHA1", cDigest_Base);
-
-#undef RUBY_UNTYPED_DATA_WARNING
-#define RUBY_UNTYPED_DATA_WARNING 0
-    rb_iv_set(cDigest_SHA1, "metadata",
-	      Data_Wrap_Struct(0, 0, 0, (void *)&sha1));
+    DEFINE_DIGEST_CLASS("SHA1", sha1);
 }

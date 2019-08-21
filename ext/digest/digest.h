@@ -62,3 +62,29 @@ rb_id_metadata(void)
 {
     return rb_intern_const("metadata");
 }
+
+#define DIGEST_METADATA_NAME "Digest::metadata"
+
+static inline VALUE
+rb_digest_new_class(VALUE mDigest, ID id_metadata, const char *name, const rb_digest_metadata_t *metadata)
+{
+    VALUE c, obj;
+    const rb_data_type_t *type = 0;
+
+    obj = rb_ivar_get(mDigest, id_metadata);
+    if (!RB_TYPE_P(obj, T_DATA)) {
+        rb_check_type(obj, T_DATA);
+    }
+    if (!RTYPEDDATA_P(obj) || !(type = RTYPEDDATA_TYPE(obj)) ||
+        strcmp(type->wrap_struct_name, DIGEST_METADATA_NAME)) {
+        rb_raise(rb_eRuntimeError, "invalid Digiest::metadata");
+    }
+    c = rb_define_class_under(mDigest, name, (VALUE)RTYPEDDATA_DATA(obj));
+    rb_ivar_set(c, id_metadata, TypedData_Wrap_Struct(0, type, (void*)metadata));
+    return c;
+}
+
+#define DEFINE_DIGEST_CLASS(name, meta) \
+    rb_digest_new_class(rb_digest_namespace(), rb_id_metadata(), name, &(meta))
+#define DEFINE_DIGEST_CLASS_UNDER(name, meta) \
+    rb_digest_new_class(mDigest, id_metadata, name, &meta)

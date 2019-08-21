@@ -34,24 +34,11 @@ FOREACH_BITLEN(DEFINE_ALGO_METADATA)
 void
 Init_sha2(void)
 {
-    VALUE mDigest, cDigest_Base;
+    VALUE mDigest = rb_digest_namespace();
     ID id_metadata = rb_id_metadata();
 
-#define DECLARE_ALGO_CLASS(bitlen) \
-    VALUE cDigest_SHA##bitlen;
-
-    FOREACH_BITLEN(DECLARE_ALGO_CLASS)
-
-    mDigest = rb_digest_namespace();
-    cDigest_Base = rb_path2class("Digest::Base");
-
 #define DEFINE_ALGO_CLASS(bitlen) \
-    cDigest_SHA##bitlen = rb_define_class_under(mDigest, "SHA" #bitlen, cDigest_Base); \
-\
-    rb_ivar_set(cDigest_SHA##bitlen, id_metadata, \
-		Data_Wrap_Struct(0, 0, 0, (void *)&sha##bitlen));
+    DEFINE_DIGEST_CLASS_UNDER("SHA" #bitlen, sha##bitlen);
 
-#undef RUBY_UNTYPED_DATA_WARNING
-#define RUBY_UNTYPED_DATA_WARNING 0
     FOREACH_BITLEN(DEFINE_ALGO_CLASS)
 }
