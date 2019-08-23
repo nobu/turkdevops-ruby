@@ -7257,7 +7257,7 @@ heredoc_dedent(struct parser_params *p, NODE *root)
 	    }
 	    p->lex.ptok = p->lex.pcur;
 	    p->lex.pcur = p->lex.pend;
-	    ripper_dispatch1(p, ripper_token2eventid(tSTRING_CONTENT), lit);
+	    if (RSTRING_LEN(lit)) ripper_dispatch1(p, ripper_token2eventid(tSTRING_CONTENT), lit);
 	    p->lex.pbeg = pbeg;
 	    p->lex.pcur = pcur;
 	    p->lex.pend = pend;
@@ -7552,8 +7552,10 @@ here_document(struct parser_params *p, rb_strterm_heredoc_t *here)
 	      flush_str:
 		set_yylval_str(str);
 		if (bol) yylval.node->flags |= NODE_FL_NEWLINE;
-		if (p->heredoc_line_indent >= 0) token_flush(p);
-		flush_string_content(p, enc);
+		if (p->heredoc_line_indent >= 0) {
+		    token_flush(p);
+		    flush_string_content(p, enc);
+		}
 		return tSTRING_CONTENT;
 	    }
 	    tokadd(p, nextc(p));
