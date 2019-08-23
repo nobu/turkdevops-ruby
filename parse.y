@@ -9115,6 +9115,12 @@ parser_yylex(struct parser_params *p)
 	    p->lex.ptok = p->lex.pcur;
 	    goto retry;
 	}
+	if (is_beg) {
+	    if (parser_numbered_param(p, 0)) {
+		pushback(p, '.');
+		return tNUMPARAM;
+	    }
+	}
 	set_yylval_id('.');
 	SET_LEX_STATE(EXPR_DOT);
 	return '.';
