@@ -389,10 +389,6 @@ class TestParse < Test::Unit::TestCase
     end
   end
 
-  def test_disallowed_instance_variable
-    assert_disallowed_variable("an instance", %w[@ @.], %w[])
-  end
-
   def test_disallowed_class_variable
     assert_disallowed_variable("a class", %w[@@ @@.], %w[@@1])
   end
@@ -757,12 +753,6 @@ x = __ENCODING__
     assert_raise_with_message(SyntaxError, /as a global variable name\na = \$\#\n    \^~$/) do
       eval('a = $#')
     end
-  end
-
-  def test_invalid_instance_variable
-    pattern = /without identifiers is not allowed as an instance variable name/
-    assert_raise_with_message(SyntaxError, pattern) { eval('@%') }
-    assert_raise_with_message(SyntaxError, pattern) { eval('@') }
   end
 
   def test_invalid_class_variable
