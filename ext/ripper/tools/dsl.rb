@@ -15,7 +15,12 @@ class DSL
     @events = {}
     @error = options.include?("error")
     @brace = options.include?("brace")
-    @final = options.include?("final")
+    if options.include?("final")
+      @final = "p->result"
+    else
+      @final = (options.grep(/\A\$[$\d]\z/)[0] || "$$")
+      @final = "$<ripper.value>#{@final[1..-1]}"
+    end
     @vars = 0
 
     # create $1 == "$<ripper.value>1", $2 == "$<ripper.value>2", ...
@@ -37,9 +42,7 @@ class DSL
   undef class
 
   def generate
-    s = "$<ripper.value>$"
-    s = "p->result" if @final
-    s = "#@code#{ s }=#@last_value;"
+    s = "#@code#@final=#@last_value;"
     if @vars > 0
       vars = (1..@vars).map {|v| "v#{ v }" }.join(",")
       s = "{VALUE #{vars};#{s}}"
