@@ -266,7 +266,10 @@ struct parser_params {
     rb_ast_t *ast;
     int node_id;
 
-    int max_numparam;
+    struct {
+	NODE *outer, *inner, *current;
+	int max;
+    } numparam;
 
     unsigned int command_start:1;
     unsigned int eofp: 1;
@@ -296,10 +299,6 @@ struct parser_params {
 
     VALUE debug_lines;
     const struct rb_iseq_struct *parent_iseq;
-
-    struct {
-	NODE *outer, *inner, *current;
-    } numparam;
 #else
     /* Ripper only */
 
@@ -3362,7 +3361,7 @@ opt_block_param	: none
 block_param_def	: '|' opt_bv_decl '|'
 		    {
 			p->cur_arg = 0;
-			p->max_numparam = ORDINAL_PARAM;
+			p->numparam.max = ORDINAL_PARAM;
 		    /*%%%*/
 			$$ = 0;
 		    /*% %*/
@@ -3370,7 +3369,7 @@ block_param_def	: '|' opt_bv_decl '|'
 		    }
 		| tOROP
 		    {
-			p->max_numparam = ORDINAL_PARAM;
+			p->numparam.max = ORDINAL_PARAM;
 		    /*%%%*/
 			$$ = 0;
 		    /*% %*/
@@ -3379,7 +3378,7 @@ block_param_def	: '|' opt_bv_decl '|'
 		| '|' block_param opt_bv_decl '|'
 		    {
 			p->cur_arg = 0;
-			p->max_numparam = ORDINAL_PARAM;
+			p->numparam.max = ORDINAL_PARAM;
 		    /*%%%*/
 			$$ = $2;
 		    /*% %*/
@@ -3426,8 +3425,8 @@ lambda		:   {
 			p->lex.lpar_beg = p->lex.paren_nest;
 		    }
 		    {
-			$<num>$ = p->max_numparam;
-			p->max_numparam = 0;
+			$<num>$ = p->numparam.max;
+			p->numparam.max = 0;
 		    }
 		    {
 			$<node>$ = numparam_push(p);
@@ -3438,9 +3437,9 @@ lambda		:   {
 		    }
 		  lambda_body
 		    {
-			int max_numparam = p->max_numparam;
+			int max_numparam = p->numparam.max;
 			p->lex.lpar_beg = $<num>2;
-			p->max_numparam = $<num>3;
+			p->numparam.max = $<num>3;
 			CMDARG_POP();
 			$5 = args_with_numbered(p, $5, max_numparam);
 		    /*%%%*/
@@ -3461,7 +3460,7 @@ f_larglist	: '(' f_args opt_bv_decl ')'
 		    {
 		    /*%%%*/
 			$$ = $2;
-			p->max_numparam = ORDINAL_PARAM;
+			p->numparam.max = ORDINAL_PARAM;
 		    /*% %*/
 		    /*% ripper: paren!($2) %*/
 		    }
@@ -3469,7 +3468,7 @@ f_larglist	: '(' f_args opt_bv_decl ')'
 		    {
 		    /*%%%*/
 			if (!args_info_empty_p($1->nd_ainfo))
-			    p->max_numparam = ORDINAL_PARAM;
+			    p->numparam.max = ORDINAL_PARAM;
 		    /*% %*/
 			$$ = $1;
 		    }
@@ -3628,16 +3627,16 @@ brace_block	: '{' brace_body '}'
 
 brace_body	: {$<vars>$ = dyna_push(p);}
 		    {
-			$<num>$ = p->max_numparam;
-			p->max_numparam = 0;
+			$<num>$ = p->numparam.max;
+			p->numparam.max = 0;
 		    }
 		    {
 			$<node>$ = numparam_push(p);
 		    }
 		  opt_block_param compstmt
 		    {
-			int max_numparam = p->max_numparam;
-			p->max_numparam = $<num>2;
+			int max_numparam = p->numparam.max;
+			p->numparam.max = $<num>2;
 			$4 = args_with_numbered(p, $4, max_numparam);
 		    /*%%%*/
 			$$ = NEW_ITER($4, $5, &@$);
@@ -3650,8 +3649,8 @@ brace_body	: {$<vars>$ = dyna_push(p);}
 
 do_body 	: {$<vars>$ = dyna_push(p);}
 		    {
-			$<num>$ = p->max_numparam;
-			p->max_numparam = 0;
+			$<num>$ = p->numparam.max;
+			p->numparam.max = 0;
 		    }
 		    {
 			$<node>$ = numparam_push(p);
@@ -3659,8 +3658,8 @@ do_body 	: {$<vars>$ = dyna_push(p);}
 		    }
 		  opt_block_param bodystmt
 		    {
-			int max_numparam = p->max_numparam;
-			p->max_numparam = $<num>2;
+			int max_numparam = p->numparam.max;
+			p->numparam.max = $<num>2;
 			$4 = args_with_numbered(p, $4, max_numparam);
 		    /*%%%*/
 			$$ = NEW_ITER($4, $5, &@$);
@@ -4951,7 +4950,7 @@ f_norm_arg	: f_bad_arg
 		| tIDENTIFIER
 		    {
 			formal_argument(p, $1);
-			p->max_numparam = ORDINAL_PARAM;
+			p->numparam.max = ORDINAL_PARAM;
 			$$ = $1;
 		    }
 		;
@@ -5014,7 +5013,7 @@ f_label 	: tLABEL
 			ID id = $1;
 			arg_var(p, formal_argument(p, id));
 			p->cur_arg = id;
-			p->max_numparam = ORDINAL_PARAM;
+			p->numparam.max = ORDINAL_PARAM;
 			$$ = $1;
 		    }
 		;
@@ -8563,7 +8562,6 @@ parse_gvar(struct parser_params *p, const enum lex_state_e last_state)
     return tGVAR;
 }
 
-#ifndef RIPPER
 static bool
 parser_numbered_param(struct parser_params *p, int n)
 {
@@ -8573,20 +8571,19 @@ parser_numbered_param(struct parser_params *p, int n)
 	compile_error(p, "numbered parameter outside block");
 	return false;
     }
-    if (p->max_numparam == ORDINAL_PARAM) {
+    if (p->numparam.max == ORDINAL_PARAM) {
 	compile_error(p, "ordinary parameter is defined");
 	return false;
     }
     struct vtable *args = p->lvtbl->args;
-    if (p->max_numparam < n) {
-	p->max_numparam = n;
+    if (p->numparam.max < n) {
+	p->numparam.max = n;
     }
     while (n > args->pos) {
 	vtable_add(args, NUMPARAM_IDX_TO_ID(args->pos+1));
     }
     return true;
 }
-#endif
 
 static enum yytokentype
 parse_atmark(struct parser_params *p, const enum lex_state_e last_state)
@@ -11794,7 +11791,7 @@ numparam_pop(struct parser_params *p, NODE *prev_inner)
 	/* current and inner are exclusive */
 	p->numparam.inner = p->numparam.current;
     }
-    if (p->max_numparam > NO_PARAM) {
+    if (p->numparam.max > NO_PARAM) {
 	/* current and outer are exclusive */
 	p->numparam.current = p->numparam.outer;
 	p->numparam.outer = 0;
