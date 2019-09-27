@@ -55,9 +55,11 @@ describe :io_binwrite, shared: true do
     File.read(@filename).should == "hello, world!3456789hello, world!"
   end
 
-  it "doesn't truncate and writes at the given offset after passing empty opts" do
-    IO.send(@method, @filename, "hello world!", 1, {})
-    File.read(@filename).should == "0hello world!34567890123456789"
+  ruby_version_is ""..."2.7" do
+    it "doesn't truncate and writes at the given offset after passing empty opts" do
+      IO.send(@method, @filename, "hello world!", 1, {})
+      File.read(@filename).should == "0hello world!34567890123456789"
+    end
   end
 
   it "accepts a :mode option" do
@@ -71,8 +73,10 @@ describe :io_binwrite, shared: true do
     -> { IO.send(@method, @filename, "abcde", mode: "r") }.should raise_error(IOError)
   end
 
-  it "truncates if empty :opts provided and offset skipped" do
-    IO.send(@method, @filename, "hello, world!", {})
-    File.read(@filename).should == "hello, world!"
+  ruby_version_is ""..."2.7" do
+    it "truncates if empty :opts provided and offset skipped" do
+      IO.send(@method, @filename, "hello, world!", {})
+      File.read(@filename).should == "hello, world!"
+    end
   end
 end

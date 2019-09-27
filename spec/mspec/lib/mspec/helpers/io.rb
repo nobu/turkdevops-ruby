@@ -64,22 +64,14 @@ end
 # Creates a "bare" file descriptor (i.e. one that is not associated
 # with any Ruby object). The file descriptor can safely be passed
 # to IO.new without creating a Ruby object alias to the fd.
-def new_fd(name, mode="w:utf-8")
-  if mode.kind_of? Hash
-    if mode.key? :mode
-      mode = mode[:mode]
-    else
-      raise ArgumentError, "new_fd options Hash must include :mode"
-    end
-  end
-
+def new_fd(name, _mode="w:utf-8", mode: _mode, **)
   IO.sysopen name, mode
 end
 
 # Creates an IO instance for a temporary file name. The file
 # must be deleted.
-def new_io(name, mode="w:utf-8")
-  IO.new new_fd(name, mode), mode
+def new_io(name, _mode="w:utf-8", mode: _mode, **opts)
+  IO.new new_fd(name, mode), mode, **opts
 end
 
 def find_unused_fd

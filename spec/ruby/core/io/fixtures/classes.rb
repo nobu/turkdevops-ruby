@@ -118,10 +118,10 @@ module IOSpecs
 
   # Creates an IO instance for an existing fixture file. The
   # file should obviously not be deleted.
-  def self.io_fixture(name, mode = "r:utf-8")
+  def self.io_fixture(name, mode = "r:utf-8", **opts)
     path = fixture __FILE__, name
     name = path if File.exist? path
-    new_io(name, mode)
+    new_io(name, mode, **opts)
   end
 
   # Returns a closed instance of IO that was opened to reference

@@ -23,36 +23,38 @@ describe "IO.read" do
     IO.read(p)
   end
 
-  it "accepts an empty options Hash" do
-    IO.read(@fname, {}).should == @contents
+  ruby_version_is ""..."2.7" do
+    it "accepts an empty options Hash" do
+      IO.read(@fname, {}).should == @contents
+    end
+
+    it "accepts a length, and empty options Hash" do
+      IO.read(@fname, 3, {}).should == @contents[0, 3]
+    end
+
+    it "accepts a length, offset, and empty options Hash" do
+      IO.read(@fname, 3, 0, {}).should == @contents[0, 3]
+    end
   end
 
-  it "accepts a length, and empty options Hash" do
-    IO.read(@fname, 3, {}).should == @contents[0, 3]
+  it "raises an IOError if the mode option specifies write-only" do
+    -> { IO.read(@fname, 3, 0, mode: "w") }.should raise_error(IOError)
   end
 
-  it "accepts a length, offset, and empty options Hash" do
-    IO.read(@fname, 3, 0, {}).should == @contents[0, 3]
+  it "raises an IOError if the mode option specifies append-only" do
+    -> { IO.read(@fname, mode: "a") }.should raise_error(IOError)
   end
 
-  it "raises an IOError if the options Hash specifies write mode" do
-    -> { IO.read(@fname, 3, 0, {mode: "w"}) }.should raise_error(IOError)
+  it "reads the file if the mode option specifies read-only" do
+    IO.read(@fname, mode: "r").should == @contents
   end
 
-  it "raises an IOError if the options Hash specifies append only mode" do
-    -> { IO.read(@fname, {mode: "a"}) }.should raise_error(IOError)
+  it "reads the file if the mode option specifies read/write" do
+    IO.read(@fname, mode: "r+").should == @contents
   end
 
-  it "reads the file if the options Hash includes read mode" do
-    IO.read(@fname, {mode: "r"}).should == @contents
-  end
-
-  it "reads the file if the options Hash includes read/write mode" do
-    IO.read(@fname, {mode: "r+"}).should == @contents
-  end
-
-  it "reads the file if the options Hash includes read/write append mode" do
-    IO.read(@fname, {mode: "a+"}).should == @contents
+  it "reads the file if the mode option specifies read/write append" do
+    IO.read(@fname, mode: "a+").should == @contents
   end
 
   it "treats second nil argument as no length limit" do
@@ -563,10 +565,10 @@ describe "IO#read" do
 
     describe "specified by internal_encoding: option" do
       before :each do
-        options = { mode: "r",
-                    internal_encoding: "utf-8",
-                    external_encoding: "euc-jp" }
-        @io = IOSpecs.io_fixture "read_euc_jp.txt", options
+        @io = IOSpecs.io_fixture "read_euc_jp.txt",
+                                 mode: "r",
+                                 internal_encoding: "utf-8",
+                                 external_encoding: "euc-jp"
       end
 
       it_behaves_like :io_read_internal_encoding, nil
@@ -575,8 +577,7 @@ describe "IO#read" do
 
     describe "specified by encoding: option" do
       before :each do
-        options = { mode: "r", encoding: "euc-jp:utf-8" }
-        @io = IOSpecs.io_fixture "read_euc_jp.txt", options
+        @io = IOSpecs.io_fixture "read_euc_jp.txt", mode: "r", encoding: "euc-jp:utf-8"
       end
 
       it_behaves_like :io_read_internal_encoding, nil

@@ -103,12 +103,14 @@ describe :io_readlines_options_19, shared: true do
         end.should raise_error(IOError)
       end
 
-      it "calls #to_hash to convert the second object to a Hash" do
-        options = mock("io readlines options Hash")
-        options.should_receive(:to_hash).and_return({ mode: "w" })
-        -> do
-          IO.send(@method, @filename, 10, options, &@object)
-        end.should raise_error(IOError)
+      ruby_version_is ""..."2.7" do
+        it "calls #to_hash to convert the second object to a Hash" do
+          options = mock("io readlines options Hash")
+          options.should_receive(:to_hash).and_return({ mode: "w" })
+          -> do
+            IO.send(@method, @filename, 10, options, &@object)
+          end.should raise_error(IOError)
+        end
       end
     end
 
@@ -131,12 +133,14 @@ describe :io_readlines_options_19, shared: true do
         end.should raise_error(IOError)
       end
 
-      it "calls #to_hash to convert the second object to a Hash" do
-        options = mock("io readlines options Hash")
-        options.should_receive(:to_hash).and_return({ mode: "w" })
-        -> do
-          IO.send(@method, @filename, " ", options, &@object)
-        end.should raise_error(IOError)
+      ruby_version_is ""..."2.7" do
+        it "calls #to_hash to convert the second object to a Hash" do
+          options = mock("io readlines options Hash")
+          options.should_receive(:to_hash).and_return({ mode: "w" })
+          -> do
+            IO.send(@method, @filename, " ", options, &@object)
+          end.should raise_error(IOError)
+        end
       end
     end
 
@@ -166,12 +170,14 @@ describe :io_readlines_options_19, shared: true do
         end.should raise_error(IOError)
       end
 
-      it "calls #to_hash to convert the second object to a Hash" do
-        options = mock("io readlines options Hash")
-        options.should_receive(:to_hash).and_return({ mode: "w" })
-        -> do
-          IO.send(@method, @filename, " ", options, &@object)
-        end.should raise_error(IOError)
+      ruby_version_is ""..."2.7" do
+        it "calls #to_hash to convert the second object to a Hash" do
+          options = mock("io readlines options Hash")
+          options.should_receive(:to_hash).and_return({ mode: "w" })
+          -> do
+            IO.send(@method, @filename, " ", options, &@object)
+          end.should raise_error(IOError)
+        end
       end
     end
   end
@@ -198,12 +204,14 @@ describe :io_readlines_options_19, shared: true do
       (result ? result : ScratchPad.recorded).should == IOSpecs.lines_space_separator_limit
     end
 
-    it "calls #to_hash to convert the options object" do
-      options = mock("io readlines options Hash")
-      options.should_receive(:to_hash).and_return({ mode: "w" })
-      -> do
-        IO.send(@method, @filename, " ", 10, options, &@object)
-      end.should raise_error(IOError)
+    ruby_version_is ""..."2.7" do
+      it "calls #to_hash to convert the options object" do
+        options = mock("io readlines options Hash")
+        options.should_receive(:to_hash).and_return({ mode: "w" })
+        -> do
+          IO.send(@method, @filename, " ", 10, options, &@object)
+        end.should raise_error(IOError)
+      end
     end
   end
 end

@@ -47,11 +47,13 @@ describe "Encoding::Converter.new" do
     conv.replacement.should == "fubar"
   end
 
-  it "calls #to_hash to convert the options argument to a Hash if not a Fixnum" do
-    opts = mock("encoding converter options")
-    opts.should_receive(:to_hash).and_return({ replace: "fubar" })
-    conv = Encoding::Converter.new("us-ascii", "utf-8", opts)
-    conv.replacement.should == "fubar"
+  ruby_version_is ""..."2.7" do
+    it "calls #to_hash to convert the options argument to a Hash if not a Fixnum" do
+      opts = mock("encoding converter options")
+      opts.should_receive(:to_hash).and_return({ replace: "fubar" })
+      conv = Encoding::Converter.new("us-ascii", "utf-8", opts)
+      conv.replacement.should == "fubar"
+    end
   end
 
   it "calls #to_str to convert the replacement object to a String" do

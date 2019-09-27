@@ -48,12 +48,14 @@ describe :dir_open, shared: true do
     dir.should be_kind_of(Dir)
   end
 
-  it "calls #to_hash to convert the options object" do
-    options = mock("dir_open")
-    options.should_receive(:to_hash).and_return({ encoding: Encoding::UTF_8 })
+  ruby_version_is ""..."2.7" do
+    it "calls #to_hash to convert the options object" do
+      options = mock("dir_open")
+      options.should_receive(:to_hash).and_return({ encoding: Encoding::UTF_8 })
 
-    dir = Dir.send(@method, DirSpecs.mock_dir, options) {|d| d }
-    dir.should be_kind_of(Dir)
+      dir = Dir.send(@method, DirSpecs.mock_dir, options) {|d| d }
+      dir.should be_kind_of(Dir)
+    end
   end
 
   it "ignores the :encoding option if it is nil" do

@@ -562,11 +562,13 @@ describe "File.open" do
     @fh.should be_an_instance_of(File)
   end
 
-  it "calls #to_hash to convert the second argument to a Hash" do
-    options = mock("file open options")
-    options.should_receive(:to_hash).and_return({ mode: "r" })
+  ruby_version_is ""..."2.7" do
+    it "calls #to_hash to convert the second argument to a Hash" do
+      options = mock("file open options")
+      options.should_receive(:to_hash).and_return({ mode: "r" })
 
-    @fh = File.open(@file, options)
+      @fh = File.open(@file, options)
+    end
   end
 
   it "accepts extra flags as a keyword argument and combine with a string mode" do

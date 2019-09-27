@@ -176,10 +176,12 @@ describe "IO.pipe" do
     end
   end
 
-  it "calls #to_hash to convert an options argument" do
-    options = mock("io pipe encoding options")
-    options.should_receive(:to_hash).and_return({ invalid: :replace })
-    IO.pipe("UTF-8", "ISO-8859-1", options) { |r, w| }
+  ruby_version_is ""..."2.7" do
+    it "calls #to_hash to convert an options argument" do
+      options = mock("io pipe encoding options")
+      options.should_receive(:to_hash).and_return({ invalid: :replace })
+      IO.pipe("UTF-8", "ISO-8859-1", options) { |r, w| }
+    end
   end
 
   it "calls #to_str to convert the first argument to a String" do
