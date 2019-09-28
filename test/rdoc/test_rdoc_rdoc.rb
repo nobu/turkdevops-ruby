@@ -146,7 +146,7 @@ class TestRDocRDoc < RDoc::TestCase
       @rdoc.normalized_file_list [test_path, flag_file]
     end
 
-    files = files.map { |file| File.expand_path file }
+    files = files.map { |file, *| File.expand_path file }
 
     assert_equal [test_path], files
   end
@@ -158,7 +158,7 @@ class TestRDocRDoc < RDoc::TestCase
 
     files = @rdoc.normalized_file_list [__FILE__]
 
-    assert_empty files
+    assert_equal({__FILE__=>nil}, files)
   end
 
   def test_normalized_file_list_non_file_directory
@@ -203,7 +203,7 @@ class TestRDocRDoc < RDoc::TestCase
       @rdoc.normalized_file_list [File.realpath(dir)]
     end
 
-    files = files.map { |file| File.expand_path file }
+    files = files.map { |file, *| File.expand_path file }
 
     assert_equal expected_files, files
   end
@@ -230,7 +230,7 @@ class TestRDocRDoc < RDoc::TestCase
       @rdoc.normalized_file_list [File.realpath(dir)]
     end
 
-    files = files.map { |file| File.expand_path file }
+    files = files.map { |file, *| File.expand_path file }
 
     assert_equal expected_files, files
   end
