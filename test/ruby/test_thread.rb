@@ -871,6 +871,21 @@ class TestThread < Test::Unit::TestCase
       th_waiting = false
       t.join rescue nil
     INPUT
+
+    assert_in_out_err([], "#{<<~"begin;"}\n#{<<~'end;'}", %w(ok))
+    begin;
+      require 'timeout'
+      class I
+        def inspect
+          Timeout.timeout(0.001) {sleep 1}
+        rescue Timeout::Error
+          "ok"
+        else
+          "Not timed out"
+        end
+      end
+      p I.new
+    end;
   end
 
   def test_handle_interrupted?

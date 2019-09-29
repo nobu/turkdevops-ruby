@@ -7807,33 +7807,23 @@ rb_p(VALUE obj) /* for debug print within C code */
     }
 }
 
-struct rb_f_p_arg {
-    int argc;
-    VALUE *argv;
-};
-
 static VALUE
 rb_f_p_internal(VALUE arg)
 {
-    struct rb_f_p_arg *arg1 = (struct rb_f_p_arg*)arg;
-    int argc = arg1->argc;
-    VALUE *argv = arg1->argv;
-    int i;
-    VALUE ret = Qnil;
-
-    for (i=0; i<argc; i++) {
-	rb_p(argv[i]);
+    VALUE args[2];
+    args[0] = arg;
+    args[1] = rb_default_rs;
+    if (RB_TYPE_P(rb_stdout, T_FILE) &&
+        rb_method_basic_definition_p(CLASS_OF(rb_stdout), id_write)) {
+	io_writev(2, args, rb_stdout);
     }
-    if (argc == 1) {
-	ret = argv[0];
-    }
-    else if (argc > 1) {
-	ret = rb_ary_new4(argc, argv);
+    else {
+	rb_io_writev(rb_stdout, 2, args);
     }
     if (RB_TYPE_P(rb_stdout, T_FILE)) {
 	rb_io_flush(rb_stdout);
     }
-    return ret;
+    return arg;
 }
 
 /*
@@ -7857,11 +7847,13 @@ rb_f_p_internal(VALUE arg)
 static VALUE
 rb_f_p(int argc, VALUE *argv, VALUE self)
 {
-    struct rb_f_p_arg arg;
-    arg.argc = argc;
-    arg.argv = argv;
-
-    return rb_uninterruptible(rb_f_p_internal, (VALUE)&arg);
+    for (int i = 0; i < argc; ++i) {
+        VALUE str = rb_obj_as_string(rb_inspect(argv[i]));
+        rb_uninterruptible(rb_f_p_internal, str);
+    }
+    if (argc == 1) return argv[0];
+    if (argc == 0) return Qnil;
+    return rb_ary_new4(argc, argv);
 }
 
 /*
