@@ -307,6 +307,8 @@ static void iseq_add_setlocal(rb_iseq_t *iseq, LINK_ANCHOR *const seq, int line,
 #define ADD_GETLOCAL(seq, line, idx, level) iseq_add_getlocal(iseq, (seq), (line), (idx), (level))
 #define ADD_SETLOCAL(seq, line, idx, level) iseq_add_setlocal(iseq, (seq), (line), (idx), (level))
 
+#define ADD_CHECKMATCH(seq, line, type) iseq_add_checkmatch(iseq, seq, line, type)
+
 /* add label */
 #define ADD_LABEL(seq, label) \
   ADD_ELEM((seq), (LINK_ELEMENT *) (label))
@@ -1479,6 +1481,23 @@ iseq_add_setlocal(rb_iseq_t *iseq, LINK_ANCHOR *const seq, int line, int idx, in
     }
 }
 
+static void
+iseq_add_checkmatch(rb_iseq_t *iseq, LINK_ANCHOR *const seq, int line, int type)
+{
+    switch (type) {
+      case VM_CHECKMATCH_TYPE_CASE:
+        ADD_INSN(seq, line, swap);
+        ADD_CALL(seq, line, idEqq, INT2FIX(1));
+        break;
+      case VM_CHECKMATCH_TYPE_WHEN:
+	ADD_INSN(seq, line, swap);
+	ADD_INSN(seq, line, pop);
+        break;
+      default:
+	ADD_INSN1(seq, line, checkmatch, INT2FIX(type));
+        break;
+    }
+}
 
 
 static void
@@ -4274,7 +4293,7 @@ when_vals(rb_iseq_t *iseq, LINK_ANCHOR *const cond_seq, const NODE *vals,
 	    if (!COMPILE(cond_seq, "when cond", val)) return -1;
 	}
 
-	ADD_INSN1(cond_seq, nd_line(vals), checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
+	ADD_CHECKMATCH(cond_seq, nd_line(vals), VM_CHECKMATCH_TYPE_CASE);
 	ADD_INSNL(cond_seq, nd_line(val), branchif, l1);
 	vals = vals->nd_next;
     }
@@ -4296,7 +4315,7 @@ when_splat_vals(rb_iseq_t *iseq, LINK_ANCHOR *const cond_seq, const NODE *vals,
         ADD_INSN (cond_seq, line, dup);
         CHECK(COMPILE(cond_seq, "when splat", vals->nd_head));
         ADD_INSN1(cond_seq, line, splatarray, Qfalse);
-        ADD_INSN1(cond_seq, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE | VM_CHECKMATCH_ARRAY));
+        ADD_CHECKMATCH(cond_seq, line, VM_CHECKMATCH_TYPE_CASE | VM_CHECKMATCH_ARRAY);
         ADD_INSNL(cond_seq, line, branchif, l1);
         break;
       case NODE_ARGSCAT:
@@ -4307,14 +4326,14 @@ when_splat_vals(rb_iseq_t *iseq, LINK_ANCHOR *const cond_seq, const NODE *vals,
         CHECK(when_splat_vals(iseq, cond_seq, vals->nd_head, l1, only_special_literals, literals));
         ADD_INSN (cond_seq, line, dup);
         CHECK(COMPILE(cond_seq, "when argspush body", vals->nd_body));
-        ADD_INSN1(cond_seq, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
+        ADD_CHECKMATCH(cond_seq, line, VM_CHECKMATCH_TYPE_CASE);
         ADD_INSNL(cond_seq, line, branchif, l1);
         break;
       default:
         ADD_INSN (cond_seq, line, dup);
         CHECK(COMPILE(cond_seq, "when val", vals));
         ADD_INSN1(cond_seq, line, splatarray, Qfalse);
-        ADD_INSN1(cond_seq, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE | VM_CHECKMATCH_ARRAY));
+        ADD_CHECKMATCH(cond_seq, line, VM_CHECKMATCH_TYPE_CASE | VM_CHECKMATCH_ARRAY);
         ADD_INSNL(cond_seq, line, branchif, l1);
         break;
     }
@@ -5377,7 +5396,7 @@ compile_case2(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const orig_no
 	  case NODE_ARGSPUSH:
 	    ADD_INSN(ret, nd_line(vals), putnil);
 	    CHECK(COMPILE(ret, "when2/cond splat", vals));
-	    ADD_INSN1(ret, nd_line(vals), checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_WHEN | VM_CHECKMATCH_ARRAY));
+	    ADD_CHECKMATCH(ret, nd_line(vals), VM_CHECKMATCH_TYPE_WHEN | VM_CHECKMATCH_ARRAY);
 	    ADD_INSNL(ret, nd_line(vals), branchif, l1);
 	    break;
 	  default:
@@ -5486,7 +5505,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *c
         if (node->nd_pconst) {
             ADD_INSN(ret, line, dup);
             CHECK(COMPILE(ret, "constant", node->nd_pconst));
-            ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
+            ADD_CHECKMATCH(ret, line, VM_CHECKMATCH_TYPE_CASE);
             ADD_INSNL(ret, line, branchunless, match_failed);
         }
 
@@ -5660,7 +5679,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *c
         if (node->nd_pconst) {
             ADD_INSN(ret, line, dup);
             CHECK(COMPILE(ret, "constant", node->nd_pconst));
-            ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
+            ADD_CHECKMATCH(ret, line, VM_CHECKMATCH_TYPE_CASE);
             ADD_INSNL(ret, line, branchunless, match_failed);
         }
 
@@ -5777,7 +5796,7 @@ iseq_compile_pattern_each(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *c
       case NODE_COLON2:
       case NODE_COLON3:
         CHECK(COMPILE(ret, "case in literal", node));
-        ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_CASE));
+        ADD_CHECKMATCH(ret, line, VM_CHECKMATCH_TYPE_CASE);
         break;
       case NODE_LASGN: {
         struct rb_iseq_constant_body *const body = iseq->body;
@@ -6449,7 +6468,7 @@ compile_resbody(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node,
 		while (narg) {
 		    ADD_GETLOCAL(ret, line, LVAR_ERRINFO, 0);
 		    CHECK(COMPILE(ret, "rescue arg", narg->nd_head));
-		    ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_RESCUE));
+		    ADD_CHECKMATCH(ret, line, VM_CHECKMATCH_TYPE_RESCUE);
 		    ADD_INSNL(ret, line, branchif, label_hit);
 		    narg = narg->nd_next;
 		}
@@ -6459,7 +6478,7 @@ compile_resbody(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node,
 	      case NODE_ARGSPUSH:
 		ADD_GETLOCAL(ret, line, LVAR_ERRINFO, 0);
 		CHECK(COMPILE(ret, "rescue/cond splat", narg));
-		ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_RESCUE | VM_CHECKMATCH_ARRAY));
+		ADD_CHECKMATCH(ret, line, VM_CHECKMATCH_TYPE_RESCUE | VM_CHECKMATCH_ARRAY);
 		ADD_INSNL(ret, line, branchif, label_hit);
 		break;
 	      default:
@@ -6469,7 +6488,7 @@ compile_resbody(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node,
 	else {
 	    ADD_GETLOCAL(ret, line, LVAR_ERRINFO, 0);
 	    ADD_INSN1(ret, line, putobject, rb_eStandardError);
-	    ADD_INSN1(ret, line, checkmatch, INT2FIX(VM_CHECKMATCH_TYPE_RESCUE));
+	    ADD_CHECKMATCH(ret, line, VM_CHECKMATCH_TYPE_RESCUE);
 	    ADD_INSNL(ret, line, branchif, label_hit);
 	}
 	ADD_INSNL(ret, line, jump, label_miss);
