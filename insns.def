@@ -691,12 +691,12 @@ defined
  */
 DEFINE_INSN
 checkmatch
-(rb_num_t flag)
+(rb_num_t flag, CALL_INFO ci, CALL_CACHE cc)
 (VALUE target, VALUE pattern)
 (VALUE result)
 // attr bool leaf = leafness_of_checkmatch(flag);
 {
-    result = vm_check_match(ec, target, pattern, flag);
+    result = vm_check_match(ec, ci, cc, target, pattern, flag);
 }
 
 /* check keywords are specified or not. */

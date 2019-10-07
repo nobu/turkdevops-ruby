@@ -15,6 +15,8 @@ VALUE rb_keyword_error_new(const char *error, VALUE keys); /* class.c */
 static VALUE method_missing(VALUE obj, ID id, int argc, const VALUE *argv,
                             enum method_missing_reason call_status, int kw_splat);
 
+extern VALUE rb_vm_call0(rb_execution_context_t *ec, VALUE, ID, int, const VALUE*, const rb_callable_method_entry_t *, int kw_splat);
+
 struct args_info {
     /* basic args info */
     VALUE *argv;

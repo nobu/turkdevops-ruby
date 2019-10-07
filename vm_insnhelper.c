@@ -1617,10 +1617,10 @@ rb_eql_opt(VALUE obj1, VALUE obj2)
     return opt_eql_func(obj1, obj2, &ci, &cc);
 }
 
-extern VALUE rb_vm_call0(rb_execution_context_t *ec, VALUE, ID, int, const VALUE*, const rb_callable_method_entry_t *, int kw_splat);
+static VALUE vm_call0_body(rb_execution_context_t *ec, struct rb_calling_info *calling, const struct rb_call_info *ci, struct rb_call_cache *cc, const VALUE *argv);
 
 static VALUE
-check_match(rb_execution_context_t *ec, VALUE pattern, VALUE target, enum vm_check_match_type type)
+check_match(rb_execution_context_t *ec, CALL_INFO ci, CALL_CACHE cc, VALUE pattern, VALUE target, enum vm_check_match_type type)
 {
     switch (type) {
       case VM_CHECKMATCH_TYPE_WHEN:
@@ -1633,13 +1633,15 @@ check_match(rb_execution_context_t *ec, VALUE pattern, VALUE target, enum vm_che
       case VM_CHECKMATCH_TYPE_CASE: {
 	const rb_callable_method_entry_t *me =
 	    rb_callable_method_entry_with_refinements(CLASS_OF(pattern), idEqq, NULL);
+        struct rb_calling_info calling = {Qundef, pattern, 1, RB_NO_KEYWORDS};
 	if (me) {
-            return rb_vm_call0(ec, pattern, idEqq, 1, &target, me, RB_NO_KEYWORDS);
+            cc->me = me;
 	}
 	else {
 	    /* fallback to funcall (e.g. method_missing) */
-	    return rb_funcallv(pattern, idEqq, 1, &target);
+            vm_search_method(ci, cc, pattern);
 	}
+        return vm_call0_body(ec, &calling, ci, cc, &target);
       }
       default:
 	rb_bug("check_match: unreachable");
@@ -3433,7 +3435,7 @@ vm_splat_array(VALUE flag, VALUE ary)
 }
 
 static VALUE
-vm_check_match(rb_execution_context_t *ec, VALUE target, VALUE pattern, rb_num_t flag)
+vm_check_match(rb_execution_context_t *ec, CALL_INFO ci, CALL_CACHE cc, VALUE target, VALUE pattern, rb_num_t flag)
 {
     enum vm_check_match_type type = ((int)flag) & VM_CHECKMATCH_TYPE_MASK;
 
@@ -3443,7 +3445,7 @@ vm_check_match(rb_execution_context_t *ec, VALUE target, VALUE pattern, rb_num_t
 
 	for (i = 0; i < n; i++) {
 	    VALUE v = RARRAY_AREF(pattern, i);
-	    VALUE c = check_match(ec, v, target, type);
+	    VALUE c = check_match(ec, ci, cc, v, target, type);
 
 	    if (RTEST(c)) {
 		return c;
@@ -3452,7 +3454,7 @@ vm_check_match(rb_execution_context_t *ec, VALUE target, VALUE pattern, rb_num_t
 	return Qfalse;
     }
     else {
-	return check_match(ec, pattern, target, type);
+	return check_match(ec, ci, cc, pattern, target, type);
     }
 }
 
