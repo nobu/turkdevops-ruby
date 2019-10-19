@@ -1459,6 +1459,10 @@ eom
   def test_argument_forwarding
     assert_valid_syntax('def foo(...) bar(...) end')
     assert_valid_syntax('def foo(...) end')
+    assert_valid_syntax('def foo(a, ...) bar(a, ...) end')
+    assert_valid_syntax('def foo(a=nil, ...) bar(a, ...) end')
+    assert_valid_syntax('def foo(a: nil, ...) bar(a, ...) end')
+    assert_valid_syntax('def foo(a:, ...) bar(a, ...) end')
     assert_syntax_error('iter do |...| end', /unexpected/)
     assert_syntax_error('iter {|...|}', /unexpected/)
     assert_syntax_error('->... {}', /unexpected/)
