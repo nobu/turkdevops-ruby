@@ -556,6 +556,8 @@ static NODE *heredoc_dedent(struct parser_params*,NODE*);
 
 static void check_literal_when(struct parser_params *p, NODE *args, const YYLTYPE *loc);
 
+static NODE *new_args_forward(struct parser_params *p, NODE *args, NODE *assocs, ID fwd, const YYLTYPE *fwdloc, const YYLTYPE *loc);
+
 #define get_id(id) (id)
 #define get_value(val) (val)
 #define get_num(num) (num)
@@ -609,6 +611,8 @@ static VALUE var_field(struct parser_params *p, VALUE a);
 static VALUE assign_error(struct parser_params *p, VALUE a);
 
 static VALUE parser_reg_compile(struct parser_params*, VALUE, int, VALUE *);
+
+static VALUE new_args_forward(struct parser_params*, VALUE, VALUE, VALUE, const YYLTYPE *, const YYLTYPE *);
 
 #endif /* !RIPPER */
 
@@ -664,11 +668,7 @@ static void numparam_pop(struct parser_params *p, NODE *prev_inner);
 #endif
 
 #define idFWD_REST   '*'
-#ifdef RUBY3_KEYWORDS
 #define idFWD_KWREST idPow /* Use simple "**", as tDSTAR is "**arg" */
-#else
-#define idFWD_KWREST 0
-#endif
 #define idFWD_BLOCK  '&'
 
 #define RE_OPTION_ONCE (1<<16)
@@ -1143,7 +1143,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %type <id>   cname fname op f_rest_arg f_block_arg opt_f_block_arg f_norm_arg f_bad_arg
 %type <id>   f_kwrest f_label f_arg_asgn call_op call_op2 reswords relop dot_or_colon
 %type <id>   p_kwrest p_kwnorest p_any_kwrest p_kw_label
-%type <id>   f_no_kwarg f_any_kwrest args_forward excessed_comma
+%type <id>   f_no_kwarg f_any_kwrest args_forward opt_args_fwd excessed_comma
 %token END_OF_INPUT 0	"end-of-input"
 %token <id> '.'
 /* escaped chars, should be ignored otherwise */
@@ -2568,58 +2568,25 @@ paren_args	: '(' opt_call_args rparen
 		    /*% %*/
 		    /*% ripper: arg_paren!(escape_Qundef($2)) %*/
 		    }
+		| '(' args ',' assocs ',' args_forward rparen
+		    {
+			$$ = new_args_forward(p, $2, $4, $6, &@6, &@$);
+		    /*% ripper: arg_paren!($$) %*/
+		    }
 		| '(' args ',' args_forward rparen
 		    {
-			if (!local_id(p, idFWD_REST) ||
-#if idFWD_KWREST
-			    !local_id(p, idFWD_KWREST) ||
-#endif
-			    !local_id(p, idFWD_BLOCK)) {
-			    compile_error(p, "unexpected ...");
-			    $$ = Qnone;
-			}
-			else {
-			/*%%%*/
-			    NODE *splat = NEW_SPLAT(NEW_LVAR(idFWD_REST, &@4), &@4);
-#if idFWD_KWREST
-			    NODE *kwrest = list_append(p, NEW_LIST(0, &@4), NEW_LVAR(idFWD_KWREST, &@4));
-#endif
-			    NODE *block = NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, &@4), &@4);
-			    $$ = rest_arg_append(p, $2, splat, &@$);
-#if idFWD_KWREST
-			    $$ = arg_append(p, $$, new_hash(p, kwrest, &@4), &@4);
-#endif
-			    $$ = arg_blk_pass($$, block);
-			/*% %*/
-			/*% ripper: arg_paren!(args_add!($2, $4)) %*/
-			}
+			$$ = new_args_forward(p, $2, Qnull, $4, &@4, &@$);
+		    /*% ripper: arg_paren!($$) %*/
+		    }
+		| '(' assocs ',' args_forward rparen
+		    {
+			$$ = new_args_forward(p, Qnull, $2, $4, &@4, &@$);
+		    /*% ripper: arg_paren!($$) %*/
 		    }
 		| '(' args_forward rparen
 		    {
-			if (!local_id(p, idFWD_REST) ||
-#if idFWD_KWREST
-			    !local_id(p, idFWD_KWREST) ||
-#endif
-			    !local_id(p, idFWD_BLOCK)) {
-			    compile_error(p, "unexpected ...");
-			    $$ = Qnone;
-			}
-			else {
-			/*%%%*/
-			    NODE *splat = NEW_SPLAT(NEW_LVAR(idFWD_REST, &@2), &@2);
-#if idFWD_KWREST
-			    NODE *kwrest = list_append(p, NEW_LIST(0, &@2), NEW_LVAR(idFWD_KWREST, &@2));
-#endif
-			    NODE *block = NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, &@2), &@2);
-#if idFWD_KWREST
-			    $$ = arg_append(p, splat, new_hash(p, kwrest, &@2), &@2);
-#else
-			    $$ = splat;
-#endif
-			    $$ = arg_blk_pass($$, block);
-			/*% %*/
-			/*% ripper: arg_paren!($2) %*/
-			}
+			$$ = new_args_forward(p, Qnull, Qnull, $2, &@2, &@$);
+		    /*% ripper: arg_paren!($$) %*/
 		    }
 		;
 
@@ -4940,39 +4907,9 @@ f_paren_args	: '(' f_args rparen
 			SET_LEX_STATE(EXPR_BEG);
 			p->command_start = TRUE;
 		    }
-		| '(' f_arg ',' args_forward rparen
-		    {
-			arg_var(p, idFWD_REST);
-#if idFWD_KWREST
-			arg_var(p, idFWD_KWREST);
-#endif
-			arg_var(p, idFWD_BLOCK);
-		    /*%%%*/
-			$$ = new_args_tail(p, Qnone, idFWD_KWREST, idFWD_BLOCK, &@4);
-			$$ = new_args(p, $2, Qnone, idFWD_REST, Qnone, $$, &@4);
-		    /*% %*/
-		    /*% ripper: paren!(params_new($2, Qnone, $4, Qnone, Qnone, Qnone, Qnone)) %*/
-			SET_LEX_STATE(EXPR_BEG);
-			p->command_start = TRUE;
-		    }
-		| '(' args_forward rparen
-		    {
-			arg_var(p, idFWD_REST);
-#if idFWD_KWREST
-			arg_var(p, idFWD_KWREST);
-#endif
-			arg_var(p, idFWD_BLOCK);
-		    /*%%%*/
-			$$ = new_args_tail(p, Qnone, idFWD_KWREST, idFWD_BLOCK, &@2);
-			$$ = new_args(p, Qnone, Qnone, idFWD_REST, Qnone, $$, &@2);
-		    /*% %*/
-		    /*% ripper: paren!(params_new(Qnone, Qnone, $2, Qnone, Qnone, Qnone, Qnone)) %*/
-			SET_LEX_STATE(EXPR_BEG);
-			p->command_start = TRUE;
-		    }
                 ;
 
-f_arglist       : f_paren_args
+f_arglist	: f_paren_args
 		|   {
 			$<ctxt>$ = p->ctxt;
 			p->ctxt.in_kwarg = 1;
@@ -4991,17 +4928,25 @@ args_tail	: f_kwarg ',' f_kwrest opt_f_block_arg
 		    {
 			$$ = new_args_tail(p, $1, $3, $4, &@3);
 		    }
-		| f_kwarg opt_f_block_arg
+		| f_kwarg ',' f_block_arg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, $1, Qnone, $2, &@1);
+			$$ = new_args_tail(p, $1, $4, $3, &@1);
+		    }
+		| f_kwarg opt_args_fwd
+		    {
+			$$ = new_args_tail(p, $1, $2, Qnone, &@1);
 		    }
 		| f_any_kwrest opt_f_block_arg
 		    {
 			$$ = new_args_tail(p, Qnone, $1, $2, &@1);
 		    }
-		| f_block_arg
+		| f_block_arg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, Qnone, Qnone, $1, &@1);
+			$$ = new_args_tail(p, Qnone, $2, $1, &@1);
+		    }
+		| args_forward
+		    {
+			$$ = new_args_tail(p, Qnone, $1, Qnone, &@1);
 		    }
 		;
 
@@ -5385,6 +5330,16 @@ opt_f_block_arg	: ',' f_block_arg
 		| none
 		    {
 			$$ = Qnull;
+		    }
+		;
+
+opt_args_fwd    : ',' args_forward
+		    {
+			$$ = $2;
+		    }
+		| none
+		    {
+			$$ = 0;
 		    }
 		;
 
@@ -11431,6 +11386,40 @@ new_args(struct parser_params *p, NODE *pre_args, NODE *opt_args, ID rest_arg, N
     args->post_init      = post_args ? post_args->nd_next : 0;
     args->first_post_arg = post_args ? post_args->nd_pid : 0;
 
+    if (args->block_arg == idFWD_BLOCK) {
+	/* insert rest_arg for "..." */
+	if (!args->kw_rest_arg) {
+	    rb_parser_fatal(p, "no kwrest");
+	}
+	else if (args->kw_rest_arg->nd_vid != idFWD_KWREST) {
+	    rb_parser_fatal(p, "wrong kwrest (%"PRIsVALUE")",
+			    rb_id2str(args->kw_rest_arg->nd_vid));
+	}
+	else if (rest_arg) {
+	    rb_parser_fatal(p, "... and rest_arg (%"PRIsVALUE") given", rb_id2str(rest_arg));
+	}
+	else {
+	    struct vtable *lv = p->lvtbl->args;
+	    int idx = args->pre_args_num;
+	    if (opt_args) {
+		NODE *opts = opt_args;
+		do {
+		    if (nd_type(opts) != NODE_OPT_ARG) {
+			compile_error(p, "NODE_OPT_ARG expected (%s)",
+				      ruby_node_name(nd_type(opts)));
+			break;
+		    }
+		    ++idx;
+		    opts = opts->nd_next;
+		} while (opts);
+	    }
+	    arg_var(p, idFWD_REST);
+	    MEMMOVE(lv->tbl+idx+1, lv->tbl+idx, ID, lv->pos-idx-1);
+	    lv->tbl[idx] = idFWD_REST;
+	    rest_arg = idFWD_REST;
+	}
+    }
+
     args->rest_arg       = rest_arg;
 
     args->opt_args       = opt_args;
@@ -11456,6 +11445,12 @@ new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, 
     RB_OBJ_WRITTEN(p->ast, Qnil, tmpbuf);
     if (p->error_p) return node;
 
+    if (kw_rest_arg == idDot3) {
+	kw_rest_arg = idFWD_KWREST;
+	block = idFWD_BLOCK;
+	arg_var(p, idFWD_KWREST);
+	arg_var(p, idFWD_BLOCK);
+    }
     args->block_arg      = block;
     args->kw_args        = kw_args;
 
@@ -11733,6 +11728,28 @@ new_unique_key_hash(struct parser_params *p, NODE *hash, const YYLTYPE *loc)
 
 #ifndef RIPPER
 static NODE *
+new_args_forward(struct parser_params *p, NODE *args, NODE *assocs, ID fwd, const YYLTYPE *fwdloc, const YYLTYPE *loc)
+{
+    if (!local_id(p, idFWD_REST) ||
+#if idFWD_KWREST
+	!local_id(p, idFWD_KWREST) ||
+#endif
+	!local_id(p, idFWD_BLOCK)) {
+	compile_error(p, "unexpected ...");
+	return NULL;
+    }
+
+    NODE *rest = NEW_LVAR(idFWD_REST, fwdloc);
+    args = args ? arg_concat(p, args, rest, loc) : NEW_SPLAT(rest, loc);
+#if idFWD_KWREST
+    if (!assocs) assocs = NEW_LIST(0, loc);
+    assocs = new_hash(p, list_append(p, assocs, NEW_LVAR(idFWD_KWREST, fwdloc)), loc);
+    args = arg_append(p, args, assocs, loc);
+#endif
+    return arg_blk_pass(args, NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, fwdloc), loc));
+}
+
+static NODE *
 new_op_assign(struct parser_params *p, NODE *lhs, ID op, NODE *rhs, const YYLTYPE *loc)
 {
     NODE *asgn;
@@ -11845,6 +11862,19 @@ static VALUE
 var_field(struct parser_params *p, VALUE a)
 {
     return ripper_new_yylval(p, get_id(a), dispatch1(var_field, a), 0);
+}
+
+static VALUE
+new_args_forward(struct parser_params *p, VALUE args, VALUE assocs, VALUE fwd, const YYLTYPE *fwdloc, const YYLTYPE *loc)
+{
+    if (args == Qnull) {
+	args = dispatch0(args_new);
+    }
+    if (assocs != Qnull) {
+	args = dispatch2(args_add, args, dispatch1(bare_assoc_hash, assocs));
+    }
+    args = dispatch2(args_add, args, fwd);
+    return dispatch1(arg_paren, args);
 }
 #endif
 

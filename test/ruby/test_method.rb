@@ -570,7 +570,7 @@ class TestMethod < Test::Unit::TestCase
     assert_equal([[:req, :a], [:opt, :b], [:rest, :c], [:req, :d], [:keyreq, :e], [:key, :f], [:keyrest, :o]], method(:mk8).parameters)
     assert_equal([[:nokey]], method(:mnk).parameters)
     # pending
-    assert_equal([[:rest, :*], [:block, :&]], method(:mf).parameters)
+    assert_equal([[:rest, :*], [:keyrest, :**], [:block, :&]], method(:mf).parameters)
   end
 
   def test_unbound_parameters
@@ -596,7 +596,7 @@ class TestMethod < Test::Unit::TestCase
     assert_equal([[:req, :a], [:opt, :b], [:rest, :c], [:req, :d], [:keyreq, :e], [:key, :f], [:keyrest, :o]], self.class.instance_method(:mk8).parameters)
     assert_equal([[:nokey]], self.class.instance_method(:mnk).parameters)
     # pending
-    assert_equal([[:rest, :*], [:block, :&]], self.class.instance_method(:mf).parameters)
+    assert_equal([[:rest, :*], [:keyrest, :**], [:block, :&]], self.class.instance_method(:mf).parameters)
   end
 
   def test_bmethod_bound_parameters
@@ -673,7 +673,7 @@ class TestMethod < Test::Unit::TestCase
     assert_include(method(:mk7).inspect, "(a, b=..., *c, d, **o)")
     assert_include(method(:mk8).inspect, "(a, b=..., *c, d, e:, f: ..., **o)")
     assert_include(method(:mnk).inspect, "(**nil)")
-    assert_include(method(:mf).inspect, "(...)")
+    assert_include(method(:mf).inspect, "...")
   end
 
   def test_unbound_method_parameters_inspect
@@ -698,7 +698,7 @@ class TestMethod < Test::Unit::TestCase
     assert_include(self.class.instance_method(:mk7).inspect, "(a, b=..., *c, d, **o)")
     assert_include(self.class.instance_method(:mk8).inspect, "(a, b=..., *c, d, e:, f: ..., **o)")
     assert_include(self.class.instance_method(:mnk).inspect, "(**nil)")
-    assert_include(self.class.instance_method(:mf).inspect, "(...)")
+    assert_include(self.class.instance_method(:mf).inspect, "...")
   end
 
   def test_public_method_with_zsuper_method

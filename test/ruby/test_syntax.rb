@@ -1508,6 +1508,10 @@ eom
     assert_valid_syntax('def nil(...) end')
     assert_valid_syntax('def true(...) end')
     assert_valid_syntax('def false(...) end')
+    assert_valid_syntax('def foo(a, ...) bar(a, ...) end')
+    assert_valid_syntax('def foo(a=nil, ...) bar(a, ...) end')
+    assert_valid_syntax('def foo(a: nil, ...) bar(a, ...) end')
+    assert_valid_syntax('def foo(a:, ...) bar(a, ...) end')
     unexpected = /unexpected \.{3}/
     assert_syntax_error('iter do |...| end', /unexpected/)
     assert_syntax_error('iter {|...|}', /unexpected/)
