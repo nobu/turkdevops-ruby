@@ -4871,13 +4871,13 @@ opt_args_tail	: ',' args_tail
 		    }
 		;
 
-args_fwd_tail	: f_kwarg ',' args_forward
+args_fwd_tail	: f_kwarg ',' args_forward opt_f_block_arg
 		    {
-			$$ = new_args_tail(p, $1, $3, Qnone, &@1);
+			$$ = new_args_tail(p, $1, $3, $4, &@1);
 		    }
-		| args_forward
+		| args_forward opt_f_block_arg
 		    {
-			$$ = new_args_tail(p, Qnone, $1, Qnone, &@1);
+			$$ = new_args_tail(p, Qnone, $1, $2, &@1);
 		    }
 		;
 
@@ -11270,6 +11270,14 @@ args_info_empty_p(struct rb_args_info *args)
     return true;
 }
 
+static int
+forwarding_kwrest_node_p(NODE *node)
+{
+    if (!node) return 0;
+    if (nd_type(node) != NODE_DVAR) return 0;
+    return node->nd_vid == idFWD_KWREST;
+}
+
 static NODE*
 new_args(struct parser_params *p, NODE *pre_args, NODE *opt_args, ID rest_arg, NODE *post_args, NODE *tail, const YYLTYPE *loc)
 {
@@ -11283,7 +11291,7 @@ new_args(struct parser_params *p, NODE *pre_args, NODE *opt_args, ID rest_arg, N
     args->post_init      = post_args ? post_args->nd_next : 0;
     args->first_post_arg = post_args ? post_args->nd_pid : 0;
 
-    if (args->block_arg == idFWD_BLOCK) {
+    if (forwarding_kwrest_node_p(args->kw_rest_arg)) {
 	/* insert rest_arg for "..." */
 	if (!args->kw_rest_arg) {
 	    rb_parser_fatal(p, "no kwrest");
@@ -11343,10 +11351,12 @@ new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, 
     if (p->error_p) return node;
 
     if (kw_rest_arg == idDot3) {
+	struct vtable *vtargs = p->lvtbl->args;
+	if (block) vtable_pop(vtargs, 1);
+	else block = idFWD_BLOCK;
 	kw_rest_arg = idFWD_KWREST;
-	block = idFWD_BLOCK;
 	arg_var(p, idFWD_KWREST);
-	arg_var(p, idFWD_BLOCK);
+	arg_var(p, block);
     }
     args->block_arg      = block;
     args->kw_args        = kw_args;
@@ -11617,11 +11627,14 @@ new_args_forward(struct parser_params *p, NODE *args, NODE *assocs, ID fwd, cons
 #if idFWD_KWREST
 	!local_id(p, idFWD_KWREST) ||
 #endif
-	!local_id(p, idFWD_BLOCK)) {
+	0) {
 	compile_error(p, "unexpected ...");
 	return NULL;
     }
-
+    NODE *block = 0;
+    if (local_id(p, idFWD_BLOCK)) {
+	block = NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, fwdloc), loc);
+    }
     NODE *rest = NEW_LVAR(idFWD_REST, fwdloc);
     args = args ? arg_concat(p, args, rest, loc) : NEW_SPLAT(rest, loc);
 #if idFWD_KWREST
@@ -11629,7 +11642,7 @@ new_args_forward(struct parser_params *p, NODE *args, NODE *assocs, ID fwd, cons
     assocs = new_hash(p, list_append(p, assocs, NEW_LVAR(idFWD_KWREST, fwdloc)), loc);
     args = arg_append(p, args, assocs, loc);
 #endif
-    return arg_blk_pass(args, NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, fwdloc), loc));
+    return arg_blk_pass(args, block);
 }
 
 static NODE *
