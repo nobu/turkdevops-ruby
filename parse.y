@@ -1100,7 +1100,6 @@ static void token_info_warn(struct parser_params *p, const char *token, token_in
 %token tRSHFT		RUBY_TOKEN(RSHFT)  ">>"
 %token <id> tANDDOT	RUBY_TOKEN(ANDDOT) "&."
 %token <id> tCOLON2	RUBY_TOKEN(COLON2) "::"
-%token <id> tMETHREF	RUBY_TOKEN(METHREF) ".:"
 %token tCOLON3		":: at EXPR_BEG"
 %token <id> tOP_ASGN	"operator-assignment" /* +=, -=  etc. */
 %token tASSOC		"=>"
@@ -3031,13 +3030,6 @@ primary		: literal
 			$$ = NEW_RETRY(&@$);
 		    /*% %*/
 		    /*% ripper: retry! %*/
-		    }
-		| primary_value tMETHREF operation2
-		    {
-		    /*%%%*/
-			$$ = NEW_METHREF($1, $3, &@$);
-		    /*% %*/
-		    /*% ripper: methref!($1, $3) %*/
 		    }
 		;
 
@@ -9160,30 +9152,12 @@ parser_yylex(struct parser_params *p)
       case '.': {
         int is_beg = IS_BEG();
 	SET_LEX_STATE(EXPR_BEG);
-	switch (c = nextc(p)) {
-	  case '.':
+	if ((c = nextc(p)) == '.') {
 	    if ((c = nextc(p)) == '.') {
 		return is_beg ? tBDOT3 : tDOT3;
 	    }
 	    pushback(p, c);
 	    return is_beg ? tBDOT2 : tDOT2;
-	  case ':':
-	    switch (c = nextc(p)) {
-	      default:
-		if (!parser_is_identchar(p)) break;
-		/* fallthru */
-	      case '!': case '%': case '&': case '*': case '+':
-	      case '-': case '/': case '<': case '=': case '>':
-	      case '[': case '^': case '`': case '|': case '~':
-		pushback(p, c);
-		SET_LEX_STATE(EXPR_DOT);
-		return tMETHREF;
-	      case -1:
-		break;
-	    }
-	    pushback(p, c);
-	    c = ':';
-	    break;
 	}
 	pushback(p, c);
 	if (c != -1 && ISDIGIT(c)) {

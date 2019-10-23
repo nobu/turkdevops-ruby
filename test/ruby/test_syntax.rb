@@ -93,13 +93,6 @@ class TestSyntax < Test::Unit::TestCase
     assert_valid_syntax("tap (proc do end)", __FILE__, bug9726)
   end
 
-  def test_methodref_literal
-    assert_separately [], <<-EOS
-      eval 'nil.:|;1'
-      1000.times{eval 'nil.:|;1'}
-    EOS
-  end
-
   def test_array_kwsplat_hash
     kw = {}
     h = {a: 1}
@@ -1024,10 +1017,8 @@ eom
   def test_fluent_dot
     assert_valid_syntax("a\n.foo")
     assert_valid_syntax("a\n&.foo")
-    assert_valid_syntax("a\n.:foo")
     assert_valid_syntax("a #\n#\n.foo\n")
     assert_valid_syntax("a #\n#\n&.foo\n")
-    assert_valid_syntax("a #\n#\n.:foo\n")
   end
 
   def test_safe_call_in_massign_lhs
@@ -1503,8 +1494,8 @@ eom
 
     [obj1, obj2].each do |obj|
       assert_equal([[1, 2, 3], {k1: 4, k2: 5}], obj.foo(1, 2, 3, k1: 4, k2: 5) {|*x| x})
-      assert_equal(-1, obj.:foo.arity)
-      parameters = obj.:foo.parameters
+      assert_equal(-1, obj.method(:foo).arity)
+      parameters = obj.method(:foo).parameters
       assert_equal(:rest, parameters.dig(0, 0))
       assert_equal(:keyrest, parameters.dig(1, 0))
       assert_equal(:block, parameters.dig(2, 0))

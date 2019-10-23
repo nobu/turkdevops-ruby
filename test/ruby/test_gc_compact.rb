@@ -46,7 +46,7 @@ class TestGCCompact < Test::Unit::TestCase
       list_of_objects = big_list
 
       ids       = list_of_objects.map(&:object_id) # store id in map
-      addresses = list_of_objects.map(&self.:memory_location)
+      addresses = list_of_objects.map(&self.method(:memory_location))
 
       assert_equal ids, addresses
 
@@ -107,7 +107,7 @@ class TestGCCompact < Test::Unit::TestCase
   def test_many_collisions
     list_of_objects = big_list
     ids       = list_of_objects.map(&:object_id)
-    addresses = list_of_objects.map(&self.:memory_location)
+    addresses = list_of_objects.map(&self.method(:memory_location))
 
     GC.verify_compaction_references(toward: :empty)
 
