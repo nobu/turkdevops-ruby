@@ -993,6 +993,7 @@ BUILTIN_RB_SRCS = \
 		$(srcdir)/gc.rb \
 		$(srcdir)/io.rb \
 		$(srcdir)/pack.rb \
+		$(srcdir)/process.rb \
 		$(srcdir)/trace_point.rb \
 		$(empty)
 BUILTIN_RB_INCS = $(BUILTIN_RB_SRCS:.rb=.rbinc)
@@ -2734,6 +2735,7 @@ process.$(OBJEXT): {$(VPATH)}node.h
 process.$(OBJEXT): {$(VPATH)}onigmo.h
 process.$(OBJEXT): {$(VPATH)}oniguruma.h
 process.$(OBJEXT): {$(VPATH)}process.c
+process.$(OBJEXT): {$(VPATH)}process.rbinc
 process.$(OBJEXT): {$(VPATH)}ruby_assert.h
 process.$(OBJEXT): {$(VPATH)}ruby_atomic.h
 process.$(OBJEXT): {$(VPATH)}st.h

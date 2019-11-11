@@ -695,23 +695,6 @@ pst_inspect(VALUE st)
     return str;
 }
 
-
-/*
- *  call-seq:
- *     stat == other   -> true or false
- *
- *  Returns +true+ if the integer value of _stat_
- *  equals <em>other</em>.
- */
-
-static VALUE
-pst_equal(VALUE st1, VALUE st2)
-{
-    if (st1 == st2) return Qtrue;
-    return rb_equal(pst_to_i(st1), st2);
-}
-
-
 /*
  *  call-seq:
  *     stat & num   -> integer
@@ -8204,7 +8187,6 @@ InitVM_process(void)
     rb_cProcessStatus = rb_define_class_under(rb_mProcess, "Status", rb_cObject);
     rb_undef_method(CLASS_OF(rb_cProcessStatus), "new");
 
-    rb_define_method(rb_cProcessStatus, "==", pst_equal, 1);
     rb_define_method(rb_cProcessStatus, "&", pst_bitand, 1);
     rb_define_method(rb_cProcessStatus, ">>", pst_rshift, 1);
     rb_define_method(rb_cProcessStatus, "to_i", pst_to_i, 0);
@@ -8618,4 +8600,13 @@ Init_process(void)
     id_hertz = rb_intern("hertz");
 
     InitVM(process);
+}
+
+#include "builtin.h"
+#include "process.rbinc"
+
+void
+Init_process_rbinc(void)
+{
+    load_process();
 }
