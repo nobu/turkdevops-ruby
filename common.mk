@@ -996,6 +996,7 @@ $(srcs_vpath)mjit_compile.inc: $(srcdir)/tool/ruby_vm/views/mjit_compile.inc.erb
 
 BUILTIN_RB_SRCS = \
 		$(srcdir)/ast.rb \
+		$(srcdir)/error.rb \
 		$(srcdir)/gc.rb \
 		$(srcdir)/io.rb \
 		$(srcdir)/pack.rb \

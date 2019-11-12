@@ -14,6 +14,7 @@
 #include "internal.h"
 #include "ruby_assert.h"
 #include "vm_core.h"
+#include "builtin.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -134,37 +135,64 @@ ruby_deprecated_internal_feature(const char *func)
     rb_fatal("%s is only for internal use and deprecated; do not use", func);
 }
 
-/*
- * call-seq:
- *    warn(msg)  -> nil
- *
- * Writes warning message +msg+ to $stderr. This method is called by
- * Ruby for all emitted warnings.
- */
+static unsigned int warning_disabled_categories;
+#define RB_WARN_CATEGORY_DEPRECATED 1
 
-static VALUE
-rb_warning_s_warn(VALUE mod, VALUE str)
+static unsigned int
+rb_warning_category_mask(VALUE category)
 {
-    Check_Type(str, T_STRING);
-    rb_must_asciicompat(str);
-    rb_write_error_str(str);
-    return Qnil;
+    unsigned int mask = 0;
+    Check_Type(category, T_SYMBOL);
+    if (category == ID2SYM(rb_intern("deprecated"))) {
+        mask = RB_WARN_CATEGORY_DEPRECATED;
+    }
+    else {
+        rb_raise(rb_eArgError, "unknown category: %"PRIsVALUE, category);
+    }
+    return mask;
 }
 
-/*
- *  Document-module: Warning
- *
- *  The Warning module contains a single method named #warn, and the
- *  module extends itself, making Warning.warn available.
- *  Warning.warn is called for all warnings issued by Ruby.
- *  By default, warnings are printed to $stderr.
- *
- *  By overriding Warning.warn, you can change how warnings are
- *  handled by Ruby, either filtering some warnings, and/or outputting
- *  warnings somewhere other than $stderr.  When Warning.warn is
- *  overridden, super can be called to get the default behavior of
- *  printing the warning to $stderr.
- */
+static int
+rb_warning_category_enabled_p(VALUE category)
+{
+    if (warning_disabled_categories & rb_warning_category_mask(category))
+        return Qfalse;
+    return Qtrue;
+}
+
+static VALUE
+rb_warning_s_enabled_p(VALUE mod, VALUE category)
+{
+    if (warning_disabled_categories & rb_warning_category_mask(category))
+        return Qfalse;
+    return Qtrue;
+}
+
+static VALUE
+rb_warning_s_disabled_p(VALUE mod, VALUE category)
+{
+    if (warning_disabled_categories & rb_warning_category_mask(category))
+        return Qtrue;
+    return Qfalse;
+}
+
+static VALUE
+rb_warning_s_enable(VALUE mod, VALUE category)
+{
+    unsigned int mask = rb_warning_category_mask(category);
+    unsigned int old = warning_disabled_categories;
+    warning_disabled_categories &= ~mask;
+    return (old & mask) ? Qfalse : Qtrue;
+}
+
+static VALUE
+rb_warning_s_disable(VALUE mod, VALUE category)
+{
+    unsigned int mask = rb_warning_category_mask(category);
+    unsigned int old = warning_disabled_categories;
+    warning_disabled_categories |= mask;
+    return (old & mask) ? Qtrue : Qfalse;
+}
 
 VALUE
 rb_warning_warn(VALUE mod, VALUE str)
@@ -2564,7 +2592,10 @@ Init_Exception(void)
     rb_mErrno = rb_define_module("Errno");
 
     rb_mWarning = rb_define_module("Warning");
-    rb_define_method(rb_mWarning, "warn", rb_warning_s_warn, 1);
+    rb_define_method(rb_mWarning, "enabled?", rb_warning_s_enabled_p, 1);
+    rb_define_method(rb_mWarning, "disabled?", rb_warning_s_disabled_p, 1);
+    rb_define_method(rb_mWarning, "enable", rb_warning_s_enable, 1);
+    rb_define_method(rb_mWarning, "disable", rb_warning_s_disable, 1);
     rb_extend_object(rb_mWarning, rb_mWarning);
 
     /* :nodoc: */
@@ -3009,6 +3040,14 @@ Init_syserr(void)
 #include "known_errors.inc"
 #undef defined_error
 #undef undefined_error
+}
+
+#include "error.rbinc"
+
+void
+Init_error_builtin(void)
+{
+    load_error();
 }
 
 /*!

@@ -71,6 +71,7 @@ rb_call_inits(void)
     CALL(GC);
     CALL(IO_nonblock);
     CALL(ast);
+    CALL(error_builtin);
     CALL(vm_trace);
     CALL(pack);
 }
