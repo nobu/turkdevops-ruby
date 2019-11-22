@@ -438,9 +438,9 @@ VALUE rb_eval_cmd(VALUE, VALUE, int);
 VALUE rb_eval_cmd_kw(VALUE, VALUE, int);
 int rb_obj_respond_to(VALUE, ID, int);
 int rb_respond_to(VALUE, ID);
-NORETURN(VALUE rb_f_notimplement(int argc, const VALUE *argv, VALUE obj, VALUE marker));
+NORETURN(VALUE rb_f_notimplement(int argc, const VALUE *argv, VALUE obj));
 #if !defined(RUBY_EXPORT) && defined(_WIN32)
-RUBY_EXTERN VALUE (*const rb_f_notimplement_)(int, const VALUE *, VALUE, VALUE marker);
+RUBY_EXTERN NORETURN(VALUE (*const rb_f_notimplement_)(int, const VALUE *, VALUE));
 #define rb_f_notimplement (*rb_f_notimplement_)
 #endif
 NORETURN(void rb_interrupt(void));
