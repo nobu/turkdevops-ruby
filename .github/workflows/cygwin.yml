@@ -41,6 +41,9 @@ jobs:
       - name: Set ENV
         run: |
           echo '::set-env name=PATH::C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin'
+          for /f "usebackq" %J in (`C:\tools\cygwin\usr\bin\nproc --all`) do set /a JOBS=%J+1 > nul
+          echo '::set-env name=JOBS::'-j%JOBS%
+        shell: cmd
       # Not using official actions/checkout because it's unstable and sometimes doesn't work for a fork.
       - name: Checkout ruby/ruby
         run: |
@@ -71,7 +74,7 @@ jobs:
         shell: cmd
       - name: make
         run: |
-          make -C build
+          make -C build %JOBS%
         shell: cmd
       - name: make btest
         run: |
