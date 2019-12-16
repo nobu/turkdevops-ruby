@@ -105,18 +105,15 @@ class PP < PrettyPrint
     # Yields to a block
     # and preserves the previous set of objects being printed.
     def guard_inspect_key
-      if Thread.current[:__recursive_key__] == nil
-        Thread.current[:__recursive_key__] = {}.compare_by_identity
+      if (keys = Thread.current[:__recursive_key__]) == nil
+        Thread.current[:__recursive_key__] = keys = {}.compare_by_identity
       end
 
-      if Thread.current[:__recursive_key__][:inspect] == nil
-        Thread.current[:__recursive_key__][:inspect] = {}.compare_by_identity
+      if (save = keys[:inspect]) == nil
+        save = {}.compare_by_identity
       end
-
-      save = Thread.current[:__recursive_key__][:inspect]
-
       begin
-        Thread.current[:__recursive_key__][:inspect] = {}.compare_by_identity
+        keys[:inspect] = {}.compare_by_identity
         yield
       ensure
         Thread.current[:__recursive_key__][:inspect] = save
@@ -127,9 +124,7 @@ class PP < PrettyPrint
     # to be pretty printed. Used to break cycles in chains of objects to be
     # pretty printed.
     def check_inspect_key(id)
-      Thread.current[:__recursive_key__] &&
-      Thread.current[:__recursive_key__][:inspect] &&
-      Thread.current[:__recursive_key__][:inspect].include?(id)
+      Thread.current[:__recursive_key__]&.dig(:inspect).include?(id)
     end
 
     # Adds the object_id +id+ to the set of objects being pretty printed, so
@@ -278,13 +273,13 @@ class PP < PrettyPrint
     # the most commonly used built-in classes for convenience.
     def pretty_print(q)
       umethod_method = Object.instance_method(:method)
-      begin
-        inspect_method = umethod_method.bind_call(self, :inspect)
-      rescue NameError
-      end
-      if inspect_method && inspect_method.owner != Kernel
-        q.text self.inspect
-      elsif !inspect_method && self.respond_to?(:inspect)
+      if begin
+           inspect_method = umethod_method.bind_call(self, :inspect)
+         rescue NameError
+           self.respond_to?(:inspect)
+         else
+           inspect_method.owner != Kernel
+         end
         q.text self.inspect
       else
         q.pp_object(self)
