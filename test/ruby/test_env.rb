@@ -433,6 +433,10 @@ class TestEnv < Test::Unit::TestCase
     ENV["foo"] = "xxx"
     ENV.replace({"foo"=>"bar", "baz"=>"qux"})
     check(ENV.to_hash.to_a, [%w(foo bar), %w(baz qux)])
+    assert_raise(TypeError) {
+      ENV.replace({"foo"=>"0", Object.new=>Object.new})
+    }
+    check(ENV.to_hash.to_a, [%w(foo bar), %w(baz qux)])
   end
 
   def test_update
@@ -440,6 +444,10 @@ class TestEnv < Test::Unit::TestCase
     ENV["foo"] = "bar"
     ENV["baz"] = "qux"
     ENV.update({"baz"=>"quux","a"=>"b"})
+    check(ENV.to_hash.to_a, [%w(foo bar), %w(baz quux), %w(a b)])
+    assert_raise(TypeError) {
+      ENV.update({"foo"=>"0", Object.new=>Object.new})
+    }
     check(ENV.to_hash.to_a, [%w(foo bar), %w(baz quux), %w(a b)])
 
     ENV.clear

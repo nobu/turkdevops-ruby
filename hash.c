@@ -5902,6 +5902,21 @@ env_invert(VALUE _)
 }
 
 static int
+env_check_i(VALUE nm, VALUE val, VALUE newenv)
+{
+    char *name, *value;
+
+    SafeStringValue(nm);
+    if (!NIL_P(val)) SafeStringValue(val);
+    /* nm can be modified in `val.to_str`, don't get `name` before
+     * check for `val` */
+    get_env_ptr(name, nm);
+    if (!NIL_P(val)) get_env_ptr(value, val);
+    rb_hash_aset(newenv, nm, val);
+    return ST_CONTINUE;
+}
+
+static int
 env_replace_i(VALUE key, VALUE val, VALUE keys)
 {
     env_aset(key, val);
@@ -5921,18 +5936,20 @@ env_replace_i(VALUE key, VALUE val, VALUE keys)
 static VALUE
 env_replace(VALUE env, VALUE hash)
 {
-    VALUE keys;
+    VALUE u, keys;
     long i;
 
-    keys = env_keys();
     if (env == hash) return env;
     hash = to_hash(hash);
-    rb_hash_foreach(hash, env_replace_i, keys);
-
+    u = rb_hash_new();
+    rb_hash_foreach(hash, env_check_i, u);
+    keys = env_keys();
+    rb_hash_foreach(u, env_replace_i, keys);
     for (i=0; i<RARRAY_LEN(keys); i++) {
         env_delete(RARRAY_AREF(keys, i));
     }
     RB_GC_GUARD(keys);
+    RB_GC_GUARD(u);
     return env;
 }
 
@@ -5971,9 +5988,14 @@ env_update(VALUE env, VALUE hash)
 {
     if (env == hash) return env;
     hash = to_hash(hash);
-    rb_foreach_func *func = rb_block_given_p() ?
-        env_update_block_i : env_update_i;
-    rb_hash_foreach(hash, func, 0);
+    if (rb_block_given_p()) {
+        rb_hash_foreach(hash, env_update_block_i, 0);
+    }
+    else {
+        VALUE u = rb_hash_new();
+        rb_hash_foreach(hash, env_check_i, u);
+        rb_hash_foreach(u, env_update_i, 0);
+    }
     return env;
 }
 
