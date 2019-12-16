@@ -129,32 +129,38 @@ rb_syntax_error_append(VALUE exc, VALUE file, int line, int column,
 }
 
 static unsigned int warning_disabled_categories;
-#define RB_WARN_CATEGORY_DEPRECATED 1
 
 static unsigned int
 rb_warning_category_mask(VALUE category)
 {
-    unsigned int mask = 0;
+    return 1U << rb_warning_category_from_name(category);
+}
+
+rb_warning_category_t
+rb_warning_category_from_name(VALUE category)
+{
+    rb_warning_category_t cat = RB_WARN_CATEGORY_NONE;
     Check_Type(category, T_SYMBOL);
     if (category == ID2SYM(rb_intern("deprecated"))) {
-        mask = RB_WARN_CATEGORY_DEPRECATED;
+        cat = RB_WARN_CATEGORY_DEPRECATED;
     }
     else {
         rb_raise(rb_eArgError, "unknown category: %"PRIsVALUE, category);
     }
-    return mask;
+    return cat;
 }
 
-static int
-rb_warning_category_enabled_p(VALUE category)
+bool
+rb_warning_category_enabled_p(rb_warning_category_t category)
 {
-    return !(warning_disabled_categories & rb_warning_category_mask(category));
+    return !(warning_disabled_categories & (1U << category));
 }
 
 static VALUE
 rb_warning_s_aref(VALUE mod, VALUE category)
 {
-    if (rb_warning_category_enabled_p(category))
+    rb_warning_category_t cat = rb_warning_category_from_name(category);
+    if (rb_warning_category_enabled_p(cat))
         return Qtrue;
     return Qfalse;
 }
@@ -318,6 +324,22 @@ rb_enc_warning(rb_encoding *enc, const char *fmt, ...)
     }
 }
 #endif
+
+void
+rb_warn_deprecated(const char *fmt, const char *suggest, ...)
+{
+    if (NIL_P(ruby_verbose)) return;
+    if (!rb_warning_category_enabled_p(RB_WARN_CATEGORY_DEPRECATED)) return;
+    va_list args;
+    va_start(args, suggest);
+    VALUE mesg = warning_string(0, fmt, args);
+    va_end(args);
+    rb_str_set_len(mesg, RSTRING_LEN(mesg) - 1);
+    rb_str_cat_cstr(mesg, " is deprecated");
+    if (suggest) rb_str_catf(mesg, "; use %s instead", suggest);
+    rb_str_cat_cstr(mesg, "\n");
+    rb_write_warning_str(mesg);
+}
 
 static inline int
 end_with_asciichar(VALUE str, int c)
