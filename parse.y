@@ -10749,7 +10749,10 @@ value_expr_check(struct parser_params *p, NODE *node)
 		return NULL;
 	    }
 	    /* single line pattern matching */
-	    return void_node ? void_node : node;
+	    NODE *node_in = node->nd_body;
+	    node_in->nd_body = NEW_TRUE(&node_in->nd_loc);
+	    node_in->nd_next = NEW_FALSE(&node_in->nd_loc);
+	    return NULL;
 
 	  case NODE_BLOCK:
 	    while (node->nd_next) {
