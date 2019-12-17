@@ -36,7 +36,9 @@ jobs:
             ${{ runner.os }}-chocolatey-
       - name: Install libraries with chocolatey
         run: |
-          choco install --no-progress openssl winflexbison3
+          choco install --no-progress openssl winflexbison3 ||
+          { test -d "C:/Program Files/OpenSSL-Win64" && command -v bison; }
+        shell: bash
       # Not using official actions/checkout because it's unstable and sometimes doesn't work for a fork.
       - name: Checkout ruby/ruby
         run: |
