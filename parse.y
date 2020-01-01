@@ -493,7 +493,7 @@ static NODE *method_add_block(struct parser_params*p, NODE *m, NODE *b, const YY
 
 static bool args_info_empty_p(struct rb_args_info *args);
 static NODE *new_args(struct parser_params*,NODE*,NODE*,ID,NODE*,NODE*,const YYLTYPE*);
-static NODE *new_args_tail(struct parser_params*,NODE*,ID,ID,const YYLTYPE*);
+static NODE *new_args_tail(struct parser_params*,NODE*,ID,ID,ID,const YYLTYPE*);
 static NODE *new_array_pattern(struct parser_params *p, NODE *constant, NODE *pre_arg, NODE *aryptn, const YYLTYPE *loc);
 static NODE *new_array_pattern_tail(struct parser_params *p, NODE *pre_args, int has_rest, ID rest_arg, NODE *post_args, const YYLTYPE *loc);
 static NODE *new_hash_pattern(struct parser_params *p, NODE *constant, NODE *hshptn, const YYLTYPE *loc);
@@ -804,7 +804,7 @@ new_args(struct parser_params *p, VALUE pre_args, VALUE opt_args, VALUE rest_arg
 }
 
 static inline VALUE
-new_args_tail(struct parser_params *p, VALUE kw_args, VALUE kw_rest_arg, VALUE block, YYLTYPE *loc)
+new_args_tail(struct parser_params *p, VALUE kw_args, VALUE kw_rest_arg, VALUE block, VALUE fwd, YYLTYPE *loc)
 {
     NODE *t = rb_node_newnode(NODE_ARGS_AUX, kw_args, kw_rest_arg, block, &NULL_LOC);
     add_mark_object(p, kw_args);
@@ -3027,7 +3027,7 @@ primary		: literal
 			    m->nd_next = node_assign(p, NEW_MASGN(NEW_LIST($2, &@2), 0, &@2), internal_var, &@2);
 			}
 			/* {|*internal_id| <m> = internal_id; ... } */
-			args = new_args(p, m, 0, id, 0, new_args_tail(p, 0, 0, 0, &@2), &@2);
+			args = new_args(p, m, 0, id, 0, new_args_tail(p, 0, 0, 0, 0, &@2), &@2);
 			scope = NEW_NODE(NODE_SCOPE, tbl, $5, args, &@$);
                         RB_OBJ_WRITTEN(p->ast, Qnil, tmpbuf);
 			$$ = NEW_FOR($4, scope, &@$);
@@ -3431,19 +3431,19 @@ f_any_kwrest	: f_kwrest
 
 block_args_tail	: f_block_kwarg ',' f_kwrest opt_f_block_arg
 		    {
-			$$ = new_args_tail(p, $1, $3, $4, &@3);
+			$$ = new_args_tail(p, $1, $3, $4, Qnone, &@3);
 		    }
 		| f_block_kwarg opt_f_block_arg
 		    {
-			$$ = new_args_tail(p, $1, Qnone, $2, &@1);
+			$$ = new_args_tail(p, $1, Qnone, $2, Qnone, &@1);
 		    }
 		| f_any_kwrest opt_f_block_arg
 		    {
-			$$ = new_args_tail(p, Qnone, $1, $2, &@1);
+			$$ = new_args_tail(p, Qnone, $1, $2, Qnone, &@1);
 		    }
 		| f_block_arg
 		    {
-			$$ = new_args_tail(p, Qnone, Qnone, $1, &@1);
+			$$ = new_args_tail(p, Qnone, Qnone, $1, Qnone, &@1);
 		    }
 		;
 
@@ -3453,7 +3453,7 @@ opt_block_args_tail : ',' block_args_tail
 		    }
 		| /* none */
 		    {
-			$$ = new_args_tail(p, Qnone, Qnone, Qnone, &@0);
+			$$ = new_args_tail(p, Qnone, Qnone, Qnone, Qnone, &@0);
 		    }
 		;
 
@@ -3489,7 +3489,7 @@ block_param	: f_arg ',' f_block_optarg ',' f_rest_arg opt_block_args_tail
 		    }
 		| f_arg excessed_comma
 		    {
-			$$ = new_args_tail(p, Qnone, Qnone, Qnone, &@2);
+			$$ = new_args_tail(p, Qnone, Qnone, Qnone, Qnone, &@2);
 			$$ = new_args(p, $1, Qnone, $2, Qnone, $$, &@$);
 		    }
 		| f_arg ',' f_rest_arg ',' f_arg opt_block_args_tail
@@ -4924,29 +4924,37 @@ f_arglist	: f_paren_args
 		    }
 		;
 
-args_tail	: f_kwarg ',' f_kwrest opt_f_block_arg
+args_tail	: f_kwarg ',' f_kwrest ',' f_block_arg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, $1, $3, $4, &@3);
+			$$ = new_args_tail(p, $1, $3, $5, $6, &@3);
+		    }
+		| f_kwarg ',' f_kwrest opt_args_fwd
+		    {
+			$$ = new_args_tail(p, $1, $3, Qnone, $4, &@3);
 		    }
 		| f_kwarg ',' f_block_arg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, $1, $4, $3, &@1);
+			$$ = new_args_tail(p, $1, Qnone, $3, $4, &@1);
 		    }
 		| f_kwarg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, $1, $2, Qnone, &@1);
+			$$ = new_args_tail(p, $1, Qnone, Qnone, $2, &@1);
 		    }
-		| f_any_kwrest opt_f_block_arg
+		| f_any_kwrest ',' f_block_arg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, Qnone, $1, $2, &@1);
+			$$ = new_args_tail(p, Qnone, $1, $3, $4, &@1);
+		    }
+		| f_any_kwrest opt_args_fwd
+		    {
+			$$ = new_args_tail(p, Qnone, $1, Qnone, $2, &@1);
 		    }
 		| f_block_arg opt_args_fwd
 		    {
-			$$ = new_args_tail(p, Qnone, $2, $1, &@1);
+			$$ = new_args_tail(p, Qnone, Qnone, $1, $2, &@1);
 		    }
 		| args_forward
 		    {
-			$$ = new_args_tail(p, Qnone, $1, Qnone, &@1);
+			$$ = new_args_tail(p, Qnone, Qnone, Qnone, $1, &@1);
 		    }
 		;
 
@@ -4956,7 +4964,7 @@ opt_args_tail	: ',' args_tail
 		    }
 		| /* none */
 		    {
-			$$ = new_args_tail(p, Qnone, Qnone, Qnone, &@0);
+			$$ = new_args_tail(p, Qnone, Qnone, Qnone, Qnone, &@0);
 		    }
 		;
 
@@ -5018,7 +5026,7 @@ f_args		: f_arg ',' f_optarg ',' f_rest_arg opt_args_tail
 		    }
 		| /* none */
 		    {
-			$$ = new_args_tail(p, Qnone, Qnone, Qnone, &@0);
+			$$ = new_args_tail(p, Qnone, Qnone, Qnone, Qnone, &@0);
 			$$ = new_args(p, Qnone, Qnone, Qnone, Qnone, $$, &@0);
 		    }
 		;
@@ -5212,6 +5220,7 @@ kwrest_mark	: tPOW
 f_no_kwarg	: kwrest_mark keyword_nil
 		    {
 		    /*%%%*/
+			$$ = idNil;
 		    /*% %*/
 		    /*% ripper: nokw_param!(Qnil) %*/
 		    }
@@ -5339,7 +5348,7 @@ opt_args_fwd    : ',' args_forward
 		    }
 		| none
 		    {
-			$$ = 0;
+			$$ = Qnull;
 		    }
 		;
 
@@ -11386,19 +11395,9 @@ new_args(struct parser_params *p, NODE *pre_args, NODE *opt_args, ID rest_arg, N
     args->post_init      = post_args ? post_args->nd_next : 0;
     args->first_post_arg = post_args ? post_args->nd_pid : 0;
 
-    if (args->block_arg == idFWD_BLOCK) {
+    if (args->forward) {
 	/* insert rest_arg for "..." */
-	if (!args->kw_rest_arg) {
-	    rb_parser_fatal(p, "no kwrest");
-	}
-	else if (args->kw_rest_arg->nd_vid != idFWD_KWREST) {
-	    rb_parser_fatal(p, "wrong kwrest (%"PRIsVALUE")",
-			    rb_id2str(args->kw_rest_arg->nd_vid));
-	}
-	else if (rest_arg) {
-	    rb_parser_fatal(p, "... and rest_arg (%"PRIsVALUE") given", rb_id2str(rest_arg));
-	}
-	else {
+	if (!rest_arg) {
 	    struct vtable *lv = p->lvtbl->args;
 	    int idx = args->pre_args_num;
 	    if (opt_args) {
@@ -11418,13 +11417,18 @@ new_args(struct parser_params *p, NODE *pre_args, NODE *opt_args, ID rest_arg, N
 	    lv->tbl[idx] = idFWD_REST;
 	    rest_arg = idFWD_REST;
 	}
+	else if (args->kw_rest_arg->nd_vid != idFWD_KWREST &&
+		 args->block_arg != idFWD_BLOCK) {
+	    compile_error(p, "nothing to be forwarded");
+	    return 0;
+	}
     }
 
     args->rest_arg       = rest_arg;
 
     args->opt_args       = opt_args;
 
-    args->ruby2_keywords = rest_arg == idFWD_REST;
+    args->ruby2_keywords = args->forward;
 
     p->ruby_sourceline = saved_line;
     nd_set_loc(tail, loc);
@@ -11433,7 +11437,7 @@ new_args(struct parser_params *p, NODE *pre_args, NODE *opt_args, ID rest_arg, N
 }
 
 static NODE*
-new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, const YYLTYPE *kw_rest_loc)
+new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, ID fwd, const YYLTYPE *kw_rest_loc)
 {
     int saved_line = p->ruby_sourceline;
     NODE *node;
@@ -11445,11 +11449,10 @@ new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, 
     RB_OBJ_WRITTEN(p->ast, Qnil, tmpbuf);
     if (p->error_p) return node;
 
-    if (kw_rest_arg == idDot3) {
-	kw_rest_arg = idFWD_KWREST;
-	block = idFWD_BLOCK;
-	arg_var(p, idFWD_KWREST);
-	arg_var(p, idFWD_BLOCK);
+    if (fwd == idDot3) {
+	args->forward = 1;
+	if (!kw_rest_arg) arg_var(p, kw_rest_arg = idFWD_KWREST);
+	if (!block) arg_var(p, block = idFWD_BLOCK);
     }
     args->block_arg      = block;
     args->kw_args        = kw_args;
@@ -11508,7 +11511,7 @@ args_with_numbered(struct parser_params *p, NODE *args, int max_numparam)
     if (max_numparam > NO_PARAM) {
 	if (!args) {
 	    YYLTYPE loc = RUBY_INIT_YYLLOC();
-	    args = new_args_tail(p, 0, 0, 0, 0);
+	    args = new_args_tail(p, 0, 0, 0, 0, 0);
 	    nd_set_loc(args, &loc);
 	}
 	args->nd_ainfo->pre_args_num = max_numparam;
@@ -11730,23 +11733,31 @@ new_unique_key_hash(struct parser_params *p, NODE *hash, const YYLTYPE *loc)
 static NODE *
 new_args_forward(struct parser_params *p, NODE *args, NODE *assocs, ID fwd, const YYLTYPE *fwdloc, const YYLTYPE *loc)
 {
-    if (!local_id(p, idFWD_REST) ||
+    const int has_rest = local_id(p, idFWD_REST);
 #if idFWD_KWREST
-	!local_id(p, idFWD_KWREST) ||
+    const int has_kwrest = local_id(p, idFWD_KWREST);
+#else
+    const int has_kwrest = 0;
 #endif
-	!local_id(p, idFWD_BLOCK)) {
+    int has_block = local_id(p, idFWD_BLOCK);
+    if (!has_rest && !has_kwrest && !has_block) {
 	compile_error(p, "unexpected ...");
 	return NULL;
     }
 
-    NODE *rest = NEW_LVAR(idFWD_REST, fwdloc);
-    args = args ? arg_concat(p, args, rest, loc) : NEW_SPLAT(rest, loc);
-#if idFWD_KWREST
-    if (!assocs) assocs = NEW_LIST(0, loc);
-    assocs = new_hash(p, list_append(p, assocs, NEW_LVAR(idFWD_KWREST, fwdloc)), loc);
-    args = arg_append(p, args, assocs, loc);
-#endif
-    return arg_blk_pass(args, NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, fwdloc), loc));
+    if (has_rest) {
+        NODE *rest = NEW_LVAR(idFWD_REST, fwdloc);
+        args = args ? arg_concat(p, args, rest, loc) : NEW_SPLAT(rest, loc);
+    }
+    if (has_kwrest) {
+        if (!assocs) assocs = NEW_LIST(0, loc);
+        assocs = new_hash(p, list_append(p, assocs, NEW_LVAR(idFWD_KWREST, fwdloc)), loc);
+        args = arg_append(p, args, assocs, loc);
+    }
+    if (has_block) {
+        args = arg_blk_pass(args, NEW_BLOCK_PASS(NEW_LVAR(idFWD_BLOCK, fwdloc), loc));
+    }
+    return args;
 }
 
 static NODE *
