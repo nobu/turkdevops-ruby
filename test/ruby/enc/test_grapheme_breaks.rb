@@ -48,12 +48,14 @@ end
 TestGraphemeBreaksFromFile.file_available? and  class TestGraphemeBreaksFromFile
   def read_data
     tests = []
-    IO.foreach(GRAPHEME_BREAK_TEST_FILE, encoding: Encoding::UTF_8) do |line|
-      if $. == 1 and not line.start_with?("# GraphemeBreakTest-#{UNICODE_VERSION}.txt")
-        raise "File Version Mismatch"
+    File.open(GRAPHEME_BREAK_TEST_FILE, encoding: Encoding::UTF_8) do |f|
+      f.each do |line|
+        if f.lineno == 1 and not line.start_with?("# GraphemeBreakTest-#{UNICODE_VERSION}.txt")
+          raise "File Version Mismatch"
+        end
+        next if /\A#/.match? line
+        tests << BreakTest.new(f.lineno, *line.chomp.split('#')) rescue 'whatever'
       end
-      next if /\A#/.match? line
-      tests << BreakTest.new($., *line.chomp.split('#')) rescue 'whatever'
     end
     tests
   end

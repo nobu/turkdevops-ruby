@@ -8844,10 +8844,21 @@ argf_getline(int argc, VALUE *argv, VALUE argf)
     return line;
 }
 
+static int
+in_e_option(void)
+{
+    VALUE path = rb_current_realfilepath();
+    if (!RB_TYPE_P(path, T_STRING)) return 0;
+    if (RSTRING_LEN(path) != 2) return 0;
+    const char *s = RSTRING_PTR(path);
+    return s[0] == '-' && s[1] == 'e';
+}
+
 static VALUE
 argf_lineno_getter(ID id, VALUE *var)
 {
     VALUE argf = *var;
+    if (!in_e_option()) rb_warn_deprecated("`$.'", NULL);
     return INT2FIX(ARGF.last_lineno);
 }
 
@@ -8857,6 +8868,7 @@ argf_lineno_setter(VALUE val, ID id, VALUE *var)
     VALUE argf = *var;
     int n = NUM2INT(val);
     ARGF.last_lineno = ARGF.lineno = n;
+    if (!in_e_option()) rb_warn_deprecated("`$.'", NULL);
 }
 
 static VALUE argf_gets(int, VALUE *, VALUE);

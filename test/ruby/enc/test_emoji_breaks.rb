@@ -59,12 +59,14 @@ TestEmojiBreaks.data_files_available? and  class TestEmojiBreaks
     EMOJI_DATA_FILES.each do |filename|
       version_mismatch = true
       file_tests = []
-      IO.foreach(TestEmojiBreaks.expand_filename(filename), encoding: Encoding::UTF_8) do |line|
-        line.chomp!
-        raise "File Name Mismatch"  if $.==1 and not line=="# #{filename}.txt"
-        version_mismatch = false  if line=="# Version: #{EMOJI_VERSION}"
-        next  if /\A(#|\z)/.match? line
-        file_tests << BreakTest.new(filename, $., *line.split('#')) rescue 'whatever'
+      File.open(TestEmojiBreaks.expand_filename(filename), encoding: Encoding::UTF_8) do |f|
+        f.each do |line|
+          line.chomp!
+          raise "File Name Mismatch"  if f.lineno==1 and not line=="# #{filename}.txt"
+          version_mismatch = false  if line=="# Version: #{EMOJI_VERSION}"
+          next  if /\A(#|\z)/.match? line
+          file_tests << BreakTest.new(filename, f.lineno, *line.split('#')) rescue 'whatever'
+        end
       end
       raise "File Version Mismatch"  if version_mismatch
       tests += file_tests
