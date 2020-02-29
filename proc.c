@@ -2935,7 +2935,7 @@ method_inspect(VALUE method)
         const VALUE keyrest = ID2SYM(rb_intern("keyrest"));
         const VALUE block = ID2SYM(rb_intern("block"));
         const VALUE nokey = ID2SYM(rb_intern("nokey"));
-        int forwarding = 0;
+        const VALUE delegate = ID2SYM(rb_intern("delegate"));
 
         rb_str_buf_cat2(str, "(");
 
@@ -2973,32 +2973,19 @@ method_inspect(VALUE method)
                 rb_str_catf(str, "%"PRIsVALUE": ...", name);
             }
             else if (kind == rest) {
-                if (name == ID2SYM('*')) {
-                    forwarding = 1;
-                    rb_str_cat_cstr(str, "...");
-                }
-                else {
-                    rb_str_catf(str, "*%"PRIsVALUE, name);
-                }
+                rb_str_catf(str, "*%"PRIsVALUE, name);
             }
             else if (kind == keyrest) {
                 rb_str_catf(str, "**%"PRIsVALUE, name);
             }
             else if (kind == block) {
-                if (name == ID2SYM('&')) {
-                    if (forwarding) {
-                        rb_str_set_len(str, RSTRING_LEN(str) - 2);
-                    }
-                    else {
-                        rb_str_cat_cstr(str, "...");
-                    }
-                }
-                else {
-                    rb_str_catf(str, "&%"PRIsVALUE, name);
-                }
+                rb_str_catf(str, "&%"PRIsVALUE, name);
             }
             else if (kind == nokey) {
                 rb_str_buf_cat2(str, "**nil");
+            }
+            else if (kind == delegate) {
+                rb_str_cat_cstr(str, "...");
             }
 
             if (i < RARRAY_LEN(params) - 1) {

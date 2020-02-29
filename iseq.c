@@ -2969,7 +2969,7 @@ rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc)
     const struct rb_iseq_constant_body *const body = iseq->body;
     const struct rb_iseq_param_keyword *const keyword = body->param.keyword;
     VALUE a, args = rb_ary_new2(body->param.size);
-    ID req, opt, rest, block, key, keyrest;
+    ID req, opt, rest, block, key, keyrest, delegate;
 #define PARAM_TYPE(type) rb_ary_push(a = rb_ary_new2(2), ID2SYM(type))
 #define PARAM_ID(i) body->local_table[(i)]
 #define PARAM(i, type) (		      \
@@ -3000,7 +3000,7 @@ rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc)
 	}
 	rb_ary_push(args, a);
     }
-    if (body->param.flags.has_rest) {
+    if (body->param.flags.has_rest && PARAM_ID(body->param.rest_start) != '*') {
 	CONST_ID(rest, "rest");
 	rb_ary_push(args, PARAM(body->param.rest_start, rest));
     }
@@ -3050,8 +3050,14 @@ rb_iseq_parameters(const rb_iseq_t *iseq, int is_proc)
 	rb_ary_push(args, PARAM(keyword->rest_start, keyrest));
     }
     if (body->param.flags.has_block) {
-	CONST_ID(block, "block");
-	rb_ary_push(args, PARAM(body->param.block_start, block));
+        if (PARAM_ID(body->param.block_start) == '&') {
+            CONST_ID(delegate, "delegate");
+            rb_ary_push(args, PARAM_TYPE(delegate));
+        }
+        else {
+            CONST_ID(block, "block");
+            rb_ary_push(args, PARAM(body->param.block_start, block));
+        }
     }
     return args;
 }
