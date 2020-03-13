@@ -254,6 +254,12 @@ class TestParse < Test::Unit::TestCase
         a = -2.0 ** 2
       END
     end
+    assert_equal(4.0, a)
+    assert_nothing_raised do
+      eval <<-END, nil, __FILE__, __LINE__+1
+        a = -2.0**2
+      END
+    end
     assert_equal(-4.0, a)
   end
 

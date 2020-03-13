@@ -502,6 +502,7 @@ static NODE *new_kw_arg(struct parser_params *p, NODE *k, const YYLTYPE *loc);
 static NODE *args_with_numbered(struct parser_params*,NODE*,int);
 
 static VALUE negate_lit(struct parser_params*, VALUE);
+static NODE *negate_lit_node(struct parser_params*, NODE *);
 static NODE *ret_args(struct parser_params*,NODE*);
 static NODE *arg_blk_pass(NODE*,NODE*);
 static NODE *new_yield(struct parser_params*,NODE*,const YYLTYPE*);
@@ -2271,7 +2272,16 @@ arg		: lhs '=' arg_rhs
 		    }
 		| tUMINUS_NUM simple_numeric tPOW arg
 		    {
-			$$ = call_uni_op(p, call_bin_op(p, $2, idPow, $4, &@2, &@$), idUMinus, &@1, &@$);
+			if ($<id>3) {
+			    /*%%%*/
+			    $$ = negate_lit_node(p, $2);
+			    /*% %*/
+			    /*% ripper: unary!(ID2VAL(idUMinus), $2) %*/
+			    $$ = call_bin_op(p, $$, idPow, $4, &@2, &@$);
+			}
+			else {
+			    $$ = call_uni_op(p, call_bin_op(p, $2, idPow, $4, &@2, &@$), idUMinus, &@1, &@$);
+			}
 		    }
 		| tUPLUS arg
 		    {
@@ -4715,8 +4725,7 @@ numeric 	: simple_numeric
 		| tUMINUS_NUM simple_numeric   %prec tLOWEST
 		    {
 		    /*%%%*/
-			$$ = $2;
-			RB_OBJ_WRITE(p->ast, &$$->nd_lit, negate_lit(p, $$->nd_lit));
+			$$ = negate_lit_node(p, $2);
 		    /*% %*/
 		    /*% ripper: unary!(ID2VAL(idUMinus), $2) %*/
 		    }
@@ -8915,6 +8924,7 @@ parser_yylex(struct parser_params *p)
 	    }
 	    else {
 		c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+		set_yylval_id(space_seen);
 	    }
 	}
 	else {
@@ -11202,6 +11212,13 @@ new_yield(struct parser_params *p, NODE *node, const YYLTYPE *loc)
     if (node) no_blockarg(p, node);
 
     return NEW_YIELD(node, loc);
+}
+
+static NODE *
+negate_lit_node(struct parser_params *p, NODE *node)
+{
+    RB_OBJ_WRITE(p->ast, &node->nd_lit, negate_lit(p, node->nd_lit));
+    return node;
 }
 
 static VALUE
