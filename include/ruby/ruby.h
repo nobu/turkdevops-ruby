@@ -1752,6 +1752,7 @@ void rb_define_hooked_variable(const char*,VALUE*,rb_gvar_getter_t*,rb_gvar_sett
 void rb_define_readonly_variable(const char*,const VALUE*);
 void rb_define_const(VALUE,const char*,VALUE);
 void rb_define_global_const(const char*,VALUE);
+void rb_deprecate_constant(VALUE mod, const char *name);
 
 void rb_define_method(VALUE,const char*,VALUE(*)(ANYARGS),int);
 void rb_define_module_function(VALUE,const char*,VALUE(*)(ANYARGS),int);
