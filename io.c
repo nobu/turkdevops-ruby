@@ -13553,4 +13553,16 @@ Init_IO(void)
     sym_wait_writable = ID2SYM(rb_intern("wait_writable"));
 }
 
+static VALUE
+io_raise_sigpipe(rb_execution_context_t *ec, VALUE self)
+{
+#if defined SIGPIPE && defined EPIPE
+    VALUE sig = INT2FIX(SIGPIPE);
+    rb_exc_raise(rb_class_new_instance(1, &sig, rb_eSignal));
+    UNREACHABLE_RETURN(Qnil);
+#else
+    return Qnil;
+#endif
+}
+
 #include "io.rbinc"

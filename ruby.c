@@ -1585,48 +1585,14 @@ rb_f_chomp(int argc, VALUE *argv, VALUE _)
     return str;
 }
 
-#if defined SIGPIPE && defined EPIPE
-static VALUE
-silent_write_super(VALUE args)
-{
-    int argc = RARRAY_LENINT(args);
-    const VALUE *argv = RARRAY_CONST_PTR(args);
-    return rb_call_super(argc, argv);
-}
-
-static VALUE
-silent_write_signal(VALUE sig)
-{
-    rb_exc_raise(rb_class_new_instance(1, &sig, rb_eSignal));
-}
-
-static VALUE
-silent_write(int argc, VALUE *argv, VALUE self)
-{
-    VALUE args = rb_ary_new_from_values(argc, argv);
-    static VALUE epipe;
-
-    if (!epipe) {
-	epipe = rb_const_get_at(rb_mErrno, rb_intern_const("EPIPE"));
-    }
-    return rb_rescue2(silent_write_super, args,
-		      silent_write_signal, INT2FIX(SIGPIPE),
-		      epipe, (VALUE)0);
-}
-
 static void
 silent_epipe(VALUE klass)
 {
-    static VALUE prep;
-    if (!prep) {
-	prep = rb_define_module_under(rb_cIO, "silent_epipe");
-	rb_define_method(prep, "write", silent_write, -1);
-    }
+#if defined SIGPIPE && defined EPIPE
+    VALUE prep = rb_const_get(klass, rb_intern("SilentEPipe"));
     rb_prepend_module(klass, prep);
-}
-#else
-#define silent_epipe(klass) ((void)0)
 #endif
+}
 
 static VALUE
 process_options(int argc, char **argv, ruby_cmdline_options_t *opt)

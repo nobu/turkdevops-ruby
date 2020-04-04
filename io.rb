@@ -120,4 +120,12 @@ class IO
   def write_nonblock(buf, exception: true)
     __builtin_io_write_nonblock(buf, exception)
   end
+
+  module SilentEPipe # :nodoc:
+    def write(*)
+      super
+    rescue Errno::EPIPE
+      __builtin_io_raise_sigpipe()
+    end
+  end
 end
