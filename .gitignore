@@ -153,8 +153,6 @@ lcov*.info
 /enc/jis/props.h
 /enc/unicode/data
 
-# /coroutine/
-!/coroutine/**/*.s
 
 # /enc/trans/
 /enc/trans/*.c

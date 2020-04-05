@@ -1,0 +1,14 @@
+/*_prelude.c
+/id.[ch]
+/lex.c
+/miniprelude.c
+/parse.[ch]
+/prelude.c
+/probes.dmyh
+/probes.h
+/revision.h
+/revision.tmp
+
+# /coroutine/
+!/coroutine/**/*.s
+
