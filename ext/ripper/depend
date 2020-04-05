@@ -1,5 +1,5 @@
 GEN  = $(srcdir)/tools/generate.rb
-SRC1 = $(top_srcdir)/parse.y
+SRC1 = $(top_srcdir)/mainsrc/parse.y
 SRC2 = $(srcdir)/eventids2.c
 
 .SUFFIXES: .y
@@ -17,10 +17,10 @@ ripper.o: ripper.c
 all: check
 static: check
 
-ripper.y: $(srcdir)/tools/preproc.rb $(srcdir)/tools/dsl.rb $(top_srcdir)/parse.y {$(VPATH)}id.h
-	$(ECHO) extracting $@ from $(top_srcdir)/parse.y
+ripper.y: $(srcdir)/tools/preproc.rb $(srcdir)/tools/dsl.rb $(top_srcdir)/mainsrc/parse.y {$(VPATH)}id.h
+	$(ECHO) extracting $@ from $(top_srcdir)/mainsrc/parse.y
 	$(Q) $(RUBY) $(top_srcdir)/tool/id2token.rb --path-separator=.$(PATH_SEPARATOR)./ \
-		--vpath=$(VPATH)$(PATH_SEPARATOR)$(top_srcdir) id.h $(top_srcdir)/parse.y > ripper.tmp.y
+		--vpath=$(VPATH)$(PATH_SEPARATOR)$(top_srcdir) id.h $(top_srcdir)/mainsrc/parse.y > ripper.tmp.y
 	$(Q) $(RUBY) $(top_srcdir)/tool/pure_parser.rb ripper.tmp.y $(BISON)
 	$(Q) $(RM) ripper.tmp.y.bak
 	$(Q) $(RUBY) $(srcdir)/tools/preproc.rb ripper.tmp.y --output=$@

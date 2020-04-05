@@ -194,7 +194,7 @@ print "  CONFIG = {}\n"
 print "  CONFIG[\"DESTDIR\"] = DESTDIR\n"
 
 versions = {}
-IO.foreach(File.join(srcdir, "version.h")) do |l|
+IO.foreach(File.join(srcdir, "mainsrc/version.h")) do |l|
   m = /^\s*#\s*define\s+RUBY_(PATCHLEVEL)\s+(-?\d+)/.match(l)
   if m
     versions[m[1]] = m[2]

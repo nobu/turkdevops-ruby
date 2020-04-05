@@ -16,6 +16,7 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 srcdir = @srcdir@
 top_srcdir = $(srcdir)
 hdrdir = $(srcdir)/include
+main_srcdir = $(srcdir)/mainsrc
 tooldir = $(srcdir)/tool
 
 PLATFORM_DIR = @PLATFORM_DIR@
@@ -69,7 +70,7 @@ DOCTARGETS = @RDOCTARGET@ @CAPITARGET@
 EXTOUT = @EXTOUT@
 TIMESTAMPDIR  = $(EXTOUT)/.timestamp
 arch_hdrdir = $(EXTOUT)/include/$(arch)
-VPATH = $(arch_hdrdir)/ruby:$(hdrdir)/ruby:$(srcdir):$(srcdir)/missing
+VPATH = $(arch_hdrdir)/ruby:$(hdrdir)/ruby:$(hdrdir):$(main_srcdir):$(main_srcdir)/missing:$(top_srcdir)
 
 empty =
 CC_VERSION = @CC_VERSION@
@@ -340,7 +341,7 @@ install-cross: $(arch)-fake.rb $(RBCONFIG) rbconfig.rb $(arch_hdrdir)/ruby/confi
 
 Makefile:	$(srcdir)/template/Makefile.in $(srcdir)/enc/Makefile.in
 
-$(MKFILES): config.status $(srcdir)/version.h
+$(MKFILES): config.status $(main_srcdir)/version.h
 		@[ -f $@ ] && mv $@ $@.old
 		MAKE=$(MAKE) $(SHELL) ./config.status $@
 		@cmp $@ $@.old > /dev/null 2>&1 && echo $@ unchanged && exit 0; \
@@ -352,7 +353,7 @@ $(MKFILES): config.status $(srcdir)/version.h
 		$(MAKE) -f conftest.mk | grep '^AUTO_REMAKE$$' >/dev/null 2>&1 || \
 		{ echo "$@ updated, restart."; exit 1; }
 
-uncommon.mk: $(srcdir)/common.mk
+uncommon.mk: $(srcdir)/defs/common.mk
 		sed 's/{\$$([^(){}]*)[^{}]*}//g' $< > $@
 
 .PHONY: reconfig
@@ -376,7 +377,7 @@ $(srcdir)/aclocal.m4:
 
 prereq: $(srcdir)/$(CONFIGURE)
 
-incs: id.h
+incs: $(hdrdir)/id.h
 all-incs: probes.h
 
 # Things which should be considered:
@@ -386,11 +387,11 @@ all-incs: probes.h
 # * GNU make v.s. HP-UX make	# HP-UX make invokes the action if lex.c and keywords has same mtime.
 # * svn checkout generate a file with mtime as current time
 # * ext4 and XFS has a mtime with fractional part
-lex.c: defs/keywords
+lex.c: $(top_srcdir)/defs/keywords
 	@\
 	if cmp -s $(srcdir)/defs/lex.c.src $?; then \
 	  [ $(Q) ] && echo copying $@ || set -x; \
-	  $(CP) $(srcdir)/lex.c.blt $@; \
+	  $(CP) $(main_srcdir)/lex.c.blt $@; \
 	else \
 	  [ $(Q) ] && echo generating $@ || set -x; \
 	  gperf -C -P -p -j1 -i 1 -g -o -t -N rb_reserved_word -k1,3,$$ $? \
@@ -398,7 +399,7 @@ lex.c: defs/keywords
 	  > $@.tmp && \
 	  $(MV) $@.tmp $@ && \
 	  $(CP) $? $(srcdir)/defs/lex.c.src && \
-	  $(CP) $@ $(srcdir)/lex.c.blt; \
+	  $(CP) $@ $(main_srcdir)/lex.c.blt; \
 	fi
 
 JIS_PROPS_OPTIONS = -k1,3 -7 -c -j1 -i1 -t -C -P -t --ignore-case -H onig_jis_property_hash -Q onig_jis_property_pool -N onig_jis_property
@@ -451,10 +452,10 @@ probes.stamp: $(DTRACE_REBUILD_OBJS)
 	fi
 	$(Q) touch $@
 
-probes.$(OBJEXT): $(srcdir)/probes.d $(DTRACE_REBUILD:yes=probes.stamp)
+probes.$(OBJEXT): $(main_srcdir)/probes.d $(DTRACE_REBUILD:yes=probes.stamp)
 	@$(ECHO) processing probes in object files
 	$(Q) $(RM) $@
-	$(Q) $(DTRACE) -G -C $(INCFLAGS) -s $(srcdir)/probes.d -o $@ $(DTRACE_REBUILD_OBJS)
+	$(Q) $(DTRACE) -G -C $(INCFLAGS) -s $(main_srcdir)/probes.d -o $@ $(DTRACE_REBUILD_OBJS)
 
 main: mjit-headers
 yes-mjit-headers: $(MJIT_MIN_HEADER)
@@ -579,10 +580,13 @@ update-known-errors:
 	errno --list | cut -d' ' -f1 | sort -u - $(srcdir)/defs/known_errors.def | \
 	$(IFCHANGE) $(srcdir)/defs/known_errors.def -
 
-INSNS	= opt_sc.inc optinsn.inc optunifs.inc insns.inc insns_info.inc \
-	  vmtc.inc vm.inc mjit_compile.inc
+INSNS	= $(main_srcdir)/opt_sc.inc \
+	  $(main_srcdir)/optinsn.inc $(main_srcdir)/optunifs.inc \
+	  $(main_srcdir)/insns.inc $(main_srcdir)/insns_info.inc \
+	  $(main_srcdir)/vmtc.inc $(main_srcdir)/vm.inc \
+	  $(main_srcdir)/mjit_compile.inc
 
-$(INSNS): $(srcdir)/insns.def vm_opts.h \
+$(INSNS): $(srcdir)/defs/insns.def $(main_srcdir)/vm_opts.h \
 	  $(srcdir)/defs/opt_operand.def $(srcdir)/defs/opt_insn_unif.def \
 	  $(tooldir)/insns2vm.rb \
 	  $(tooldir)/ruby_vm/controllers/application_controller.rb \
@@ -636,7 +640,7 @@ $(INSNS): $(srcdir)/insns.def vm_opts.h \
 verconf.h: $(RBCONFIG)
 
 loadpath: verconf.h
-	@$(CPP) $(XCFLAGS) $(CPPFLAGS) $(srcdir)/loadpath.c | \
+	@$(CPP) $(XCFLAGS) $(CPPFLAGS) $(main_srcdir)/loadpath.c | \
 	sed -e '1,/^const char ruby_initial_load_paths/d;/;/,$$d' \
 	    -e '/^ /!d;s/ *"\\0"$$//;s/" *"//g'
 
@@ -676,11 +680,11 @@ mjit_config.h:
 	} > $@
 
 yes-test-almost yes-test-all: mjit_build_dir.$(SOEXT)
-mjit_build_dir.$(SOEXT): $(MJIT_MIN_HEADER) $(srcdir)/ruby-runner.c ruby-runner.h
+mjit_build_dir.$(SOEXT): $(MJIT_MIN_HEADER) $(main_srcdir)/ruby-runner.c ruby-runner.h
 	$(ECHO) making $@
 	$(Q) $(DLDSHARED) $(MJIT_DLDFLAGS) $(ARCH_FLAG) $(CFLAGS) $(INCFLAGS) $(CPPFLAGS) \
 		-DMAKE_MJIT_BUILD_DIR=1 -DMJIT_MIN_HEADER='"$(MJIT_MIN_HEADER)"' \
-		$(OUTFLAG)$@ $(srcdir)/ruby-runner.c
+		$(OUTFLAG)$@ $(main_srcdir)/ruby-runner.c
 
 # yes-test-basic: leaked-globals
 leaked-globals: $(COMMONOBJS) prog $(tooldir)/leaked-globals PHONY

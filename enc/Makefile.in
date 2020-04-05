@@ -10,6 +10,7 @@ prefix = @prefix@
 exec_prefix = @exec_prefix@
 libdir = @libdir@
 top_srcdir = $(encsrcdir:/enc=)
+main_srcdir = $(top_srcdir)/mainsrc
 srcdir = $(top_srcdir)
 tooldir = $(top_srcdir)/tool
 arch = @arch@
@@ -48,7 +49,7 @@ optflags = @optflags@
 debugflags = @debugflags@
 warnflags = @warnflags@
 CCDLFLAGS = @CCDLFLAGS@
-INCFLAGS = -I. -I$(arch_hdrdir) -I$(hdrdir) -I$(top_srcdir)
+INCFLAGS = -I. -I$(arch_hdrdir) -I$(hdrdir) -I$(main_srcdir) -I$(srcdir)
 DEFS = @DEFS@
 CPPFLAGS = @CPPFLAGS@ -DONIG_ENC_REGISTER=rb_enc_register
 LDFLAGS = @LDFLAGS@

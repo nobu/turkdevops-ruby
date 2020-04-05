@@ -92,12 +92,12 @@ endif
 # Cross reference needs to parse all files at once
 love install reinstall: RDOCFLAGS = --force-update
 
-$(srcdir)/missing/des_tables.c: $(srcdir)/missing/crypt.c
+$(main_srcdir)/missing/des_tables.c: $(main_srcdir)/missing/crypt.c
 ifeq ($(if $(filter yes,$(CROSS_COMPILING)),,$(CC)),)
 	touch $@
 else
 	@$(ECHO) building make_des_table
-	$(CC) $(INCFLAGS) $(CPPFLAGS) -DDUMP $(LDFLAGS) $(XLDFLAGS) $(LIBS) -omake_des_table $(srcdir)/missing/crypt.c
+	$(CC) $(INCFLAGS) $(CPPFLAGS) -DDUMP $(LDFLAGS) $(XLDFLAGS) $(LIBS) -omake_des_table $(main_srcdir)/missing/crypt.c
 	@[ -x ./make_des_table ]
 	@$(ECHO) generating $@
 	$(Q) $(MAKEDIRS) $(@D)
@@ -147,7 +147,7 @@ commit: $(if $(filter commit,$(MAKECMDGOALS)),$(filter-out commit,$(MAKECMDGOALS
 	+$(Q) \
 	{ \
 	  $(in-srcdir) \
-	  exec sed -f tool/prereq.status defs/gmake.mk template/Makefile.in common.mk; \
+	  exec sed -f tool/prereq.status defs/gmake.mk template/Makefile.in defs/common.mk; \
 	} | \
 	$(MAKE) $(mflags) Q=$(Q) ECHO=$(ECHO) srcdir="$(srcdir)" srcs_vpath="" CHDIR="$(CHDIR)" \
 		BOOTSTRAPRUBY="$(BOOTSTRAPRUBY)" MINIRUBY="$(BASERUBY)" BASERUBY="$(BASERUBY)" \
@@ -319,12 +319,12 @@ $(UNICODE_SRC_DATA_DIR)/.unicode-tables.time: \
 	$(UNICODE_FILES) $(UNICODE_PROPERTY_FILES)
 endif
 
-REVISION_IN_HEADER := $(shell sed -n 's/^\#define RUBY_FULL_REVISION "\(.*\)"/\1/p' $(srcdir)/revision.h 2>/dev/null)
+REVISION_IN_HEADER := $(shell sed -n 's/^\#define RUBY_FULL_REVISION "\(.*\)"/\1/p' $(main_srcdir)/revision.h 2>/dev/null)
 REVISION_LATEST := $(shell $(CHDIR) $(srcdir) && git log -1 --format=%H 2>/dev/null)
 ifneq ($(REVISION_IN_HEADER),$(REVISION_LATEST))
 # GNU make treat the target as unmodified when its dependents get
 # updated but it is not updated, while others may not.
-$(srcdir)/revision.h: $(REVISION_H)
+$(main_srcdir)/revision.h: $(REVISION_H)
 endif
 
 # Query on the generated rdoc

@@ -7,6 +7,8 @@ AC_CONFIG_MACRO_DIRS(tool/m4)
 AC_PREREQ(2.67)
 
 tooldir="$srcdir/tool"
+main_srcdir="$srcdir/mainsrc"
+AC_SUBST(main_srcdir)
 
 dnl   override AC_CHECKING
 dnl   placed here due to aclocal(1)'s
@@ -61,7 +63,7 @@ AC_SUBST(HAVE_GIT)
 
 eval `sed -n -e ['s/^@%:@define RUBY_[A-Z_]*VERSION_\([A-Z][A-Z][A-Z_0-9]*\) \([0-9][0-9]*\)$/\1=\2/p'] \
       -e ['s/^@%:@define \(RUBY_PATCHLEVEL\) \(.*\)/\1=\2/p'] \
-     $srcdir/include/ruby/version.h $srcdir/version.h`
+     $srcdir/include/ruby/version.h ${main_srcdir}/version.h`
 for v in MAJOR MINOR TEENY; do
     AS_IF([eval "test \"\$$v\" = ''"], [
 	AC_MSG_ERROR(could not determine $v number from version.h)
@@ -3806,11 +3808,11 @@ AS_IF([test ${RUBY_LIB_VERSION_STYLE+set}], [
     {
     echo "#define RUBY_LIB_VERSION_STYLE $RUBY_LIB_VERSION_STYLE"
     echo '#define STRINGIZE(x) x'
-    test -f revision.h -o -f "${srcdir}/revision.h" || echo '#define RUBY_REVISION 0'
+    test -f revision.h -o -f "${main_srcdir}/revision.h" || echo '#define RUBY_REVISION 0'
     echo '#include "version.h"'
     echo 'ruby_version=RUBY_LIB_VERSION'
     } > conftest.c
-    ruby_version="`$CPP -I. -I"${srcdir}" -I"${srcdir}/include" conftest.c | sed '/^ruby_version=/!d;s/ //g'`"
+    ruby_version="`$CPP -I. -I"${main_srcdir}" -I"${srcdir}/include" conftest.c | sed '/^ruby_version=/!d;s/ //g'`"
     eval $ruby_version
 ], [test -z "${ruby_version}"], [
     AC_MSG_ERROR([No ruby version, No place for bundled libraries])
@@ -4054,12 +4056,12 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
 	    -e   's//\1 = \2/' \
 	    -e   '[s/ \([0-9]\)$/ 0\1/]' \
 	    -e   p \
-	    -e '}' "$srcdir/version.h"
+	    -e '}' "${main_srcdir}/version.h"
 	sed '/^MISSING/s/\$U\././g;/^VCS *=/s#@VCS@#'"$VCS"'#;/^VCSUP *=/s#@VCSUP@#'"$VCSUP"'#' Makefile
 	echo; test x"$EXEEXT" = x || echo 'miniruby: miniruby$(EXEEXT)'
 	AS_IF([test "$gnumake" != yes], [
-	    echo ['$(MKFILES): $(srcdir)/common.mk']
-	    sed ['s/{\$([^(){}]*)[^{}]*}//g'] ${srcdir}/common.mk
+	    echo ['$(MKFILES): $(srcdir)/defs/common.mk']
+	    sed ['s/{\$([^(){}]*)[^{}]*}//g'] ${srcdir}/defs/common.mk
 	], [
 	    echo 'distclean-local::; @$(RM) GNUmakefile uncommon.mk'
 	])
@@ -4077,7 +4079,7 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
 	echo 'ruby: $(PROGRAM);' >> $tmpmk
 	test "$tmpmk" = "$tmpgmk" || rm -f "$tmpgmk"
     ]) && mv -f $tmpmk Makefile],
-[EXEEXT='$EXEEXT' gnumake='$gnumake' GIT='$GIT'])
+[EXEEXT='$EXEEXT' main_srcdir='$main_srcdir' gnumake='$gnumake' GIT='$GIT'])
 
 AC_ARG_WITH([ruby-pc],
 	    AC_HELP_STRING([--with-ruby-pc=FILENAME], [pc file basename]),

@@ -13,7 +13,7 @@
 require_relative '../helpers/scanner'
 
 json    = {}
-scanner = RubyVM::Scanner.new '../../../vm_opts.h'
+scanner = RubyVM::Scanner.new '../../../mainsrc/vm_opts.h'
 grammar = %r/
     (?<ws>      \u0020 ){0}
     (?<key>     \w+    ){0}
