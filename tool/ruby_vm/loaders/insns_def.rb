@@ -14,7 +14,7 @@ require_relative '../helpers/scanner'
 require_relative './vm_opts_h'
 
 json    = []
-scanner = RubyVM::Scanner.new '../../../insns.def'
+scanner = RubyVM::Scanner.new '../../../defs/insns.def'
 path    = scanner.__FILE__
 grammar = %r'
     (?<comment>  /[*] [^*]* [*]+ (?: [^*/] [^*]* [*]+ )* /         ){0}
