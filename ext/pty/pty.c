@@ -86,11 +86,11 @@ echild_status(VALUE self)
 }
 
 struct pty_info {
-    int fd;
+    rb_io_t *rfptr, *wfptr;
     rb_pid_t child_pid;
 };
 
-static void getDevice(int*, int*, char [DEVICELEN], int);
+static void getDevice(int*, int*, char **, VALUE*, int);
 
 struct child_info {
     int master, slave;
@@ -166,7 +166,7 @@ chfunc(void *data, char *errbuf, size_t errbuf_len)
 
 static void
 establishShell(int argc, VALUE *argv, struct pty_info *info,
-	       char SlaveName[DEVICELEN])
+	       char **SlaveName, VALUE *path)
 {
     int 		master, slave, status = 0;
     rb_pid_t		pid;
@@ -198,11 +198,13 @@ establishShell(int argc, VALUE *argv, struct pty_info *info,
     carg.eargp = rb_execarg_get(carg.execarg_obj);
     rb_execarg_parent_start(carg.execarg_obj);
 
-    getDevice(&master, &slave, SlaveName, 0);
+    getDevice(&info->rfptr->fd, &info->wfptr->fd, SlaveName, path, 0);
+    master = info->rfptr->fd;
+    slave = info->wfptr->fd;
 
     carg.master = master;
     carg.slave = slave;
-    carg.slavename = SlaveName;
+    carg.slavename = *SlaveName;
     errbuf[0] = '\0';
     pid = rb_fork_async_signal_safe(&status, chfunc, &carg, Qnil, errbuf, sizeof(errbuf));
 
@@ -210,6 +212,7 @@ establishShell(int argc, VALUE *argv, struct pty_info *info,
 	int e = errno;
 	close(master);
 	close(slave);
+        info->rfptr->fd = info->wfptr->fd = -1;
         rb_execarg_parent_end(carg.execarg_obj);
 	errno = e;
 	if (status) rb_jump_tag(status);
@@ -217,15 +220,15 @@ establishShell(int argc, VALUE *argv, struct pty_info *info,
     }
 
     close(slave);
+    info->wfptr->fd = -1;
     rb_execarg_parent_end(carg.execarg_obj);
 
     info->child_pid = pid;
-    info->fd = master;
 
     RB_GC_GUARD(carg.execarg_obj);
 }
 
-#if defined(HAVE_POSIX_OPENPT) || defined(HAVE_OPENPTY) || defined(HAVE_PTSNAME)
+#if defined(HAVE_POSIX_OPENPT) || defined(HAVE_OPENPTY) || defined(HAVE_PTSNAME) || defined(HAVE_PTSNAME_R)
 static int
 no_mesg(char *slavedevice, int nomesg)
 {
@@ -252,8 +255,9 @@ ioctl_I_PUSH(int fd, const char *const name)
 #endif
 
 static int
-get_device_once(int *master, int *slave, char SlaveName[DEVICELEN], int nomesg, int fail)
+get_device_once(int *master, int *slave, char **slavename, VALUE *path, int nomesg, int fail)
 {
+    char *SlaveName = *slavename;
 #if defined(HAVE_POSIX_OPENPT)
     /* Unix98 PTY */
     int masterfd = -1, slavefd = -1;
@@ -281,10 +285,30 @@ get_device_once(int *master, int *slave, char SlaveName[DEVICELEN], int nomesg, 
     if (rb_grantpt(masterfd) == -1) goto error;
 #endif
     if (unlockpt(masterfd) == -1) goto error;
+    *master = masterfd;
+#if defined(HAVE_PTSNAME_R)
+    if (ptsname_r(masterfd, slavedevice = SlaveName, DEVICELEN)) {
+        int e = errno;
+        if (e != ERANGE) {
+            VALUE v = rb_str_new(0, 2 * DEVICELEN);
+            long len;
+            *path = v;
+            while (ptsname_r(masterfd, slavedevice = RSTRING_PTR(v), len = rb_str_capacity(v))) {
+                if ((e = errno) != ERANGE || len > 0x10000) goto error;
+                rb_str_modify_expand(v, len);
+            }
+        }
+        else {
+            goto error;
+        }
+    }
+#else
     if ((slavedevice = ptsname(masterfd)) == NULL) goto error;
+#endif
     if (no_mesg(slavedevice, nomesg) == -1) goto error;
     if ((slavefd = rb_cloexec_open(slavedevice, O_RDWR|O_NOCTTY, 0)) == -1) goto error;
     rb_update_max_fd(slavefd);
+    *slave = slavefd;
 
 #if defined(I_PUSH) && !defined(__linux__) && !defined(_AIX)
     if (ioctl_I_PUSH(slavefd, "ptem") == -1) goto error;
@@ -292,12 +316,13 @@ get_device_once(int *master, int *slave, char SlaveName[DEVICELEN], int nomesg, 
     if (ioctl_I_PUSH(slavefd, "ttcompat") == -1) goto error;
 #endif
 
-    *master = masterfd;
-    *slave = slavefd;
+#if !defined(HAVE_PTSNAME_R)
     strlcpy(SlaveName, slavedevice, DEVICELEN);
+#endif
     return 0;
 
   error:
+    *master = *slave = -1;
     if (slavefd != -1) close(slavefd);
     if (masterfd != -1) close(masterfd);
     if (fail) {
@@ -340,7 +365,7 @@ get_device_once(int *master, int *slave, char SlaveName[DEVICELEN], int nomesg, 
     strlcpy(SlaveName, name, DEVICELEN);
 
     return 0;
-#elif defined(HAVE_PTSNAME)
+#elif defined(HAVE_PTSNAME) || defined(HAVE_PTSNAME_R)
     /* System V */
     int	 masterfd = -1, slavefd = -1;
     char *slavedevice;
@@ -439,11 +464,11 @@ get_device_once(int *master, int *slave, char SlaveName[DEVICELEN], int nomesg, 
 }
 
 static void
-getDevice(int *master, int *slave, char SlaveName[DEVICELEN], int nomesg)
+getDevice(int *master, int *slave, char **SlaveName, VALUE *path, int nomesg)
 {
-    if (get_device_once(master, slave, SlaveName, nomesg, 0)) {
+    if (get_device_once(master, slave, SlaveName, path, nomesg, 0)) {
 	rb_gc();
-	get_device_once(master, slave, SlaveName, nomesg, 1);
+	get_device_once(master, slave, SlaveName, path, nomesg, 1);
     }
 }
 
@@ -504,24 +529,21 @@ pty_close_pty(VALUE assoc)
 static VALUE
 pty_open(VALUE klass)
 {
-    int master_fd, slave_fd;
-    char slavename[DEVICELEN];
-    VALUE master_io, slave_file;
+    char SlaveName[DEVICELEN], *slavename = SlaveName;
+    VALUE master_io, slave_file, slave_path = 0;
     rb_io_t *master_fptr, *slave_fptr;
     VALUE assoc;
-
-    getDevice(&master_fd, &slave_fd, slavename, 1);
 
     master_io = rb_obj_alloc(rb_cIO);
     MakeOpenFile(master_io, master_fptr);
     master_fptr->mode = FMODE_READWRITE | FMODE_SYNC | FMODE_DUPLEX;
-    master_fptr->fd = master_fd;
-    master_fptr->pathv = rb_obj_freeze(rb_sprintf("masterpty:%s", slavename));
-
     slave_file = rb_obj_alloc(rb_cFile);
     MakeOpenFile(slave_file, slave_fptr);
     slave_fptr->mode = FMODE_READWRITE | FMODE_SYNC | FMODE_DUPLEX | FMODE_TTY;
-    slave_fptr->fd = slave_fd;
+
+    getDevice(&master_fptr->fd, &slave_fptr->fd, &slavename, &slave_path, 1);
+
+    master_fptr->pathv = rb_obj_freeze(rb_sprintf("masterpty:%s", slavename));
     slave_fptr->pathv = rb_obj_freeze(rb_str_new_cstr(slavename));
 
     assoc = rb_assoc_new(master_io, slave_file);
@@ -580,21 +602,28 @@ pty_getpty(int argc, VALUE *argv, VALUE self)
     rb_io_t *wfptr,*rfptr;
     VALUE rport = rb_obj_alloc(rb_cFile);
     VALUE wport = rb_obj_alloc(rb_cFile);
-    char SlaveName[DEVICELEN];
+    VALUE path = 0;
+    char SlaveName[DEVICELEN], *slavename = SlaveName;
 
     MakeOpenFile(rport, rfptr);
     MakeOpenFile(wport, wfptr);
+    info.rfptr = rfptr;
+    info.wfptr = wfptr;
+    rfptr->mode = FMODE_READABLE;
+    wfptr->mode = FMODE_WRITABLE | FMODE_SYNC;
 
-    establishShell(argc, argv, &info, SlaveName);
+    establishShell(argc, argv, &info, &slavename, &path);
 
-    rfptr->mode = rb_io_modestr_fmode("r");
-    rfptr->fd = info.fd;
-    rfptr->pathv = rb_obj_freeze(rb_str_new_cstr(SlaveName));
+    if (!path) path = rb_str_new_cstr(slavename);
+    rfptr->pathv = rb_obj_freeze(path);
 
-    wfptr->mode = rb_io_modestr_fmode("w") | FMODE_SYNC;
-    wfptr->fd = rb_cloexec_dup(info.fd);
-    if (wfptr->fd == -1)
-        rb_sys_fail("dup()");
+    wfptr->fd = rb_cloexec_dup(rfptr->fd);
+    if (wfptr->fd == -1) {
+        int e = errno;
+        close(rfptr->fd);
+        rfptr->fd = -1;
+        rb_syserr_fail(e, "dup()");
+    }
     rb_update_max_fd(wfptr->fd);
     wfptr->pathv = rfptr->pathv;
 
