@@ -152,6 +152,11 @@ jobs:
         with:
           fetch-depth: 128
           path: src
+      - name: Prepare home directories
+        run: |
+          mkdir -p $HOME/.config $HOME/.local/share/gem
+          chmod -R a-w $HOME/.config $HOME/.local
+          chmod -v a-w $HOME
       - run: autoconf
         working-directory: src
       - name: Run configure

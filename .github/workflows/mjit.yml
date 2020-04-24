@@ -36,6 +36,11 @@ jobs:
           chmod -v go-w $HOME $HOME/.config
           sudo chmod -R go-w /usr/share
           sudo bash -c 'IFS=:; for d in '"$PATH"'; do chmod -v go-w $d; done' || :
+      - name: Prepare home directories
+        run: |
+          mkdir -p $HOME/.config $HOME/.local/share/gem
+          chmod -R a-w $HOME/.config $HOME/.local
+          chmod -v a-w $HOME
       - name: Set ENV
         run: |
           echo '::set-env name=JOBS::'-j$((1 + $(nproc --all)))

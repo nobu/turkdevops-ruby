@@ -32,6 +32,11 @@ jobs:
           tool/travis_retry.sh brew upgrade
           tool/travis_retry.sh brew install gdbm gmp libffi openssl@1.1 zlib autoconf automake libtool readline
         working-directory: src
+      - name: Prepare home directories
+        run: |
+          mkdir -p $HOME/.config $HOME/.local/share/gem
+          chmod -R a-w $HOME/.config $HOME/.local
+          chmod -v a-w $HOME
       - name: Set ENV
         run: |
           echo '::set-env name=JOBS::'-j$((1 + $(sysctl -n hw.activecpu)))
