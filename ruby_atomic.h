@@ -91,11 +91,25 @@ typedef unsigned int rb_atomic_t;
 
 # define ATOMIC_INC(var) atomic_inc_uint(&(var))
 # define ATOMIC_DEC(var) atomic_dec_uint(&(var))
+# define ATOMIC_FETCH_ADD(var, val) rb_atomic_fetch_add(&(var), (val))
+# define ATOMIC_FETCH_SUB(var, val) rb_atomic_fetch_sub(&(var), (val))
 # define ATOMIC_ADD(var, val) atomic_add_uint(&(var), (val))
 # define ATOMIC_SUB(var, val) atomic_sub_uint(&(var), (val))
 # define ATOMIC_OR(var, val) atomic_or_uint(&(var), (val))
 # define ATOMIC_EXCHANGE(var, val) atomic_swap_uint(&(var), (val))
 # define ATOMIC_CAS(var, oldval, newval) atomic_cas_uint(&(var), (oldval), (newval))
+
+static inline rb_atomic_t
+rb_atomic_fetch_add(volatile rb_atomic_t *var, rb_atomic_t val)
+{
+    return atomic_add_int_nv(var, val) - val;
+}
+
+static inline rb_atomic_t
+rb_atomic_fetch_sub(volatile rb_atomic_t *var, rb_atomic_t val)
+{
+    return atomic_sub_int_nv(var, val) + val;
+}
 
 # if defined(_LP64) || defined(_I32LPx)
 #  define ATOMIC_SIZE_ADD(var, val) atomic_add_long(&(var), (val))
