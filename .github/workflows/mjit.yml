@@ -44,6 +44,8 @@ jobs:
       - name: Set ENV
         run: |
           echo '::set-env name=JOBS::'-j$((1 + $(nproc --all)))
+          echo '::set-env name=XDG_DATA_HOME::'$(pwd)/.bundle
+        working-directory: src
       - run: autoconf
         working-directory: src
       - run: mkdir build

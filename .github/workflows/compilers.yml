@@ -157,6 +157,10 @@ jobs:
           mkdir -p $HOME/.config $HOME/.local/share/gem
           chmod -R a-w $HOME/.config $HOME/.local
           chmod -v a-w $HOME
+      - name: Set ENV
+        run: |
+          echo '::set-env name=XDG_DATA_HOME::'$(pwd)/.bundle
+        working-directory: src
       - run: autoconf
         working-directory: src
       - name: Run configure
