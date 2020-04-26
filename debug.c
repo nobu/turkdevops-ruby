@@ -170,9 +170,18 @@ UINT ruby_w32_codepage[2];
 extern int ruby_rgengc_debug;
 extern int ruby_on_ci;
 
+// Using str, len and separator
+#define NAME_MATCH_VALUE(name)				\
+    ((size_t)len >= sizeof(name)-1 &&			\
+     strncmp(str, (name), sizeof(name)-1) == 0 &&	\
+     ((len == sizeof(name)-1 && !(len = 0)) ||		\
+      (str[sizeof(name)-1] == separator &&              \
+       (str += sizeof(name), len -= sizeof(name), 1))))
+
 int
 ruby_env_debug_option(const char *str, int len, void *arg)
 {
+    static const char separator = '=';
     int ov;
     size_t retlen;
     unsigned long n;
@@ -183,12 +192,6 @@ ruby_env_debug_option(const char *str, int len, void *arg)
 	    return 1;			    \
 	}				    \
     } while (0)
-#define NAME_MATCH_VALUE(name)				\
-    ((size_t)len >= sizeof(name)-1 &&			\
-     strncmp(str, (name), sizeof(name)-1) == 0 &&	\
-     ((len == sizeof(name)-1 && !(len = 0)) ||		\
-      (str[sizeof(name)-1] == '=' &&			\
-       (str += sizeof(name), len -= sizeof(name), 1))))
 #define SET_UINT(val) do { \
 	n = ruby_scan_digits(str, len, 10, &retlen, &ov); \
 	if (!ov && retlen) { \
