@@ -178,6 +178,117 @@ extern int ruby_on_ci;
       (str[sizeof(name)-1] == separator &&              \
        (str += sizeof(name), len -= sizeof(name), 1))))
 
+#if USE_RUBY_DEBUG_LOG
+#define MAX_DEBUG_LOG             0x1000
+#define MAX_DEBUG_LOG_MESSAGE_LEN 0x0200
+enum ruby_debug_log_mode {
+    ruby_debug_log_memory = 1,
+    ruby_debug_log_stderr = 2,
+    ruby_debug_log_file = 4
+} ruby_debug_log_mode;
+static char ruby_debug_log_buff[MAX_DEBUG_LOG][MAX_DEBUG_LOG_MESSAGE_LEN];
+static volatile rb_atomic_t ruby_debug_log_cnt;
+static FILE *ruby_debug_log_output;
+#endif
+
+static void
+setup_debug_log(const char *str, int len)
+{
+    static const char separator = ':';
+    // fprintf(stderr, "log_config: %*s\n", len, str);
+    while (len > 0) {
+#if USE_RUBY_DEBUG_LOG
+        if (NAME_MATCH_VALUE("mem")) {
+            ruby_debug_log_mode |= ruby_debug_log_memory;
+            continue;
+        }
+        if (NAME_MATCH_VALUE("err")) {
+            ruby_debug_log_mode |= ruby_debug_log_stderr;
+            continue;
+        }
+        if (NAME_MATCH_VALUE("file")) {
+            char fname[0x200];
+            snprintf(fname, sizeof(fname), "/tmp/ruby_debug_log.%d.%u", (int)getpid(), (unsigned int)clock());
+            ruby_debug_log_output = fopen(fname, "w");
+            ruby_debug_log_mode |= ruby_debug_log_file;
+            continue;
+        }
+#endif // USE_RUBY_DEBUG_LOG
+        fprintf(stderr, "ignored log option: `%.*s'\n", len, str);
+        break;
+    }
+}
+
+void
+ruby_debug_log(const char *file, int line, const char *func_name, const char *fmt, ...)
+{
+#if USE_RUBY_DEBUG_LOG
+    char buff[sizeof(ruby_debug_log_buff[0])];
+    int len = 0;
+    int r;
+
+#define APPEND_LOG(f,...) do {                                          \
+            r = f##snprintf(buff + len, sizeof(buff) - len, __VA_ARGS__); \
+            if (r < 0) rb_bug("ruby_debug_log returns %d\n", r); \
+            len += r; \
+        } while(0)
+#define REST_P (len < (int)(sizeof(buff)-1))
+
+    if (file) {
+        APPEND_LOG(, "%s:%d ", file, line);
+    }
+
+    if (REST_P) {
+        int ruby_line;
+        const char *ruby_file = rb_source_location_cstr(&ruby_line);
+        if (ruby_file) {
+            APPEND_LOG(, "%s:%d ", ruby_file, ruby_line);
+        }
+    }
+
+    if (func_name && REST_P) {
+        APPEND_LOG(, "%s ", func_name);
+    }
+
+    if (fmt && REST_P) {
+        va_list args;
+        va_start(args, fmt);
+        APPEND_LOG(v, fmt, args);
+        va_end(args);
+    }
+
+    if (REST_P) {
+        memset(buff + len, '\0', sizeof(buff) - len);
+    }
+
+    rb_atomic_t cnt = ATOMIC_FETCH_ADD(ruby_debug_log_cnt, 1);
+    strncpy(ruby_debug_log_buff[cnt % MAX_DEBUG_LOG], buff, sizeof(buff));
+
+    if (ruby_debug_log_mode & ruby_debug_log_stderr) {
+        fprintf(stderr, "%d %s\n", (int)cnt, buff);
+    }
+    if (ruby_debug_log_mode & ruby_debug_log_file) {
+        fprintf(ruby_debug_log_output, "%d %s\n", (int)cnt, buff);
+    }
+#endif
+}
+
+#if USE_RUBY_DEBUG_LOG
+// for debugger
+void
+ruby_debug_log_print(int n)
+{
+    rb_atomic_t cnt = ruby_debug_log_cnt;
+    int size = cnt > MAX_DEBUG_LOG ? MAX_DEBUG_LOG : (int)cnt;
+    if (n <= 0 || n > size) n = size;
+
+    for (rb_atomic_t i=cnt-n; i<cnt; i++) {
+        const char *mesg = ruby_debug_log_buff[i % MAX_DEBUG_LOG];
+        fprintf(stderr, "%d %s\n", (int)i, mesg);
+    }
+}
+#endif // USE_RUBY_DEBUG_LOG
+
 int
 ruby_env_debug_option(const char *str, int len, void *arg)
 {
@@ -222,6 +333,10 @@ ruby_env_debug_option(const char *str, int len, void *arg)
 	if (!len) ruby_rgengc_debug = 1;
 	else SET_UINT_LIST("rgengc", &ruby_rgengc_debug, 1);
 	return 1;
+    }
+    if (NAME_MATCH_VALUE("log")) {
+        setup_debug_log(str, len);
+        return 1;
     }
 #if defined _WIN32
 # if RUBY_MSVCRT_VERSION >= 80
