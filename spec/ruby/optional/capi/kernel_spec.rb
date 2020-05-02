@@ -483,7 +483,7 @@ describe "C-API Kernel function" do
       proc = @s.rb_block_proc { 1+1 }
       proc.should be_kind_of(Proc)
       proc.call.should == 2
-      proc.lambda?.should == false
+      proc.should_not.lambda?
     end
 
     it "passes through an existing lambda and does not convert to a proc" do
@@ -491,7 +491,7 @@ describe "C-API Kernel function" do
       proc = @s.rb_block_proc(&b)
       proc.should equal(b)
       proc.call.should == 2
-      proc.lambda?.should == true
+      proc.should.lambda?
     end
   end
 
@@ -500,7 +500,7 @@ describe "C-API Kernel function" do
       proc = @s.rb_block_lambda { 1+1 }
       proc.should be_kind_of(Proc)
       proc.call.should == 2
-      proc.lambda?.should == true
+      proc.should.lambda?
     end
 
     it "passes through an existing Proc and does not convert to a lambda" do
@@ -508,7 +508,7 @@ describe "C-API Kernel function" do
       proc = @s.rb_block_lambda(&b)
       proc.should equal(b)
       proc.call.should == 2
-      proc.lambda?.should == false
+      proc.should_not.lambda?
     end
   end
 
