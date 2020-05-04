@@ -14,6 +14,7 @@ a\
 }
 /^yydestruct.*yymsg/,/#endif/{
   /^yydestruct/{
+    /,$/N
     /parser/!{
       H
       s/^/ruby_parser_&/
