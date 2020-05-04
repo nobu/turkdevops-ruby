@@ -68,6 +68,7 @@ struct lex_context {
 #define TAB_WIDTH 8
 
 #define yydebug (p->debug)	/* disable the global variable definition */
+#define yystpcpy(dst, src) stpcpy(dst, src)
 
 #define YYMALLOC(size)		rb_parser_malloc(p, (size))
 #define YYREALLOC(ptr, size)	rb_parser_realloc(p, (ptr), (size))
@@ -12796,7 +12797,7 @@ rb_yytnamerr(struct parser_params *p, char *yyres, const char *yystr)
 
     if (!yyres) return strlen(yystr);
 
-    return (YYSIZE_T)(yystpcpy(yyres, yystr) - yyres);
+    return (YYSIZE_T)(stpcpy(yyres, yystr) - yyres);
 }
 #endif
 
@@ -13216,8 +13217,6 @@ Init_ripper(void)
     id_warning = rb_intern_const("warning");
     id_gets = rb_intern_const("gets");
     id_assoc = rb_intern_const("=>");
-
-    (void)yystpcpy; /* may not used in newer bison */
 
     InitVM(ripper);
 }
