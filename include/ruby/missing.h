@@ -215,6 +215,10 @@ RUBY_EXTERN double modf(double, double *);
 RUBY_EXTERN char *stpcpy(char *, const char *);
 #endif
 
+#ifndef HAVE_STPNCPY
+RUBY_EXTERN char *stpncpy(char *, const char *, size_t);
+#endif
+
 #ifndef HAVE_STRCHR
 RUBY_EXTERN char *strchr(const char *, int);
 RUBY_EXTERN char *strrchr(const char *, int);
