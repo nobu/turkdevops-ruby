@@ -1172,6 +1172,12 @@ x = __ENCODING__
     assert_equal(1, ex.message.scan(w).size, "same #{w.inspect} warning should be just once")
   end
 
+  def test_space_between_method_name_and_parentheses
+    assert_warn(/parentheses after method name/) {
+      instance_eval("def foo () end")
+    }
+  end
+
 =begin
   def test_past_scope_variable
     assert_warning(/past scope/) {catch {|tag| eval("BEGIN{throw tag}; tap {a = 1}; a")}}

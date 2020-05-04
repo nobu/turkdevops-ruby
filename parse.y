@@ -9450,8 +9450,8 @@ parser_yylex(struct parser_params *p)
 	    c = tLPAREN_ARG;
 	}
 	else if (IS_lex_state(EXPR_ENDFN) && !lambda_beginning_p()) {
-	    rb_warning0("parentheses after method name is interpreted as "
-			"an argument list, not a decomposed argument");
+	    rb_warn0("parentheses after method name is interpreted as "
+		     "an argument list, not a decomposed argument");
 	}
 	p->lex.paren_nest++;
 	COND_PUSH(0);
