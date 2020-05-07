@@ -85,6 +85,9 @@ class DummyParser < Ripper
   end
 
   def on_stmts_add(stmts, st)
+    if Node === stmts and error?
+      stmts = NodeList.new.push(stmts)
+    end
     stmts.push st
     stmts
   end

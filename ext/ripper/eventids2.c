@@ -285,6 +285,7 @@ ripper_token2eventid(enum yytokentype tok)
         [tLABEL_END]		= O(label_end),
         [tLAMBDA]		= O(tlambda),
         [tLAMBEG]		= O(tlambeg),
+        [tBAR_END]		= O(op),
 
         /* ripper specific tokens */
         [tIGNORED_NL]		= O(ignored_nl),

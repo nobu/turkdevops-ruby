@@ -268,6 +268,8 @@ struct parser_params {
 	int lpar_beg;
 	/* track the nest level of only braces "{}" */
 	int brace_nest;
+	/* keep p->lex.paren_nest at the beginning of block "|" to detect tBAR_END */
+	int bar_beg;
     } lex;
     stack_type cond_stack;
     stack_type cmdarg_stack;
@@ -1119,7 +1121,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %type <node> assoc_list assocs assoc undef_list backref string_dvar for_var
 %type <node> block_param opt_block_param block_param_def f_opt
 %type <node> f_kwarg f_kw f_block_kwarg f_block_kw
-%type <node> bv_decls opt_bv_decl bvar
+%type <node> bv_decls opt_bv_decl bvar bar_beg
 %type <node> lambda f_larglist lambda_body brace_body do_body
 %type <node> brace_block cmd_brace_block do_block lhs none fitem
 %type <node> mlhs mlhs_head mlhs_basic mlhs_item mlhs_node mlhs_post mlhs_inner
@@ -1188,6 +1190,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %token tQSYMBOLS_BEG	"verbatim symbol list"
 %token tSTRING_END	"terminator"
 %token tSTRING_DEND	"'}'"
+%token tBAR_END 	"'|'"
 %token tSTRING_DBEG tSTRING_DVAR tLAMBEG tLABEL_END
 
 /*
@@ -2743,6 +2746,13 @@ mrhs		: args ',' arg_value
 		    }
 		;
 
+bar_beg 	: '|'
+		    {
+			$<num>$ = p->lex.bar_beg;
+			p->lex.bar_beg = p->lex.paren_nest;
+		    }
+		;
+
 primary		: literal
 		| strings
 		| xstring
@@ -2826,6 +2836,16 @@ primary		: literal
 			$$->nd_brace = TRUE;
 		    /*% %*/
 		    /*% ripper: hash!(escape_Qundef($2)) %*/
+		    }
+		| tLBRACE bar_beg assoc_list tBAR_END '}'
+		    {
+			p->lex.bar_beg = $<num>2;
+		    /*%%%*/
+			$$ = new_hash(p, $3, &@$);
+			$$->nd_brace = TRUE;
+			$$ = NEW_CALL($$, idFreeze, NULL, &@$);
+		    /*% %*/
+		    /*% ripper: hash!(escape_Qundef($3)) %*/
 		    }
 		| k_return
 		    {
@@ -3519,8 +3539,9 @@ opt_block_param	: none
 		    }
 		;
 
-block_param_def	: '|' opt_bv_decl '|'
+block_param_def : bar_beg opt_bv_decl tBAR_END
 		    {
+			p->lex.bar_beg = $<num>1;
 			p->cur_arg = 0;
 			p->max_numparam = ORDINAL_PARAM;
 		    /*%%%*/
@@ -3528,8 +3549,9 @@ block_param_def	: '|' opt_bv_decl '|'
 		    /*% %*/
 		    /*% ripper: block_var!(params!(Qnil,Qnil,Qnil,Qnil,Qnil,Qnil,Qnil), escape_Qundef($2)) %*/
 		    }
-		| '|' block_param opt_bv_decl '|'
+		| bar_beg block_param opt_bv_decl tBAR_END
 		    {
+			p->lex.bar_beg = $<num>1;
 			p->cur_arg = 0;
 			p->max_numparam = ORDINAL_PARAM;
 		    /*%%%*/
@@ -9239,6 +9261,12 @@ parser_yylex(struct parser_params *p)
 	}
 	SET_LEX_STATE(IS_AFTER_OPERATOR() ? EXPR_ARG : EXPR_BEG|EXPR_LABEL);
 	pushback(p, c);
+	if ((p->lex.bar_beg == p->lex.paren_nest) && IS_lex_state(EXPR_BEG)) {
+	    return tBAR_END;
+	}
+	if ((p->lex.bar_beg == p->lex.paren_nest + 1) && peek(p, '}')) {
+	    return tBAR_END;
+	}
 	return '|';
 
       case '+':
@@ -12367,6 +12395,7 @@ parser_initialize(struct parser_params *p)
     p->command_start = TRUE;
     p->ruby_sourcefile_string = Qnil;
     p->lex.lpar_beg = -1; /* make lambda_beginning_p() == FALSE at first */
+    p->lex.bar_beg = -1;
     p->node_id = 0;
 #ifdef RIPPER
     p->delayed.token = Qnil;
