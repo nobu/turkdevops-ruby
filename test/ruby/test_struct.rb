@@ -108,11 +108,14 @@ module TestStruct
     @Struct.new("KeywordInitTrue", :a, :b, keyword_init: true)
     @Struct.new("KeywordInitFalse", :a, :b, keyword_init: false)
 
-    assert_raise(ArgumentError) { @Struct::KeywordInitTrue.new(1, 2) }
-    assert_raise(ArgumentError) { @Struct::KeywordInitTrue.new({a: 100}, 2) }
-    assert_nothing_raised { @Struct::KeywordInitFalse.new(1, 2) }
-    assert_nothing_raised { @Struct::KeywordInitTrue.new(a: 1, b: 2) }
-    assert_raise(ArgumentError) { @Struct::KeywordInitTrue.new(1, b: 2) }
+    s = assert_nothing_raised { @Struct::KeywordInitTrue.new(1, 2) }
+    assert_equal([1, 2], [s.a, s.b])
+    s = assert_nothing_raised { @Struct::KeywordInitTrue.new({a: 100}, 2) }
+    assert_equal([{a: 100}, 2], [s.a, s.b])
+    s = assert_nothing_raised { @Struct::KeywordInitFalse.new(1, 2) }
+    s = assert_nothing_raised { @Struct::KeywordInitTrue.new(a: 1, b: 2) }
+    assert_equal([1, 2], [s.a, s.b])
+    assert_raise(TypeError) { @Struct::KeywordInitTrue.new(1, b: 2) }
     assert_raise(ArgumentError) { @Struct::KeywordInitTrue.new(a: 1, b: 2, c: 3) }
     assert_equal @Struct::KeywordInitTrue.new(a: 1, b: 2).values, @Struct::KeywordInitFalse.new(1, 2).values
     assert_equal "#{@Struct}::KeywordInitFalse", @Struct::KeywordInitFalse.inspect

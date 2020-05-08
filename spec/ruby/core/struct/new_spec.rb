@@ -127,15 +127,25 @@ describe "Struct.new" do
       -> { StructClasses::Ruby.new('2.0', 'i686', true) }.should raise_error(ArgumentError)
     end
 
-    it "passes a hash as a normal argument" do
-      type = Struct.new(:args)
+    ruby_version_is(""..."2.8") do
+      it "passes a keyword hash as a normal argument" do
+        type = Struct.new(:args)
 
-      obj = type.new(keyword: :arg)
-      obj2 = type.new(*[{keyword: :arg}])
+        obj = type.new(keyword: :arg)
+        obj2 = type.new(*[{keyword: :arg}])
 
-      obj.should == obj2
-      obj.args.should == {keyword: :arg}
-      obj2.args.should == {keyword: :arg}
+        obj.should == obj2
+        obj.args.should == {keyword: :arg}
+        obj2.args.should == {keyword: :arg}
+      end
+    end
+
+    ruby_version_is("2.8") do
+      it "passes a keyword hash as a normal argument" do
+        obj = StructClasses::Ruby.new(version: "2.8", platform: "mri")
+        obj.version.should == "2.8"
+        obj.platform.should == "mri"
+      end
     end
   end
 
@@ -155,10 +165,20 @@ describe "Struct.new" do
     end
 
     describe "new class instantiation" do
-      it "accepts arguments as hash as well" do
-        obj = @struct_with_kwa.new({name: "elefant", legs: 4})
-        obj.name.should == "elefant"
-        obj.legs.should == 4
+      ruby_version_is(""..."2.8") do
+        it "accepts arguments as hash as well" do
+          obj = @struct_with_kwa.new({name: "elefant", legs: 4})
+          obj.name.should == "elefant"
+          obj.legs.should == 4
+        end
+      end
+
+      ruby_version_is("2.8") do
+        it "accepts a hash argument as the first element" do
+          obj = @struct_with_kwa.new({name: "elefant", legs: 4})
+          obj.name.should == {name: "elefant", legs: 4}
+          obj.legs.should be_nil
+        end
       end
 
       it "allows missing arguments" do
@@ -179,16 +199,32 @@ describe "Struct.new" do
         }.should raise_error(ArgumentError, /unknown keywords: foo/)
       end
 
-      it "raises ArgumentError when passed a list of arguments" do
-        -> {
-          @struct_with_kwa.new("elefant", 4)
-        }.should raise_error(ArgumentError, /wrong number of arguments/)
+      ruby_version_is(""..."2.8") do
+        it "raises ArgumentError when passed a list of arguments" do
+          -> {
+            @struct_with_kwa.new("elefant", 4)
+          }.should raise_error(ArgumentError, /wrong number of arguments/)
+        end
+
+        it "raises ArgumentError when passed a single non-hash argument" do
+          -> {
+            @struct_with_kwa.new("elefant")
+          }.should raise_error(ArgumentError, /wrong number of arguments/)
+        end
       end
 
-      it "raises ArgumentError when passed a single non-hash argument" do
-        -> {
-          @struct_with_kwa.new("elefant")
-        }.should raise_error(ArgumentError, /wrong number of arguments/)
+      ruby_version_is("2.8") do
+        it "accepts a list of arguments" do
+          obj = @struct_with_kwa.new("elefant", 4)
+          obj.name.should == "elefant"
+          obj.legs.should == 4
+        end
+
+        it "allows missing arguments" do
+          obj = @struct_with_kwa.new("elefant")
+          obj.name.should == "elefant"
+          obj.legs.should be_nil
+        end
       end
     end
   end

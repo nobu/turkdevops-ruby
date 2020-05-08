@@ -1895,7 +1895,7 @@ r_object0(struct load_arg *arg, int *ivp, VALUE extmod)
 
       case TYPE_STRUCT:
 	{
-	    VALUE mem, values;
+            VALUE mem;
 	    long i;
 	    VALUE slot;
 	    st_index_t idx = r_prepare(arg);
@@ -1914,13 +1914,14 @@ r_object0(struct load_arg *arg, int *ivp, VALUE extmod)
 
 	    arg->readable += (len - 1) * 2;
 	    v = r_entry0(v, idx, arg);
-	    values = rb_ary_new2(len);
 	    {
-		VALUE keywords = Qfalse;
+		VALUE values = Qfalse, keywords = Qfalse;
 		if (RTEST(rb_struct_s_keyword_init(klass))) {
 		    keywords = rb_hash_new();
-		    rb_ary_push(values, keywords);
 		}
+                else {
+                    values = rb_ary_new_capa(len);
+                }
 
 		for (i=0; i<len; i++) {
 		    VALUE n = rb_sym2str(RARRAY_AREF(mem, i));
@@ -1939,8 +1940,14 @@ r_object0(struct load_arg *arg, int *ivp, VALUE extmod)
 		    }
 		    arg->readable -= 2;
 		}
+
+                if (keywords) {
+                    rb_struct_initialize_keyword(v, keywords);
+                }
+                else {
+                    rb_struct_initialize_splat(v, values);
+                }
 	    }
-            rb_struct_initialize(v, values);
             v = r_leave(v, arg);
 	    arg->readable += 2;
 	}

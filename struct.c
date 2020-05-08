@@ -620,38 +620,82 @@ struct_hash_set_i(VALUE key, VALUE val, VALUE arg)
     return ST_CONTINUE;
 }
 
-static VALUE
-rb_struct_initialize_m(int argc, const VALUE *argv, VALUE self)
+static void
+struct_initialize_keyword(VALUE self, VALUE klass, VALUE kwds)
 {
-    VALUE klass = rb_obj_class(self);
+    rb_struct_modify(self);
+    Check_Type(kwds, T_HASH);
+    long n = num_members(klass);
+    rb_mem_clear((VALUE *)RSTRUCT_CONST_PTR(self), n);
+    struct struct_hash_set_arg arg = {.self = self, .unknown_keywords = Qnil};
+    rb_hash_foreach(kwds, struct_hash_set_i, (VALUE)&arg);
+    if (arg.unknown_keywords != Qnil) {
+        rb_raise(rb_eArgError, "unknown keywords: %s",
+                 RSTRING_PTR(rb_ary_join(arg.unknown_keywords, rb_str_new2(", "))));
+    }
+}
+
+void
+rb_struct_initialize_keyword(VALUE self, VALUE kwds)
+{
+    struct_initialize_keyword(self, rb_obj_class(self), kwds);
+}
+
+static void
+struct_initialize_values(VALUE self, VALUE klass, int argc, const VALUE *argv)
+{
     long i, n;
 
     rb_struct_modify(self);
     n = num_members(klass);
-    if (argc > 0 && RTEST(rb_struct_s_keyword_init(klass))) {
-	struct struct_hash_set_arg arg;
-	if (argc > 1 || !RB_TYPE_P(argv[0], T_HASH)) {
-	    rb_raise(rb_eArgError, "wrong number of arguments (given %d, expected 0)", argc);
-	}
-	rb_mem_clear((VALUE *)RSTRUCT_CONST_PTR(self), n);
-	arg.self = self;
-	arg.unknown_keywords = Qnil;
-	rb_hash_foreach(argv[0], struct_hash_set_i, (VALUE)&arg);
-	if (arg.unknown_keywords != Qnil) {
-	    rb_raise(rb_eArgError, "unknown keywords: %s",
-		     RSTRING_PTR(rb_ary_join(arg.unknown_keywords, rb_str_new2(", "))));
-	}
+    if (n < argc) {
+        rb_raise(rb_eArgError, "struct size differs");
+    }
+    for (i=0; i<argc; i++) {
+        RSTRUCT_SET(self, i, argv[i]);
+    }
+    if (n > argc) {
+        rb_mem_clear((VALUE *)RSTRUCT_CONST_PTR(self)+argc, n-argc);
+    }
+}
+
+void
+rb_struct_initialize_values(VALUE self, int argc, const VALUE *argv)
+{
+    struct_initialize_values(self, rb_obj_class(self), argc, argv);
+}
+
+static void
+struct_initialize_splat(VALUE self, VALUE klass, VALUE values)
+{
+    Check_Type(values, T_ARRAY);
+    int argc = RARRAY_LENINT(values);
+    const VALUE *argv = RARRAY_CONST_PTR(values);
+    if (RTEST(rb_struct_s_keyword_init(klass))) {
+        rb_check_arity(1, 1, argc);
+        struct_initialize_keyword(self, klass, argv[0]);
     }
     else {
-	if (n < argc) {
-	    rb_raise(rb_eArgError, "struct size differs");
-	}
-	for (i=0; i<argc; i++) {
-	    RSTRUCT_SET(self, i, argv[i]);
-	}
-	if (n > argc) {
-	    rb_mem_clear((VALUE *)RSTRUCT_CONST_PTR(self)+argc, n-argc);
-	}
+        struct_initialize_values(self, klass, argc, argv);
+    }
+    RB_GC_GUARD(values);
+}
+
+void
+rb_struct_initialize_splat(VALUE self, VALUE values)
+{
+    struct_initialize_splat(self, rb_obj_class(self), values);
+}
+
+static VALUE
+rb_struct_initialize_m(int argc, const VALUE *argv, VALUE self)
+{
+    if (argc > 0 && rb_keyword_given_p()) {
+        rb_check_arity(1, 1, argc);
+        rb_struct_initialize_keyword(self, argv[0]);
+    }
+    else {
+        rb_struct_initialize_values(self, argc, argv);
     }
     return Qnil;
 }
@@ -659,8 +703,13 @@ rb_struct_initialize_m(int argc, const VALUE *argv, VALUE self)
 VALUE
 rb_struct_initialize(VALUE self, VALUE values)
 {
-    rb_struct_initialize_m(RARRAY_LENINT(values), RARRAY_CONST_PTR(values), self);
-    RB_GC_GUARD(values);
+    VALUE klass = rb_obj_class(self);
+    if (RB_TYPE_P(values, T_HASH)) {
+        struct_initialize_keyword(self, klass, values);
+    }
+    else {
+        struct_initialize_splat(self, klass, values);
+    }
     return Qnil;
 }
 
