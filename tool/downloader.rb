@@ -263,7 +263,7 @@ class Downloader
   def self.link_cache(cache, file, name, verbose = false)
     return false unless cache and cache.exist?
     return true if cache.eql?(file)
-    if /cygwin|msys/ !~ RUBY_PLATFORM or /winsymlink:nativestrict/ =~ ENV['CYGWIN']
+    if /cygwin|msys/ !~ RUBY_PLATFORM or /winsymlink:nativestrict/ =~ ENV[$&]
       begin
         file.make_symlink(cache.relative_path_from(file.parent))
       rescue SystemCallError

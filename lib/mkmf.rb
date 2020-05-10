@@ -1899,7 +1899,7 @@ SRC
   # Internal use only.
   #
   if !CROSS_COMPILING
-    case CONFIG['build_os']
+    case build_os = CONFIG['build_os']
     when 'mingw32'
       def mkintpath(path)
         # mingw uses make from msys and it needs special care
@@ -1909,14 +1909,8 @@ SRC
         path.sub!(/\A([A-Za-z]):(?=\/)/, '/\1')
         path
       end
-    when 'cygwin'
-      if CONFIG['target_os'] != 'cygwin'
-        def mkintpath(path)
-          IO.popen(["cygpath", "-u", path], &:read).chomp
-        end
-      end
-    when 'msys'
-      if CONFIG['target_os'] != 'msys'
+    when 'cygwin', 'msys'
+      if CONFIG['target_os'] != build_os
         def mkintpath(path)
           IO.popen(["cygpath", "-u", path], &:read).chomp
         end

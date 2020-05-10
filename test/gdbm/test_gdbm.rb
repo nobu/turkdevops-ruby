@@ -14,10 +14,7 @@ if defined? GDBM
     def TestGDBM_RDONLY.uname_s
       require 'rbconfig'
       case RbConfig::CONFIG['target_os']
-      when 'cygwin'
-        require 'etc'
-	Etc.uname[:sysname
-      when 'msys'
+      when 'cygwin',  'msys'
         require 'etc'
 	Etc.uname[:sysname]
       else

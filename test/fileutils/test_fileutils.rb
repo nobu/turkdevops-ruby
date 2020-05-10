@@ -76,7 +76,7 @@ class TestFileUtils < Test::Unit::TestCase
     end
 
     @@no_broken_symlink = false
-    if /cygwin|msys/ =~ RUBY_PLATFORM and /\bwinsymlinks:native(?:strict)?\b/ =~ ENV["CYGWIN"]
+    if /cygwin|msys/ =~ RUBY_PLATFORM and /\bwinsymlinks:native(?:strict)?\b/ =~ ENV[$&]
       @@no_broken_symlink = true
     end
 
