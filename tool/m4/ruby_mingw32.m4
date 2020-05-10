@@ -1,7 +1,7 @@
 # -*- Autoconf -*-
 AC_DEFUN([RUBY_MINGW32],
 [AS_CASE(["$host_os"],
-[cygwin*], [
+[cygwin*|msys*], [
 AC_CACHE_CHECK(for mingw32 environment, rb_cv_mingw32,
 [AC_TRY_CPP([
 #ifndef __MINGW32__

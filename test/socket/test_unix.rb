@@ -712,4 +712,4 @@ class TestSocket_UNIXSocket < Test::Unit::TestCase
       assert_equal :wait_readable, serv.accept_nonblock(exception: false)
     }
   end
-end if defined?(UNIXSocket) && /cygwin/ !~ RUBY_PLATFORM
+end if defined?(UNIXSocket) && /cygwin|msys/ !~ RUBY_PLATFORM

@@ -16,6 +16,9 @@ if defined? GDBM
       case RbConfig::CONFIG['target_os']
       when 'cygwin'
         require 'etc'
+	Etc.uname[:sysname
+      when 'msys'
+        require 'etc'
 	Etc.uname[:sysname]
       else
         RbConfig::CONFIG['target_os']

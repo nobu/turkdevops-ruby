@@ -167,6 +167,30 @@ class Exports::Cygwin < Exports
   end
 end
 
+class Exports::Msys < Exports
+  def self.nm
+    @@nm ||= RbConfig::CONFIG["NM"]
+  end
+
+  def exports(*)
+    super()
+  end
+
+  def each_line(objs, &block)
+    IO.foreach("|#{self.class.nm} --extern --defined #{objs.join(' ')}", &block)
+  end
+
+  def each_export(objs)
+    symprefix = RbConfig::CONFIG["SYMBOL_PREFIX"]
+    symprefix.strip! if symprefix
+    re = /\s(?:(T)|[[:upper:]])\s#{symprefix}((?!#{PrivateNames}).*)$/
+    objdump(objs) do |l|
+      next if /@.*@/ =~ l
+      yield $2, !$1 if re =~ l
+    end
+  end
+end
+
 class Exports::Mingw < Exports::Cygwin
   def each_export(objs)
     super

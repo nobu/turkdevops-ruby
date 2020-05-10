@@ -8,7 +8,7 @@ end
 require "test/unit"
 
 class TestSocketAddrinfo < Test::Unit::TestCase
-  HAS_UNIXSOCKET = defined?(UNIXSocket) && /cygwin/ !~ RUBY_PLATFORM
+  HAS_UNIXSOCKET = defined?(UNIXSocket) && /cygwin|msys/ !~ RUBY_PLATFORM
 
   def tcp_unspecified_to_loopback(addrinfo)
     if addrinfo.ipv4? && addrinfo.ip_address == "0.0.0.0"

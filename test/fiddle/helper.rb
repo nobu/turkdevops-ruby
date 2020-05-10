@@ -10,6 +10,9 @@ case RUBY_PLATFORM
 when /cygwin/
   libc_so = "cygwin1.dll"
   libm_so = "cygwin1.dll"
+when /msys/
+  libc_so = "msys-2.0.dll"
+  libm_so = "msys-2.0.dll"
 when /android/
   libdir = '/system/lib'
   if [0].pack('L!').size == 8

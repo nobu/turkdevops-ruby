@@ -15,7 +15,7 @@ if defined? DBM
     def TestDBM_RDONLY.uname_s
       require 'rbconfig'
       case RbConfig::CONFIG['target_os']
-      when 'cygwin'
+      when 'cygwin', 'msys'
 	require 'etc'
 	Etc.uname[:sysname]
       else

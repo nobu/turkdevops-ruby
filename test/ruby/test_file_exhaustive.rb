@@ -7,7 +7,7 @@ require '-test-/file'
 
 class TestFileExhaustive < Test::Unit::TestCase
   DRIVE = Dir.pwd[%r'\A(?:[a-z]:|//[^/]+/[^/]+)'i]
-  POSIX = /cygwin|mswin|bccwin|mingw|emx/ !~ RUBY_PLATFORM
+  POSIX = /cygwin|msys|mswin|bccwin|mingw|emx/ !~ RUBY_PLATFORM
   NTFS = !(/mingw|mswin|bccwin/ !~ RUBY_PLATFORM)
 
   def assert_incompatible_encoding
@@ -1480,7 +1480,7 @@ class TestFileExhaustive < Test::Unit::TestCase
     assert_equal(true, test(?=, fn1, fn1))
     assert_equal(false, test(?>, fn1, fn1))
     assert_equal(false, test(?<, fn1, fn1))
-    unless /cygwin/ =~ RUBY_PLATFORM
+    unless /cygwin|msys/ =~ RUBY_PLATFORM
       assert_equal(false, test(?=, fn1, fn2))
       assert_equal(false, test(?>, fn1, fn2))
       assert_equal(true, test(?>, fn2, fn1))

@@ -137,6 +137,7 @@ module MakeMakefile
   $mswin = /mswin/ =~ RUBY_PLATFORM
   $mingw = /mingw/ =~ RUBY_PLATFORM
   $cygwin = /cygwin/ =~ RUBY_PLATFORM
+  $msys = /msys/ =~ RUBY_PLATFORM
   $netbsd = /netbsd/ =~ RUBY_PLATFORM
   $haiku = /haiku/ =~ RUBY_PLATFORM
   $solaris = /solaris/ =~ RUBY_PLATFORM
@@ -1910,6 +1911,12 @@ SRC
       end
     when 'cygwin'
       if CONFIG['target_os'] != 'cygwin'
+        def mkintpath(path)
+          IO.popen(["cygpath", "-u", path], &:read).chomp
+        end
+      end
+    when 'msys'
+      if CONFIG['target_os'] != 'msys'
         def mkintpath(path)
           IO.popen(["cygpath", "-u", path], &:read).chomp
         end

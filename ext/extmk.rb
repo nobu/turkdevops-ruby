@@ -473,7 +473,7 @@ ext_prefix = "#{$top_srcdir}/#{ext_prefix || 'ext'}"
 exts = $static_ext.sort_by {|t, i| i}.collect {|t, i| t}
 default_exclude_exts =
   case
-  when $cygwin
+  when $cygwin, $msys
     %w''
   when $mswin, $mingw
     %w'pty syslog'

@@ -76,7 +76,7 @@ class TestFileUtils < Test::Unit::TestCase
     end
 
     @@no_broken_symlink = false
-    if /cygwin/ =~ RUBY_PLATFORM and /\bwinsymlinks:native(?:strict)?\b/ =~ ENV["CYGWIN"]
+    if /cygwin|msys/ =~ RUBY_PLATFORM and /\bwinsymlinks:native(?:strict)?\b/ =~ ENV["CYGWIN"]
       @@no_broken_symlink = true
     end
 
@@ -85,7 +85,7 @@ class TestFileUtils < Test::Unit::TestCase
     end
 
     def root_in_posix?
-      if /cygwin/ =~ RUBY_PLATFORM
+      if /cygwin|msys/ =~ RUBY_PLATFORM
         # FIXME: privilege if groups include root user?
         return Process.groups.include?(0)
       end
@@ -1045,9 +1045,9 @@ class TestFileUtils < Test::Unit::TestCase
     mkdir_p '/'
   end
 
-  if /mswin|mingw|cygwin/ =~ RUBY_PLATFORM
+  if /mswin|mingw|cygwin|msys/ =~ RUBY_PLATFORM
     def test_mkdir_p_root
-      if /cygwin/ =~ RUBY_PLATFORM
+      if /cygwin|msys/ =~ RUBY_PLATFORM
         tmpdir = `cygpath -ma .`.chomp
       else
         tmpdir = Dir.pwd

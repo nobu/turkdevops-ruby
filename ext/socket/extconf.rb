@@ -254,7 +254,7 @@ def test_recvmsg_with_msg_peek_creates_fds(headers)
     # [ruby-dev:44189]
     # http://bugs.ruby-lang.org/issues/5075
     close_fds = false
-  when /cygwin/
+  when /cygwin|msys/
     # Cygwin doesn't support fd passing.
     # http://cygwin.com/ml/cygwin/2003-09/msg01808.html
     close_fds = false
@@ -435,7 +435,7 @@ when /mswin(32|64)|mingw/
   test_func = "WSACleanup"
   have_library("iphlpapi")
   have_library("ws2_32", "WSACleanup", headers)
-when /cygwin/
+when /cygwin|msys/
   test_func = "socket(0,0,0)"
 when /haiku/
   test_func = "socket(0,0,0)"

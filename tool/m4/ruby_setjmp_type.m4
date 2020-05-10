@@ -35,7 +35,7 @@ AS_IF([test ${setjmp_prefix+set}], [
     setjmp_prefix=_
     setjmp_suffix=
 ], [test "$ac_cv_func_sigsetjmp" = yes], [
-    AS_CASE([$target_os],[solaris*|cygwin*],[setjmp_prefix=],[setjmp_prefix=sig])
+    AS_CASE([$target_os],[solaris*|cygwin*|msys*],[setjmp_prefix=],[setjmp_prefix=sig])
     setjmp_suffix=
 ], [
     setjmp_prefix=

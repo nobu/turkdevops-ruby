@@ -36,7 +36,7 @@ if have_struct_member('struct passwd', 'pw_age', 'pwd.h')
   $defs.push("-DPW_AGE2VAL="+f)
 end
 have_struct_member('struct passwd', 'pw_class', 'pwd.h')
-have_struct_member('struct passwd', 'pw_comment', 'pwd.h') unless /cygwin/ === RUBY_PLATFORM
+have_struct_member('struct passwd', 'pw_comment', 'pwd.h') unless /cygwin|msys/ === RUBY_PLATFORM
 have_struct_member('struct passwd', 'pw_expire', 'pwd.h')
 have_struct_member('struct passwd', 'pw_passwd', 'pwd.h')
 have_struct_member('struct group', 'gr_passwd', 'grp.h')

@@ -79,6 +79,7 @@ class Gem::Platform
       @os, @version = case os
                       when /aix(\d+)?/ then             [ 'aix',       $1  ]
                       when /cygwin/ then                [ 'cygwin',    nil ]
+                      when /msys/ then                  [ 'msys',      nil ]
                       when /darwin(\d+)?/ then          [ 'darwin',    $1  ]
                       when /^macruby$/ then             [ 'macruby',   nil ]
                       when /freebsd(\d+)?/ then         [ 'freebsd',   $1  ]

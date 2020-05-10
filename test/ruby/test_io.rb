@@ -1468,7 +1468,7 @@ class TestIO < Test::Unit::TestCase
       t.value
       assert_equal("", s)
     end
-  end if /cygwin/ !~ RUBY_PLATFORM
+  end if /cygwin|msys/ !~ RUBY_PLATFORM
 
   def test_read
     pipe(proc do |w|
@@ -1521,7 +1521,7 @@ class TestIO < Test::Unit::TestCase
       t.value
       assert_equal("xxx", s)
     end
-  end if /cygwin/ !~ RUBY_PLATFORM
+  end if /cygwin|msys/ !~ RUBY_PLATFORM
 
   def test_write_nonblock
     pipe(proc do |w|
@@ -3531,7 +3531,7 @@ __END__
       assert_nothing_raised(RuntimeError, bug8669) { str.clear }
       t.join
     }
-  end if /cygwin/ !~ RUBY_PLATFORM
+  end if /cygwin|msys/ !~ RUBY_PLATFORM
 
   def test_readpartial_unlocktmp_ensure
     bug8669 = '[ruby-core:56121] [Bug #8669]'
@@ -3549,7 +3549,7 @@ __END__
       assert_nothing_raised(RuntimeError, bug8669) { str.clear }
       t.join
     }
-  end if /cygwin/ !~ RUBY_PLATFORM
+  end if /cygwin|msys/ !~ RUBY_PLATFORM
 
   def test_readpartial_bad_args
     IO.pipe do |r, w|
@@ -3578,7 +3578,7 @@ __END__
       assert_nothing_raised(RuntimeError, bug8669) { str.clear }
       t.join
     }
-  end if /cygwin/ !~ RUBY_PLATFORM
+  end if /cygwin|msys/ !~ RUBY_PLATFORM
 
   def test_exception_at_close
     bug10153 = '[ruby-core:64463] [Bug #10153] exception in close at the end of block'
@@ -3619,7 +3619,7 @@ __END__
         assert_equal("foo", t1_value)
       EOS
     }
-  end if /mswin|mingw|bccwin|cygwin/ !~ RUBY_PLATFORM
+  end if /mswin|mingw|bccwin|cygwin|msys/ !~ RUBY_PLATFORM
 
   def test_open_flag
     make_tempfile do |t|

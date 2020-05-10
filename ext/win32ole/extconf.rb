@@ -6,7 +6,7 @@
 require 'mkmf'
 
 case RUBY_PLATFORM
-when /cygwin/
+when /cygwin|msys/
   inc = nil
   lib = '/usr/lib/w32api'
 end

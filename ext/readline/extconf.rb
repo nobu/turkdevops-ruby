@@ -30,7 +30,7 @@ dir_config('termcap')
 dir_config("readline")
 enable_libedit = enable_config("libedit")
 
-have_library("user32", nil) if /cygwin/ === RUBY_PLATFORM
+have_library("user32", nil) if /cygwin|msys/ === RUBY_PLATFORM
 have_library("ncurses", "tgetnum") ||
   have_library("termcap", "tgetnum") ||
   have_library("curses", "tgetnum")

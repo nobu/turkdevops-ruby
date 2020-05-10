@@ -77,7 +77,7 @@ class TestRequire < Test::Unit::TestCase
   end
 
   case RUBY_PLATFORM
-  when /cygwin/, /mswin/, /mingw/, /darwin/
+  when /cygwin/, /msys/, /mswin/, /mingw/, /darwin/
     def self.ospath_encoding(path)
       Encoding::UTF_8
     end

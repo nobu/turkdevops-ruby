@@ -499,7 +499,7 @@ class TestFile < Test::Unit::TestCase
     assert_file.not_absolute_path?("~")
     assert_file.not_absolute_path?("~user")
 
-    if /cygwin|mswin|mingw/ =~ RUBY_PLATFORM
+    if /cygwin|msys|mswin|mingw/ =~ RUBY_PLATFORM
       assert_file.absolute_path?("C:\\foo\\bar")
       assert_file.absolute_path?("C:/foo/bar")
     else

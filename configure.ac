@@ -346,14 +346,14 @@ AC_CHECK_TOOL(AS, as)
 ASFLAGS=$ASFLAGS
 AC_SUBST(ASFLAGS)
 
-AS_CASE(["$target_os"],[cygwin*|mingw*], [ac_cv_prog_ac_ct_OBJCOPY=":"])
+AS_CASE(["$target_os"],[cygwin*|msys*|mingw*], [ac_cv_prog_ac_ct_OBJCOPY=":"])
 
 # BSD's ports and MacPorts prefix GNU binutils with 'g'
 AC_CHECK_TOOLS(OBJDUMP, [objdump gobjdump])
 AC_CHECK_TOOLS(OBJCOPY, [objcopy gobjcopy])
 
 AS_CASE(["$target_os"],
-[cygwin*|mingw*], [
+[cygwin*|msys*|mingw*], [
     AC_CHECK_TOOL(WINDRES, windres)
     AC_CHECK_TOOL(DLLWRAP, dllwrap)
     target=`echo $target | sed "s/^$target_cpu-/-/"`
@@ -697,7 +697,7 @@ AS_IF([test "$GCC" = yes], [
 	AC_DEFINE(RUBY_MINGW64_BROKEN_FREXP_MODF)
       ])
     ],
-    [cygwin*|darwin*|netbsd*], [
+    [cygwin*|msys*|darwin*|netbsd*], [
       # need lgamma_r(), finite()
     ])
 
@@ -995,7 +995,7 @@ main()
 [haiku*], [
 		LIBS="$LIBS" # m lib is include in root
 		],
-[cygwin*], [	ac_cv_header_langinfo_h=yes
+[cygwin*|msys*], [	ac_cv_header_langinfo_h=yes
 		RUBY_APPEND_OPTIONS(CPPFLAGS, -D_XOPEN_SOURCE -D_GNU_SOURCE)
 		AC_CHECK_FUNCS(cygwin_conv_path)
 		AC_LIBOBJ([langinfo])
@@ -2023,7 +2023,7 @@ main(int argc, char **argv)
 	    rb_cv_getcwd_malloc=yes,
 	    rb_cv_getcwd_malloc=no,
 	    AS_CASE($target_os,
-		[linux*|darwin*|*bsd|cygwin*|mingw*|mswin*],
+		[linux*|darwin*|*bsd|cygwin*|msys*|mingw*|mswin*],
 		[rb_cv_getcwd_malloc=yes],
 		[rb_cv_getcwd_malloc=no]))])
     AS_IF([test "$rb_cv_getcwd_malloc" = no], [AC_DEFINE(NO_GETCWD_MALLOC, 1)])
@@ -2702,7 +2702,7 @@ AS_IF([test "$with_dln_a_out" != yes], [
       # mkmf.rb's have_header() to fail if the desired resource happens to be
       # installed in the /usr/local tree.
       RUBY_APPEND_OPTION(CCDLFLAGS, -fno-common)],
-    [bsdi*|cygwin*|mingw*|aix*|interix*], [ ],
+    [bsdi*|cygwin*|msys*|mingw*|aix*|interix*], [ ],
     [
       RUBY_APPEND_OPTION(CCDLFLAGS, -fPIC)])
   ], [
@@ -2806,7 +2806,7 @@ AS_IF([test "$with_dln_a_out" != yes], [
 			: ${LDSHARED='$(LD) -Bshareable -x'}
 			LDFLAGS="$LDFLAGS -L/lib -L/usr/lib -L/usr/local/lib"
 			rb_cv_dlopen=yes],
-	[cygwin*|mingw*], [
+	[cygwin*|msys*|mingw*], [
 			: ${LDSHARED='$(CC) -shared'}
 			XLDFLAGS="$XLDFLAGS -Wl,--stack,0x00200000,--enable-auto-import"
 			DLDFLAGS="${DLDFLAGS} -Wl,--enable-auto-image-base,--enable-auto-import"
@@ -3161,7 +3161,7 @@ LIBRUBYARG='$(LIBRUBYARG_STATIC)'
 SOLIBS='$(MAINLIBS)'
 
 AS_CASE(["$target_os"],
-  [cygwin*|mingw*|haiku*|darwin*], [
+  [cygwin*|msys*|mingw*|haiku*|darwin*], [
     : ${DLDLIBS=""}
     ],
   [
@@ -3191,7 +3191,7 @@ AC_ARG_WITH(soname,
 	    [darwin*], [
 	        RUBY_SO_NAME='$(RUBY_BASE_NAME).$(RUBY_API_VERSION)'
 	    ],
-	    [cygwin*], [
+	    [cygwin*|msys*], [
 	        RUBY_SO_NAME='$(RUBY_BASE_NAME)$(MAJOR)$(MINOR)0'
 	    ],
 	    [mingw*], [
@@ -3556,7 +3556,7 @@ AS_CASE(["$target_os"],
 	  CFLAGS="$CFLAGS -std"
 	])
 	],
-    [cygwin*|mingw*], [
+    [cygwin*|msys*|mingw*], [
 	LIBRUBY_DLDFLAGS="${LIBRUBY_DLDFLAGS}"' -Wl,--out-implib=$(LIBRUBY)'
 	AS_CASE(["$target_os"],
 	[cygwin*], [
@@ -3564,6 +3564,12 @@ AS_CASE(["$target_os"],
 		LIBRUBY_SO='cyg$(RUBY_SO_NAME)'.dll
 		LIBRUBY_DLDFLAGS="${LIBRUBY_DLDFLAGS}"' $(RUBYDEF)'
 	    ])
+	    ],
+	[msys*], [
+	    if test x"$enable_shared" = xyes; then
+		LIBRUBY_SO='msys-$(RUBY_SO_NAME)'.dll
+		LIBRUBY_DLDFLAGS="${LIBRUBY_DLDFLAGS}"' $(RUBYDEF)'
+	    fi
 	    ],
 	[mingw*], [
 	    AS_IF([test x"$enable_shared" = xyes], [

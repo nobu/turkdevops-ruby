@@ -909,7 +909,7 @@ class TestRubyOptions < Test::Unit::TestCase
         assert_e_script_encoding(s, %W[-E#{locale.name}])
       end
     end
-  when /cygwin/
+  when /cygwin|msys/
     def test_command_line_non_ascii
       assert_separately([{"LC_ALL"=>"ja_JP.SJIS"}, "-", "\u{3042}".encode("SJIS")], <<-"end;")
         bug12184 = '[ruby-dev:49519] [Bug #12184]'

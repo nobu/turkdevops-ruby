@@ -9,6 +9,8 @@ STRIP = @STRIP@
 
 ifeq (@target_os@,cygwin)
   DLL_BASE_NAME := $(LIBRUBY_SO:.dll=)
+else ifeq (@target_os@,msys)
+  DLL_BASE_NAME := $(LIBRUBY_SO:.dll=)
 else
   DLL_BASE_NAME := $(RUBY_SO_NAME)
   DLLWRAP += -mno-cygwin
@@ -99,6 +101,12 @@ clean-local::
 
 ifeq (@target_os@,cygwin)
 cygwin-$(RUBY_INSTALL_NAME)$(MAJOR)$(MINOR)0.dll: $(LIBRUBY_A) $(RUBYDEF)
+	$(ECHO) generating $@
+	$(Q) @DLLWRAP@ -s --def=$(RUBYDEF) -o $@
+endif
+
+ifeq (@target_os@,msys)
+msys2-$(RUBY_INSTALL_NAME)$(MAJOR)$(MINOR)0.dll: $(LIBRUBY_A) $(RUBYDEF)
 	$(ECHO) generating $@
 	$(Q) @DLLWRAP@ -s --def=$(RUBYDEF) -o $@
 endif
