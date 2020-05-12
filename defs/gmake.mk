@@ -72,7 +72,7 @@ ORDERED_TEST_TARGETS := $(filter $(TEST_TARGETS), \
 prev_test := $(if $(filter test-spec,$(ORDERED_TEST_TARGETS)),test-spec-precheck)
 $(foreach test,$(ORDERED_TEST_TARGETS), \
 	$(eval yes-$(value test) no-$(value test): $(value prev_test)); \
-	$(eval prev_test := $(value test)))
+	$(eval prev_test := $(prev_test) $(value test)))
 
 ifneq ($(if $(filter install,$(MAKECMDGOALS)),$(filter uninstall,$(MAKECMDGOALS))),)
 install-targets := $(filter install uninstall,$(MAKECMDGOALS))
@@ -337,11 +337,23 @@ rdoc\:%: PHONY
 test_%.rb test/%: programs PHONY
 	+$(Q)$(exec) $(RUNRUBY) "$(TESTSDIR)/runner.rb" --ruby="$(RUNRUBY)" $(TEST_EXCLUDES) $(TESTOPTS) -- $(patsubst test/%,%,$@)
 
+bundler-specs := $(addprefix spec/bundler/,\
+	$(filter-out spec_helper.rb support,$(notdir $(wildcard $(srcdir)/spec/bundler/$(if $(BUNDLER_SPECS),$(BUNDLER_SPECS),*)))))
+
+# Run bundler specs sequentially
+yes-test-bundler: export MAKEFLAGS:=$(filter-out -j% --jobserver-%,$(MAKEFLAGS))
+yes-test-bundler: mflags:=$(filter-out -j% --jobserver-%,$(mflags))
+yes-test-bundler:
+	+$(Q)$(MAKE) -k -j1 $(mflags) Q=$(Q) ECHO=$(ECHO) $(bundler-specs)
+
+SPEC_RUNNING := $(ECHO:@echo=$(RUNRUBY) $(tooldir)/lib/colorize.rb skip)
+
 spec/bundler/%: PHONY
-	+$(Q)$(exec) $(XRUBY) -C $(srcdir) -Ispec/bundler .bundle/bin/rspec --require spec_helper $(RSPECOPTS) $@
+	$(SPEC_RUNNING) "Running $@"
+	$(Q)$(exec) $(XRUBY) -C $(srcdir) -Ispec/bundler .bundle/bin/rspec --require spec_helper $(RSPECOPTS) $@
 
 spec/%: programs exts PHONY
-	+$(RUNRUBY) -r./$(arch)-fake $(srcdir)/spec/mspec/bin/mspec-run -B $(srcdir)/spec/default.mspec $(SPECOPTS) $(patsubst %,$(srcdir)/%,$@)
+	$(RUNRUBY) -r./$(arch)-fake $(srcdir)/spec/mspec/bin/mspec-run -B $(srcdir)/spec/default.mspec $(SPECOPTS) $(patsubst %,$(srcdir)/%,$@)
 
 benchmark/%: miniruby$(EXEEXT) update-benchmark-driver PHONY
 	$(Q)$(BASERUBY) -rrubygems -I$(srcdir)/benchmark/lib $(srcdir)/benchmark/benchmark-driver/exe/benchmark-driver \
