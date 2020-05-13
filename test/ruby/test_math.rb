@@ -340,4 +340,8 @@ class TestMath < Test::Unit::TestCase
   ensure
     Rational.class_eval { undef to_f; alias to_f _to_f; undef _to_f }
   end
+
+  def test_division
+    assert_equal(Rational(1, 2), eval("1 \u00f7 2"))
+  end
 end
