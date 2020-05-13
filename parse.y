@@ -1200,6 +1200,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %token tSTRING_END	"terminator"
 %token tSTRING_DEND	"'}'"
 %token tSTRING_DBEG tSTRING_DVAR tLAMBEG tLABEL_END
+%token tFRACT_SLASH	0x2044 "FRACTION SLASH"
 
 /*
  *	precedence table
@@ -1224,7 +1225,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %left  '&'
 %left  tLSHFT tRSHFT
 %left  '+' '-'
-%left  '*' '/' '%'
+%left  '*' '/' '%' tFRACT_SLASH
 %right tUMINUS_NUM tUMINUS
 %right tPOW
 %right '!' '~' tUPLUS
@@ -2365,6 +2366,10 @@ arg		: lhs '=' arg_rhs
 		| arg tPOW arg
 		    {
 			$$ = call_bin_op(p, $1, idPow, $3, &@2, &@$);
+		    }
+		| arg tFRACT_SLASH arg
+		    {
+			$$ = call_bin_op(p, $1, idQuo, $3, &@2, &@$);
 		    }
 		| tUMINUS_NUM simple_numeric tPOW arg
 		    {
@@ -5641,9 +5646,20 @@ ripper_dispatch_delayed_token(struct parser_params *p, enum yytokentype t)
 #endif /* RIPPER */
 
 static inline int
-is_identchar(const char *ptr, const char *MAYBE_UNUSED(ptr_end), rb_encoding *enc)
+is_identchar(const char *ptr, const char *ptr_end, rb_encoding *enc)
 {
-    return rb_enc_isalnum((unsigned char)*ptr, enc) || *ptr == '_' || !ISASCII(*ptr);
+    if (rb_enc_isalnum((unsigned char)*ptr, enc) || *ptr == '_')
+	return 1;
+    if (!rb_enc_unicode_p(enc))
+	return !ISASCII(*ptr);
+    int len = rb_enc_precise_mbclen(ptr, ptr_end, enc);
+    if (!MBCLEN_CHARFOUND_P(len)) return 1;
+    unsigned int c = rb_enc_mbc_to_codepoint(ptr, ptr_end, enc);
+    if (ONIGENC_IS_CODE_PUNCT(enc, c)) return 0;
+    if (ONIGENC_IS_CODE_SPACE(enc, c)) return 0;
+    if (ONIGENC_IS_CODE_CNTRL(enc, c)) return 0;
+    if (ONIGENC_IS_CODE_BLANK(enc, c)) return 0;
+    return 1;
 }
 
 static inline int
@@ -8884,6 +8900,39 @@ parse_ident(struct parser_params *p, int c, int cmd_state)
     return result;
 }
 
+static int
+is_math_symbol(struct parser_params *p)
+{
+    rb_encoding *enc = p->enc;
+    const char *ptr = p->lex.pcur-1;
+    const char *pend = p->lex.pend;
+    if (!rb_enc_unicode_p(enc)) return 0;
+    int len = rb_enc_precise_mbclen(ptr, pend, enc);
+    if (!MBCLEN_CHARFOUND_P(len)) return 0;
+    unsigned int c = rb_enc_mbc_to_codepoint(ptr, pend, enc);
+    if (!c) return c;
+    static int ctype_math_symbol = 0;
+    if (!ctype_math_symbol) {
+	static const UChar cname[] = "mathsymbol";
+	static const UChar *const end = cname + sizeof(cname) - 1;
+	ctype_math_symbol = ONIGENC_PROPERTY_NAME_TO_CTYPE(enc, cname, end);
+    }
+    if (!rb_enc_isctype(c, ctype_math_symbol, enc)) return 0;
+    p->lex.pcur = ptr + MBCLEN_CHARFOUND_LEN(len);
+    return c;
+}
+
+static enum yytokentype
+parse_math_symbol(struct parser_params *p, int c)
+{
+    switch (c) {
+      case tFRACT_SLASH:
+	return c;
+      default:
+	return 0;
+    }
+}
+
 static enum yytokentype
 parser_yylex(struct parser_params *p)
 {
@@ -9575,6 +9624,13 @@ parser_yylex(struct parser_params *p)
 	break;
 
       default:
+	{
+	    int cm = is_math_symbol(p);
+	    if (cm) {
+		enum yytokentype t = parse_math_symbol(p, cm);
+		if (t) return t;
+	    }
+	}
 	if (!parser_is_identchar(p)) {
 	    compile_error(p, "Invalid char `\\x%02X' in expression", c);
             token_flush(p);
