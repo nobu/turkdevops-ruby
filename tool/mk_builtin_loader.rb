@@ -47,11 +47,18 @@ def collect_builtin base, tree, name, bs, inlines
       name = 'class'
       tree = tree.children[1]
       next
-    when :FCALL, :VCALL
-      mid, args = tree.children
-      if (!args or %i[ARRAY LIST].include?(args.type)) and /\A__builtin_(.+)/ =~ mid
-        cfunc_name = func_name = $1
+    when :CALL, :FCALL, :VCALL
+      if tree.type == :CALL
+        recv, mid, args = tree.children
+        func_name = (mid.to_s if recv.type == :VCALL and recv.children[0] == :__builtin__)
+      else
+        mid, args = tree.children
+        func_name = mid[/\A__builtin_(.+)/, 1]
+      end
+      if func_name and (!args or %i[ARRAY LIST].include?(args.type))
+        cfunc_name = func_name
         lineno = tree.first_lineno
+        tree = args
         args.pop unless (args = args ? args.children : []).last
         argc = args.size
 
@@ -88,6 +95,8 @@ def collect_builtin base, tree, name, bs, inlines
         end
 
         bs[func_name] = [argc, cfunc_name] if func_name
+
+        break unless tree
       end
     end
 
