@@ -16,16 +16,16 @@ ARGV[0] and opt = ARGV[0][/\A--run-opt=(.*)/, 1] and ARGV.shift
 $stderr.reopen($stdout)
 error = ''
 
-srcdir = File.expand_path('..', File.dirname(__FILE__))
+srcdir = File.expand_path('../..', File.dirname(__FILE__))
 if env = ENV["RUBYOPT"]
   ENV["RUBYOPT"] = env + " -W1"
 end
-`#{ruby} #{opt} -W1 #{srcdir}/basictest/test.rb #{ARGV.join(' ')}`.each_line do |line|
+`#{ruby} #{opt} -W1 #{srcdir}/test/-basic-/test.rb #{ARGV.join(' ')}`.each_line do |line|
   if line =~ /^end of test/
     print "\ntest succeeded\n"
     exit true
   end
-  error << line if %r:^(basictest/test.rb|not): =~ line
+  error << line if %r:(test/-basic-/test\.rb|^not): =~ line
 end
 puts
 print error

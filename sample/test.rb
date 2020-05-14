@@ -1,2 +1,2 @@
 # backward compatibility for chkbuild
-require_relative '../basictest/test'
+require_relative '../test/-basic-/test'
