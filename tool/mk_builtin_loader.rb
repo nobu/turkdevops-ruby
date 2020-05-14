@@ -1,8 +1,8 @@
 
-def inline_text argc, prev_insn
+def inline_text argc, arg1
   raise "argc (#{argc}) of inline! should be 1" unless argc == 1
-  raise "1st argument should be string literal" unless prev_insn[0] == :putstring
-  prev_insn[1].rstrip
+  raise "1st argument should be string literal" unless arg1.type == :STR
+  arg1.children[0].rstrip
 end
 
 def make_cfunc_name inlines, name, lineno
@@ -27,50 +27,45 @@ def make_cfunc_name inlines, name, lineno
   end
 end
 
-def collect_builtin base, iseq_ary, name, bs, inlines
-  case type = iseq_ary[9]
-  when :method
-    name = iseq_ary[5]
-  when :class
-    name = 'class'
-  else
-  end
-
-  code = iseq_ary[13] + iseq_ary[12]
-  params = iseq_ary[10]
-  prev_insn = nil
-  lineno = nil
-
-  code.each{|insn|
-    case insn
-    when Array
-      # ok
-    when Integer
-      lineno = insn
+def collect_builtin base, tree, name, bs, inlines
+  while tree
+    case tree.type
+    when :SCOPE
+      tree = tree.children[2]
       next
-    else
+    when :DEFN
+      name, tree = tree.children
       next
-    end
-
-    next unless Array === insn
-    case insn[0]
-    when :send
-      ci = insn[1]
-      if /\A__builtin_(.+)/ =~ ci[:mid]
+    when :DEFS
+      _recv, name, tree = tree.children
+      next
+    when :CLASS
+      name = 'class'
+      tree = tree.children[2]
+      next
+    when :SCLASS, :MODULE
+      name = 'class'
+      tree = tree.children[1]
+      next
+    when :FCALL, :VCALL
+      mid, args = tree.children
+      if (!args or %i[ARRAY LIST].include?(args.type)) and /\A__builtin_(.+)/ =~ mid
         cfunc_name = func_name = $1
-        argc = ci[:orig_argc]
+        lineno = tree.first_lineno
+        args.pop unless (args = args ? args.children : []).last
+        argc = args.size
 
         if /(.+)\!\z/ =~ func_name
           case $1
           when 'cstmt'
-            text = inline_text argc, prev_insn
+            text = inline_text argc, args.first
 
             func_name = "_bi#{inlines.size}"
             cfunc_name = make_cfunc_name(inlines, name, lineno)
             inlines[cfunc_name] = [lineno, text, params, func_name]
             argc -= 1
           when 'cexpr', 'cconst'
-            text = inline_text argc, prev_insn
+            text = inline_text argc, args.first
             code = "return #{text};"
 
             func_name = "_bi#{inlines.size}"
@@ -80,7 +75,7 @@ def collect_builtin base, iseq_ary, name, bs, inlines
             inlines[cfunc_name] = [lineno, code, params, func_name]
             argc -= 1
           when 'cinit'
-            text = inline_text argc, prev_insn
+            text = inline_text argc, args.first
             func_name = nil
             inlines[inlines.size] = [nil, [lineno, text, nil, nil]]
             argc -= 1
@@ -94,15 +89,14 @@ def collect_builtin base, iseq_ary, name, bs, inlines
 
         bs[func_name] = [argc, cfunc_name] if func_name
       end
-    else
-      insn[1..-1].each{|op|
-        if op.is_a?(Array) && op[0] == "YARVInstructionSequence/SimpleDataFormat"
-          collect_builtin base, op, name, bs, inlines
-        end
-      }
     end
-    prev_insn = insn
-  }
+
+    k = tree.class
+    tree.children.each do |t|
+      collect_builtin base, t, name, bs, inlines if k === t
+    end
+    break
+  end
 end
 # ruby mk_builtin_loader.rb TARGET_FILE.rb
 # #=> generate TARGET_FILE.rbinc
@@ -113,7 +107,7 @@ def mk_builtin_header file
   ofile = "#{file}inc"
 
   # bs = { func_name => argc }
-  collect_builtin(base, RubyVM::InstructionSequence.compile_file(file, false).to_a, 'top', bs = {}, inlines = {})
+  collect_builtin(base, RubyVM::AbstractSyntaxTree.parse_file(file), 'top', bs = {}, inlines = {})
 
   begin
     f = open(ofile, 'w')
