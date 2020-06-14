@@ -7,20 +7,28 @@ This directory has benchmark definitions to be run with
 
 Execute `gem install benchmark_driver` and run a command like:
 
+### Run a benchmark script with the ruby in the $PATH
 ```bash
-# Run a benchmark script with the ruby in the $PATH
 benchmark-driver benchmark/app_fib.rb
+```
 
-# Run benchmark scripts with multiple Ruby executables or options
+### Run benchmark scripts with multiple Ruby executables or options
+```bash
 benchmark-driver benchmark/*.rb -e /path/to/ruby -e '/path/to/ruby --jit'
+```
 
-# Or compare Ruby versions managed by rbenv
+### Or compare Ruby versions managed by rbenv
+```bash
 benchmark-driver benchmark/*.rb --rbenv '2.5.1;2.6.0-preview2 --jit'
+```
 
-# You can collect many metrics in many ways
+### You can collect many metrics in many ways
+```bash
 benchmark-driver benchmark/*.rb --runner memory --output markdown
+```
 
-# Some are defined with YAML for complex setup or accurate measurement
+### Some are defined with YAML for complex setup or accurate measurement
+```bash
 benchmark-driver benchmark/*.yml
 ```
 
@@ -46,27 +54,39 @@ Using `make benchmark`, `make update-benchmark-driver` automatically downloads
 the supported version of benchmark\_driver, and it runs benchmarks with the downloaded
 benchmark\_driver.
 
+### Run all benchmarks with the ruby in the $PATH and the built ruby
 ```bash
-# Run all benchmarks with the ruby in the $PATH and the built ruby
 make benchmark
+```
 
-# Or compare with specific ruby binary
+### Or compare with specific ruby binary
+```bash
 make benchmark COMPARE_RUBY="/path/to/ruby --jit"
+```
 
-# Run vm benchmarks
+### Run vm benchmarks
+```bash
 make benchmark ITEM=vm
+```
 
-# Run some limited benchmarks in ITEM-matched files
+### Run some limited benchmarks in ITEM-matched files
+```bash
 make benchmark ITEM=vm OPTS=--filter=block
+```
 
-# You can specify the benchmark by an exact filename instead of using the default argument:
+### You can specify the benchmark by an exact filename instead of using the default argument:
+```bash
 # ARGS = $$(find $(srcdir)/benchmark -maxdepth 1 -name '*$(ITEM)*.yml' -o -name '*$(ITEM)*.rb')
 make benchmark ARGS=benchmark/erb_render.yml
+```
 
-# You can specify any option via $OPTS
+### You can specify any option via $OPTS
+```bash
 make benchmark OPTS="--help"
+```
 
-# With `make benchmark`, some special runner plugins are available:
+### With `make benchmark`, some special runner plugins are available:
+```bash
 #   -r peak, -r size, -r total, -r utime, -r stime, -r cutime, -r cstime
 make benchmark ITEM=vm_bigarray OPTS="-r peak"
 ```
