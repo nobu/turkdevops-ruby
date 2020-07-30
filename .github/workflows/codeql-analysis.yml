@@ -33,6 +33,11 @@ jobs:
         languages: cpp
         config-file: ./.github/codeql/codeql-config.yml
 
+    - name: Fixed world writable dirs
+      run: |
+        chmod -v go-w $HOME $HOME/.config
+        IFS=: eval sudo chmod -v go-w '$PATH' || :
+
     - name: Autobuild
       uses: github/codeql-action/autobuild@v1
 
