@@ -20,6 +20,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vcpkg-download-${{ matrix.os }}-
             ${{ runner.os }}-vcpkg-download-
+      - name: Fix vcpkg bug
+        shell: bash
+        working-directory: C:\vcpkg\scripts\cmake
+        run: sed -i~ '/Cellar/d' vcpkg_fixup_pkgconfig.cmake
       - name: Install libraries with vcpkg
         run: |
           vcpkg --triplet x64-windows install readline zlib
