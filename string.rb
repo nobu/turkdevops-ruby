@@ -1,10 +1,3 @@
-=begin
-This file is just to allow non US-ASCII characters in the RDoc now.
-As C does not have the fixed encoding, such characters are locale
-dependent.
-=end
-
-#
 class String
   # call-seq:
   #   String.new(string = '') -> new_string
@@ -49,7 +42,7 @@ class String
   #
   #   String.new('hello', encoding: 'UTF-8', capacity: 25)
   #
-  def initialize(str = '', encoding: nil, capacity: nil)
-    # Primitive.rb_str_init(str, encoding, capacity)
+  def initialize(orig = (init = false), encoding: nil, capacity: nil)
+    Primitive.rb_str_init(orig, init, encoding, capacity)
   end
 end

@@ -1057,6 +1057,7 @@ BUILTIN_RB_SRCS = \
 		$(srcdir)/warning.rb \
 		$(srcdir)/array.rb \
 		$(srcdir)/kernel.rb \
+		$(srcdir)/string.rb \
 		$(srcdir)/ractor.rb \
 		$(srcdir)/timev.rb \
 		$(srcdir)/nilclass.rb \
@@ -14488,6 +14489,7 @@ string.$(OBJEXT): $(top_srcdir)/internal/vm.h
 string.$(OBJEXT): $(top_srcdir)/internal/warnings.h
 string.$(OBJEXT): {$(VPATH)}assert.h
 string.$(OBJEXT): {$(VPATH)}atomic.h
+string.$(OBJEXT): {$(VPATH)}builtin.h
 string.$(OBJEXT): {$(VPATH)}backward/2/assume.h
 string.$(OBJEXT): {$(VPATH)}backward/2/attributes.h
 string.$(OBJEXT): {$(VPATH)}backward/2/bool.h
@@ -14666,6 +14668,8 @@ string.$(OBJEXT): {$(VPATH)}regex.h
 string.$(OBJEXT): {$(VPATH)}ruby_assert.h
 string.$(OBJEXT): {$(VPATH)}st.h
 string.$(OBJEXT): {$(VPATH)}string.c
+string.$(OBJEXT): {$(VPATH)}string.rb
+string.$(OBJEXT): {$(VPATH)}string.rbinc
 string.$(OBJEXT): {$(VPATH)}subst.h
 string.$(OBJEXT): {$(VPATH)}thread_native.h
 string.$(OBJEXT): {$(VPATH)}util.h
