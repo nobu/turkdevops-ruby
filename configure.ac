@@ -5,7 +5,8 @@ AC_CONFIG_AUX_DIR(tool)
 
 AC_PREREQ(2.67)
 
-tooldir="$srcdir/tool"
+top_srcdir="${ac_top_srcdir-$srcdir}"
+tooldir="$top_srcdir/tool"
 
 AC_DISABLE_OPTION_CHECKING
 
@@ -92,7 +93,7 @@ AS_IF([test "${HAVE_BASERUBY:=no}" != no], [
     ])
     RUBY_APPEND_OPTION(BASERUBY, "--disable=gems")
     BASERUBY_VERSION=`$BASERUBY -v`
-    $BASERUBY -C "$srcdir" tool/downloader.rb -d tool -e gnu config.guess config.sub >&AS_MESSAGE_FD
+    $BASERUBY -C "$top_srcdir" tool/downloader.rb -d tool -e gnu config.guess config.sub >&AS_MESSAGE_FD
 ])
 AS_IF([test "$HAVE_BASERUBY" = no], [
     AS_IF([test "$cross_compiling" = yes], [AC_MSG_ERROR([executable host ruby is required for cross-compiling])])
@@ -116,8 +117,8 @@ AC_SUBST(HAVE_GIT)
 eval `sed -n -e ['s/^@%:@define RUBY_[A-Z_]*VERSION_\([A-Z][A-Z][A-Z_0-9]*\) \([0-9][0-9]*\)$/\1=\2/p'] \
       -e ['s/^@%:@define \(RUBY_ABI_VERSION\) \([0-9][0-9]*\).*/\1=\2/p'] \
       -e ['s/^@%:@define \(RUBY_PATCHLEVEL\) \(.*\)/\1=\2/p'] \
-     $srcdir/include/ruby/internal/abi.h \
-     $srcdir/include/ruby/version.h $srcdir/version.h`
+     $top_srcdir/include/ruby/internal/abi.h \
+     $top_srcdir/include/ruby/version.h $srcdir/version.h`
 for v in MAJOR MINOR TEENY; do
     AS_IF([eval "test \"\$$v\" = ''"], [
 	AC_MSG_ERROR(could not determine $v number from version.h)
@@ -3429,14 +3430,14 @@ AC_ARG_WITH(setup,
 	    AS_HELP_STRING([--with-setup=SETUP], [use extension libraries setup]),
 	    [setup=$withval])
 AS_IF([test -n "$setup"], [
-    AS_IF([! test -f "ext/$setup" -o -f "$srcdir/ext/$setup"], [
-	AC_MSG_ERROR(Setup file $setup not found under ext or $srcdir/ext)
+    AS_IF([! test -f "ext/$setup" -o -f "$top_srcdir/ext/$setup"], [
+	AC_MSG_ERROR(Setup file $setup not found under ext or $top_srcdir/ext)
     ])
-], [test -f "$srcdir/ext/Setup.$target_os"], [
+], [test -f "$top_srcdir/ext/Setup.$target_os"], [
     setup="Setup.$target_os"
 ], [
     setup=
-    for file in "$srcdir"/ext/Setup.*; do
+    for file in "$top_srcdir"/ext/Setup.*; do
 	AS_CASE(["$file"], [*~|*.bak|*.orig|*.rej|*.tmp], [continue])
 	setup=`basename "$file"`
 	AS_CASE(["$target_os"], [`expr "$setup" : 'Setup.\(.*\)'`*], [break])
@@ -3487,14 +3488,14 @@ AS_IF([test x"$cross_compiling" = xyes], [
     # darwin target requires miniruby for linking ext bundles
     PREP="$PREP"' miniruby$(EXEEXT)'
   ])
-  RUNRUBY_COMMAND='$(MINIRUBY) -I`cd $(srcdir)/lib; pwd`'
+  RUNRUBY_COMMAND='$(MINIRUBY) -I`cd $(top_srcdir)/lib; pwd`'
   RUNRUBY='$(RUNRUBY_COMMAND)'
   XRUBY='$(MINIRUBY)'
   TEST_RUNNABLE=no
   CROSS_COMPILING=yes
   AC_DEFINE(CROSS_COMPILING, 1)
 ], [
-  MINIRUBY='./miniruby$(EXEEXT) -I$(srcdir)/lib -I.'
+  MINIRUBY='./miniruby$(EXEEXT) -I$(top_srcdir)/lib -I.'
   MINIRUBY="$MINIRUBY"' -I$(EXTOUT)/common'
   PREP='miniruby$(EXEEXT)'
   RUNRUBY_COMMAND='$(MINIRUBY) $(tooldir)/runruby.rb --extout=$(EXTOUT) $(RUNRUBYOPT)'
@@ -4373,7 +4374,7 @@ AS_IF([test ${RUBY_LIB_VERSION_STYLE+set}], [
     echo '#include "version.h"'
     echo 'ruby_version=RUBY_LIB_VERSION'
     } > conftest.c
-    ruby_version="`$CPP -I. -I"${srcdir}" -I"${srcdir}/include" conftest.c | sed '/^ruby_version=/!d;s/ //g'`"
+    ruby_version="`$CPP -I. -I"${srcdir}" -I"${top_srcdir}/include" conftest.c | sed '/^ruby_version=/!d;s/ //g'`"
     eval $ruby_version
 ], [test -z "${ruby_version}"], [
     AC_MSG_ERROR([No ruby version, No place for bundled libraries])
@@ -4528,7 +4529,7 @@ AS_IF([test -z "$MANTYPE"], [
 	AC_CACHE_VAL([ac_cv_path_NROFF], [
 		AC_PATH_PROGS_FEATURE_CHECK([NROFF],
 			[nroff awf mandoc],
-			[$ac_path_NROFF -mdoc ${srcdir}/man/ruby.1 \
+			[$ac_path_NROFF -mdoc ${top_srcdir}/man/ruby.1 \
 				>/dev/null 2>&1 &&
 				ac_cv_path_NROFF=$ac_path_NROFF \
 				ac_path_NROFF_found=:],
@@ -4579,14 +4580,14 @@ rm largefile.h
 
 BUILTIN_ENCS=["`sed -n -e '/^BUILTIN_ENCS[ 	]*=/{' \
 	-e s/// -e :l -e '/\\\\$/N' -e 's/\\\\\\n/ /' -e 't l' -e p \
-	-e '}' "${srcdir}/enc/Makefile.in"`"]
+	-e '}' "${top_srcdir}/enc/Makefile.in"`"]
 BUILTIN_ENCOBJS=
 for e in $BUILTIN_ENCS; do BUILTIN_ENCOBJS="$BUILTIN_ENCOBJS "`echo $e | sed 's/\.c$/.$(OBJEXT)/'`; done
 AC_SUBST(BUILTIN_ENCOBJS)
 
 BUILTIN_TRANSES=["`sed -n -e '/^BUILTIN_TRANSES[ 	]*=/{' \
 	-e s/// -e :l -e '/\\\\$/N' -e 's/\\\\\\n/ /' -e 't l' -e p \
-	-e '}' "${srcdir}/enc/Makefile.in"`"]
+	-e '}' "${top_srcdir}/enc/Makefile.in"`"]
 BUILTIN_TRANSSRCS=
 BUILTIN_TRANSOBJS=
 for e in $BUILTIN_TRANSES; do
@@ -4626,7 +4627,7 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
     {
 	AS_IF([test ${VCS+set}], [
 	    :
-	], [git_dir=`$GIT --work-tree="$srcdir" --git-dir="$srcdir/.git" rev-parse --git-dir 2>/dev/null`], [
+	], [git_dir=`$GIT --work-tree="$top_srcdir" --git-dir="$top_srcdir/.git" rev-parse --git-dir 2>/dev/null`], [
 	    VCS='$(GIT)'
 	], [
 	    VCS='echo cannot'
@@ -4646,11 +4647,11 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
 	sed '/^MISSING/s/\$U\././g;/^VCS *=/s#@VCS@#'"$VCS"'#;/^VCSUP *=/s#@VCSUP@#'"$VCSUP"'#' Makefile
 	echo; test x"$EXEEXT" = x || echo 'miniruby: miniruby$(EXEEXT)'
 	AS_IF([test "$gnumake" != yes], [
-	    echo ['$(MKFILES): $(srcdir)/common.mk']
-	    sed ['s/{\$([^(){}]*)[^{}]*}//g'] ${srcdir}/common.mk
+	    echo ['$(MKFILES): $(top_srcdir)/common.mk']
+	    sed ['s/{\$([^(){}]*)[^{}]*}//g'] ${top_srcdir}/common.mk
             AS_IF([test "$YJIT_SUPPORT" = yes], [
-                cat ${srcdir}/yjit/not_gmake.mk
-                echo ['$(MKFILES): ${srcdir}/yjit/not_gmake.mk']
+                cat ${top_srcdir}/yjit/not_gmake.mk
+                echo ['$(MKFILES): $(top_srcdir)/yjit/not_gmake.mk']
             ])
 	], [
 	    echo 'distclean-local::; @$(RM) GNUmakefile uncommon.mk'
