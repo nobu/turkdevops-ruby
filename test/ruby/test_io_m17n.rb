@@ -2225,6 +2225,43 @@ EOT
     }
   end
 
+  def test_bom_with_newline
+    with_tmpdir {
+      src = "a\r\nb\r\nc\r\n"
+      generate_file("t.txt", src)
+      open("t.txt", encoding: "utf-8") {|f|
+        assert_equal("a\n", f.gets)
+        assert_equal("b\n", f.gets)
+        assert_equal("c\n", f.gets)
+      }
+      open("t.txt", encoding: "bom|utf-8") {|f|
+        assert_equal("a\n", f.gets)
+        assert_equal("b\n", f.gets)
+        assert_equal("c\n", f.gets)
+      }
+      open("t.txt", encoding: "utf-8", newline: :crlf) {|f|
+        assert_equal("a\n", f.gets)
+        assert_equal("b\n", f.gets)
+        assert_equal("c\n", f.gets)
+      }
+      open("t.txt", encoding: "bom|utf-8", newline: :crlf) {|f|
+        assert_equal("a\n", f.gets)
+        assert_equal("b\n", f.gets)
+        assert_equal("c\n", f.gets)
+      }
+      open("t.txt", encoding: "utf-8", newline: :lf) {|f|
+        assert_equal("a\r\n", f.gets)
+        assert_equal("b\r\n", f.gets)
+        assert_equal("c\r\n", f.gets)
+      }
+      open("t.txt", encoding: "bom|utf-8", newline: :lf) {|f|
+        assert_equal("a\r\n", f.gets)
+        assert_equal("b\r\n", f.gets)
+        assert_equal("c\r\n", f.gets)
+      }
+    }
+  end
+
   def test_cbuf
     with_tmpdir {
       fn = "tst"
