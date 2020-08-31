@@ -78,7 +78,7 @@ tcp_sockaddr(struct sockaddr *addr, socklen_t len)
 static VALUE
 tcp_s_gethostbyname(VALUE obj, VALUE host)
 {
-    rb_warn("TCPSocket.gethostbyname is deprecated; use Addrinfo.getaddrinfo instead.");
+    rb_warn_deprecated("TCPSocket.gethostbyname", "Addrinfo.getaddrinfo");
     struct rb_addrinfo *res =
 	rsock_addrinfo(host, Qnil, AF_UNSPEC, SOCK_STREAM, AI_CANONNAME);
     return rsock_make_hostent(host, res, tcp_sockaddr);

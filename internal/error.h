@@ -48,7 +48,6 @@ void rb_report_bug_valist(VALUE file, int line, const char *fmt, va_list args);
 NORETURN(void rb_async_bug_errno(const char *,int));
 const char *rb_builtin_type_name(int t);
 const char *rb_builtin_class_name(VALUE x);
-PRINTF_ARGS(void rb_warn_deprecated(const char *fmt, const char *suggest, ...), 1, 3);
 PRINTF_ARGS(void rb_warn_deprecated_to_remove(const char *removal, const char *fmt, const char *suggest, ...), 2, 4);
 #if RUBY_DEBUG && (RBIMPL_HAS_ATTRIBUTE(diagnose_if) || defined(__OPTIMIZE__))
 # include "ruby/version.h"
@@ -116,6 +115,7 @@ static inline bool rb_typeddata_is_instance_of_inline(VALUE obj, const rb_data_t
 
 RUBY_SYMBOL_EXPORT_BEGIN
 /* error.c (export) */
+PRINTF_ARGS(void rb_warn_deprecated(const char *fmt, const char *suggest, ...), 1, 3);
 int rb_bug_reporter_add(void (*func)(FILE *, void *), void *data);
 #ifdef RUBY_FUNCTION_NAME_STRING
 NORETURN(void rb_sys_fail_path_in(const char *func_name, VALUE path));
