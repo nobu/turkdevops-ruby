@@ -962,13 +962,17 @@ $stderr = $stdout; raise "\x82\xa0"') do |outs, errs, status|
 
   def test_warn_backwards_compatibility
     warning = capture_warning_warn { Object.new.tainted? }
+    assert_match(/deprecated/, warning[0])
 
+    warning = capture_warning_warn { iterator? }
     assert_match(/deprecated/, warning[0])
   end
 
   def test_warn_category
     warning = capture_warning_warn(category: true) { Object.new.tainted? }
+    assert_equal :deprecated, warning[0][1]
 
+    warning = capture_warning_warn(category: true) { iterator? }
     assert_equal :deprecated, warning[0][1]
   end
 
