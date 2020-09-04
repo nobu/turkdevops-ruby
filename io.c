@@ -8162,6 +8162,35 @@ prep_stdio(FILE *f, int fmode, VALUE klass, const char *path)
     return io;
 }
 
+static void
+prep_flush_mode(VALUE io)
+{
+#ifndef _WIN32                  /* FD-base system only */
+    rb_io_t *fptr = RFILE(io)->fptr;
+    int savefd = dup(fptr->fd);
+    int pipefds[2] = {-1, -1};
+    if (savefd == -1) return;
+    if (pipe(pipefds) == 0) {
+        fd_set rfdset;
+        struct timeval zero = {0, 0};
+        FILE *f = fptr->stdio_file;
+        int failed = dup2(pipefds[1], fptr->fd) == -1;
+        (void)close(pipefds[1]);
+        if (!failed && fputc('\n', f) != EOF) { /* _IONBF or _IOLBF */
+            FD_ZERO(&rfdset);
+            FD_SET(pipefds[0], &rfdset);
+            if (select(pipefds[0] + 1, &rfdset, NULL, NULL, &zero) == 1) {
+                fptr->mode |= FMODE_SYNC;
+            }
+            fflush(f);      /* fpurge(f) */
+            dup2(savefd, fptr->fd);
+        }
+        (void)close(pipefds[0]);
+    }
+    (void)close(savefd);
+#endif
+}
+
 VALUE
 rb_io_prep_stdin(void)
 {
@@ -13572,6 +13601,7 @@ Init_IO(void)
     rb_stdin  = rb_io_prep_stdin();
     rb_stdout = rb_io_prep_stdout();
     rb_stderr = rb_io_prep_stderr();
+    prep_flush_mode(rb_stdout);
 
     rb_global_variable(&rb_stdin);
     rb_global_variable(&rb_stdout);
