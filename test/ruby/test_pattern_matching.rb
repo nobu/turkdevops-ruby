@@ -270,10 +270,6 @@ class TestPatternMatching < Test::Unit::TestCase
         flunk
       end
     end
-
-    assert_syntax_error(%q{
-      0 in [a, a]
-    }, /duplicated variable name/)
   end
 
   def test_literal_value_pattern
@@ -737,14 +733,6 @@ END
   end
 
   def test_find_pattern
-    [0, 1, 2] in [*, 1 => a, *]
-    assert_equal(1, a)
-
-    [0, 1, 2] in [*a, 1 => b, *c]
-    assert_equal([0], a)
-    assert_equal(1, b)
-    assert_equal([2], c)
-
     assert_block do
       case [0, 1, 2]
       in [*, 9, *]
@@ -762,12 +750,6 @@ END
         true
       end
     end
-
-    [0, 1, 2] in [*a, 1 => b, 2 => c, *d]
-    assert_equal([0], a)
-    assert_equal(1, b)
-    assert_equal(2, c)
-    assert_equal([], d)
 
     case [0, 1, 2]
     in *, 1 => a, *;
@@ -1451,21 +1433,6 @@ END
 
   ################################################################
 
-  def test_modifier_in
-    1 in a
-    assert_equal 1, a
-    assert_raise(NoMatchingPatternError) do
-      {a: 1} in {a: 0}
-    end
-    assert_syntax_error("if {} in {a:}; end", /void value expression/)
-    assert_syntax_error(%q{
-      1 in a, b
-    }, /unexpected/, '[ruby-core:95098]')
-    assert_syntax_error(%q{
-      1 in a:
-    }, /unexpected/, '[ruby-core:95098]')
-  end
-
   def assert_experimental_warning(code)
     w = Warning[:experimental]
 
@@ -1480,7 +1447,6 @@ END
 
   def test_experimental_warning
     assert_experimental_warning("case 0; in 0; end")
-    assert_experimental_warning("0 in 0")
   end
 end
 END_of_GUARD

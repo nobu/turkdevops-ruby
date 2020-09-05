@@ -9,13 +9,6 @@ ruby_version_is "2.7" do
       ScratchPad.record []
     end
 
-    it "can be standalone in operator that deconstructs value" do
-      eval(<<-RUBY).should == [0, 1]
-        [0, 1] in [a, b]
-        [a, b]
-      RUBY
-    end
-
     it "extends case expression with case/in construction" do
       eval(<<~RUBY).should == :bar
         case [0, 1]

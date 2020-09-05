@@ -1229,7 +1229,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %nonassoc tLOWEST
 %nonassoc tLBRACE_ARG
 
-%nonassoc  modifier_if modifier_unless modifier_while modifier_until keyword_in
+%nonassoc  modifier_if modifier_unless modifier_while modifier_until
 %left  keyword_or keyword_and
 %right keyword_not
 %nonassoc keyword_defined
@@ -1664,25 +1664,7 @@ expr		: command_call
 		    {
 			$$ = call_uni_op(p, method_cond(p, $2, &@2), '!', &@1, &@$);
 		    }
-		| arg keyword_in
-		    {
-			value_expr($1);
-			SET_LEX_STATE(EXPR_BEG|EXPR_LABEL);
-			p->command_start = FALSE;
-			$<ctxt>$ = p->ctxt;
-			p->ctxt.in_kwarg = 1;
-		    }
-		    {$<tbl>$ = push_pvtbl(p);}
-		  p_expr
-		    {pop_pvtbl(p, $<tbl>4);}
-		    {
-			p->ctxt.in_kwarg = $<ctxt>3.in_kwarg;
-		    /*%%%*/
-			$$ = new_case3(p, $1, NEW_IN($5, 0, 0, &@5), &@$);
-		    /*% %*/
-		    /*% ripper: case!($1, in!($5, Qnil, Qnil)) %*/
-		    }
-		| arg %prec tLBRACE_ARG
+		| arg
 		;
 
 def_name	: fname
