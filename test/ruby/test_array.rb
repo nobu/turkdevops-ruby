@@ -2502,6 +2502,7 @@ class TestArray < Test::Unit::TestCase
 
   def test_select
     assert_equal([0, 2], [0, 1, 2, 3].select {|x| x % 2 == 0 })
+    assert_equal([4, 8.5, 5], [-3, 4, 0, 8.5, 20, 5].select(1..10))
   end
 
   # also keep_if

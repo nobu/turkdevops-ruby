@@ -3646,17 +3646,32 @@ rb_ary_values_at(int argc, VALUE *argv, VALUE ary)
  */
 
 static VALUE
-rb_ary_select(VALUE ary)
+rb_ary_select(int argc, VALUE *argv, VALUE ary)
 {
     VALUE result;
     long i;
 
-    RETURN_SIZED_ENUMERATOR(ary, 0, 0, ary_enum_length);
-    result = rb_ary_new2(RARRAY_LEN(ary));
-    for (i = 0; i < RARRAY_LEN(ary); i++) {
-	if (RTEST(rb_yield(RARRAY_AREF(ary, i)))) {
-	    rb_ary_push(result, rb_ary_elt(ary, i));
-	}
+    if (rb_check_arity(argc, 0, 1) == 0) {
+        RETURN_SIZED_ENUMERATOR(ary, 0, 0, ary_enum_length);
+        result = rb_ary_new2(RARRAY_LEN(ary));
+        for (i = 0; i < RARRAY_LEN(ary); i++) {
+            if (RTEST(rb_yield(RARRAY_AREF(ary, i)))) {
+                rb_ary_push(result, rb_ary_elt(ary, i));
+            }
+        }
+    }
+    else {
+        VALUE filter = argv[0];
+        if (rb_block_given_p()) {
+            rb_warn("given block not used");
+        }
+        result = rb_ary_new2(RARRAY_LEN(ary));
+        for (i = 0; i < RARRAY_LEN(ary); i++) {
+            VALUE e = RARRAY_AREF(ary, i);
+            if (RTEST(rb_funcallv(filter, idEqq, 1, &e))) {
+                rb_ary_push(result, rb_ary_elt(ary, i));
+            }
+        }
     }
     return result;
 }
@@ -8004,9 +8019,9 @@ Init_Array(void)
     rb_define_method(rb_cArray, "collect!", rb_ary_collect_bang, 0);
     rb_define_method(rb_cArray, "map", rb_ary_collect, 0);
     rb_define_method(rb_cArray, "map!", rb_ary_collect_bang, 0);
-    rb_define_method(rb_cArray, "select", rb_ary_select, 0);
+    rb_define_method(rb_cArray, "select", rb_ary_select, -1);
     rb_define_method(rb_cArray, "select!", rb_ary_select_bang, 0);
-    rb_define_method(rb_cArray, "filter", rb_ary_select, 0);
+    rb_define_method(rb_cArray, "filter", rb_ary_select, -1);
     rb_define_method(rb_cArray, "filter!", rb_ary_select_bang, 0);
     rb_define_method(rb_cArray, "keep_if", rb_ary_keep_if, 0);
     rb_define_method(rb_cArray, "values_at", rb_ary_values_at, -1);

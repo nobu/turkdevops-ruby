@@ -397,6 +397,19 @@ find_all_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, ary))
 }
 
 static VALUE
+find_all_ii(RB_BLOCK_CALL_FUNC_ARGLIST(i, argp))
+{
+    VALUE *args = (VALUE *)argp;
+    VALUE ary = args[1];
+    ENUM_WANT_SVALUE();
+
+    if (RTEST(rb_funcallv(args[0], id_eqq, 1, &i))) {
+	rb_ary_push(ary, i);
+    }
+    return Qnil;
+}
+
+static VALUE
 enum_size(VALUE self, VALUE args, VALUE eobj)
 {
     return rb_check_funcall_default(self, id_size, 0, 0, Qnil);
@@ -448,14 +461,24 @@ enum_size_over_p(VALUE obj, long n)
  */
 
 static VALUE
-enum_find_all(VALUE obj)
+enum_find_all(int argc, VALUE *argv, VALUE obj)
 {
     VALUE ary;
 
-    RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
-
-    ary = rb_ary_new();
-    rb_block_call(obj, id_each, 0, 0, find_all_i, ary);
+    if (rb_check_arity(argc, 0, 1) == 0) {
+        RETURN_SIZED_ENUMERATOR(obj, 0, 0, enum_size);
+        ary = rb_ary_new();
+        rb_block_call(obj, id_each, 0, 0, find_all_i, ary);
+    }
+    else {
+        VALUE args[2];
+        if (rb_block_given_p()) {
+            rb_warn("given block not used");
+        }
+        args[0] = ary = rb_ary_new();
+        args[1] = argv[0];
+        rb_block_call(obj, id_each, 0, 0, find_all_ii, (VALUE)args);
+    }
 
     return ary;
 }
@@ -4189,9 +4212,9 @@ Init_Enumerable(void)
     rb_define_method(rb_mEnumerable, "find", enum_find, -1);
     rb_define_method(rb_mEnumerable, "detect", enum_find, -1);
     rb_define_method(rb_mEnumerable, "find_index", enum_find_index, -1);
-    rb_define_method(rb_mEnumerable, "find_all", enum_find_all, 0);
-    rb_define_method(rb_mEnumerable, "select", enum_find_all, 0);
-    rb_define_method(rb_mEnumerable, "filter", enum_find_all, 0);
+    rb_define_method(rb_mEnumerable, "find_all", enum_find_all, -1);
+    rb_define_method(rb_mEnumerable, "select", enum_find_all, -1);
+    rb_define_method(rb_mEnumerable, "filter", enum_find_all, -1);
     rb_define_method(rb_mEnumerable, "filter_map", enum_filter_map, 0);
     rb_define_method(rb_mEnumerable, "reject", enum_reject, 0);
     rb_define_method(rb_mEnumerable, "collect", enum_collect, 0);
