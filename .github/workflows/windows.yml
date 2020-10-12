@@ -71,6 +71,12 @@ jobs:
           call "%VCVARS%"
           cd build && nmake install DESTDIR=%CD:\=/%/ruby-mswin-${{ github.sha }}
         shell: cmd
+      - name: copy extension libraries
+        run: |
+          copy "C:\vcpkg\installed\x64-windows\bin\*.dll" .
+          copy "C:\Program Files\OpenSSL-Win64\*.dll" .
+        working-directory: ruby-mswin-${{ github.sha }}/bin
+        shell: cmd
       - name: upload package
         uses: actions/upload-artifact@v2
         with:
