@@ -66,6 +66,16 @@ jobs:
           nmake ${{ matrix.test_task }}
         working-directory: build
         shell: cmd
+      - name: install
+        run: |
+          call "%VCVARS%"
+          cd build && nmake install DESTDIR=%CD:\=/%/ruby-mswin-${{ github.sha }}
+        shell: cmd
+      - name: upload package
+        uses: actions/upload-artifact@v2
+        with:
+          name: ruby-mswin
+          path: ruby-mswin-${{ github.sha }}
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |
