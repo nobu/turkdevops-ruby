@@ -14,6 +14,14 @@ jobs:
       VCVARS: C:\Program Files (x86)\Microsoft Visual Studio\${{ matrix.vs }}\Enterprise\VC\Auxiliary\Build\vcvars64.bat
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     steps:
+      - name: Commit info
+        id: commit_info
+        run: |
+          ref="${{ github.ref }}"
+          sha="${{ github.sha }}"
+          echo "::set-output name=short_ref::${ref#*/*/}"
+          echo "::set-output name=short_sha::${sha:0:12}"
+        shell: bash
       - uses: actions/cache@v2
         with:
           path: C:\vcpkg\downloads
@@ -69,19 +77,19 @@ jobs:
       - name: install
         run: |
           call "%VCVARS%"
-          cd build && nmake install DESTDIR=%CD:\=/%/ruby-mswin-${{ github.sha }}
+          cd build && nmake install DESTDIR=%CD:\=/%/installed
         shell: cmd
       - name: copy extension libraries
         run: |
           copy "C:\vcpkg\installed\x64-windows\bin\*.dll" .
           copy "C:\Program Files\OpenSSL-Win64\*.dll" .
-        working-directory: ruby-mswin-${{ github.sha }}/bin
+        working-directory: installed/bin
         shell: cmd
       - name: upload package
         uses: actions/upload-artifact@v2
         with:
-          name: ruby-mswin
-          path: ruby-mswin-${{ github.sha }}
+          name: ruby-mswin-x64-${{ steps.commit_info.outputs.short_ref }}-${{ steps.commit_info.outputs.short_sha }}
+          path: installed
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |
@@ -90,7 +98,7 @@ jobs:
               "env": "${{ matrix.os }} / ${{ matrix.test_task }}",
               "url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
               "commit": "${{ github.sha }}",
-              "branch": "${{ github.ref }}".split('/').reverse()[0]
+              "branch": "${{ steps.commit_info.outputs.short_ref }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SIMPLER_ALERTS_URL }} # ruby-lang slack: ruby/simpler-alerts-bot
