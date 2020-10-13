@@ -52,10 +52,12 @@ def parse_args(argv = ARGV)
   $cmdtype = (if File::ALT_SEPARATOR == '\\'
                 File.exist?("rubystub.exe") ? 'exe' : 'cmd'
               end)
+  prefix = nil
   mflags = []
   opt = OptionParser.new
   opt.on('-n', '--dry-run') {$dryrun = true}
   opt.on('--dest-dir=DIR') {|dir| $destdir = dir}
+  opt.on('--prefix=DIR') {|dir| prefix = dir}
   opt.on('--extout=DIR') {|dir| $extout = (dir unless dir.empty?)}
   opt.on('--make=COMMAND') {|make| $make = make}
   opt.on('--mantype=MAN') {|man| $mantype = man}
@@ -124,6 +126,10 @@ def parse_args(argv = ARGV)
     $dryrun = true
   else
     $mflags << '-n' if $dryrun
+  end
+
+  if prefix
+    RbConfig.fire_update!("prefix", File.expand_path(prefix))
   end
 
   $destdir ||= $mflags.defined?("DESTDIR")
