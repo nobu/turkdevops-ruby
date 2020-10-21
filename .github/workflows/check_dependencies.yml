@@ -4,9 +4,19 @@ jobs:
   update-deps:
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04, macos-latest, windows-2019]
       fail-fast: true
     runs-on: ${{ matrix.os }}
+    env:
+      MSYSTEM: MINGW64
+      MSYSTEM_PREFIX: /mingw64
+      MSYS2_ARCH: x86_64
+      CHOST: "x86_64-w64-mingw32"
+      CFLAGS:   "-march=x86-64 -mtune=generic -O3 -pipe -fstack-protector-strong"
+      CXXFLAGS: "-march=x86-64 -mtune=generic -O3 -pipe"
+      CPPFLAGS: "-D_FORTIFY_SOURCE=2 -D__USE_MINGW_ANSI_STDIO=1 -DFD_SETSIZE=2048"
+      LDFLAGS:  "-pipe -fstack-protector-strong"
+      if: "contains(matrix.os, 'windows)"
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     steps:
       - name: Install libraries
@@ -17,12 +27,20 @@ jobs:
         if: "contains(matrix.os, 'ubuntu')"
       - name: Install libraries
         run: |
-          export WAITS='5 60'
           brew upgrade
           brew install gdbm gmp libffi openssl@1.1 zlib autoconf automake libtool readline
         if: "contains(matrix.os, 'macos')"
+      - name: Set up Ruby & MSYS2
+        uses: MSP-Greg/setup-ruby-pkgs@v1
+        with:
+          ruby-version: 2.6
+          mingw: _upgrade_ gdbm gmp libffi libyaml openssl ragel readline
+          msys2: automake1.16 bison
+        if: "contains(matrix.os, 'windows')"
       - name: git config
         run: |
+          git config --system core.autocrlf false
+          git config --system core.eol lf
           git config --global advice.detachedHead 0
       - uses: actions/checkout@v2
       - run: autoconf
