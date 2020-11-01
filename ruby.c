@@ -2219,6 +2219,7 @@ open_load_file(VALUE fname_v, int *xflag)
 # define MODE_TO_LOAD (O_RDONLY)
 #endif
 	int mode = MODE_TO_LOAD;
+	const int nonblocking = mode & ~O_RDONLY;
 #if defined DOSISH || defined __CYGWIN__
 # define isdirsep(x) ((x) == '/' || (x) == '\\')
 	{
@@ -2232,20 +2233,24 @@ open_load_file(VALUE fname_v, int *xflag)
 	}
 #endif
 
-	if ((fd = rb_cloexec_open(fname, mode, 0)) < 0) {
+	for (bool gc_done = false; (fd = rb_cloexec_open(fname, mode, 0)) < 0; ) {
 	    e = errno;
-	    if (!rb_gc_for_fd(e)) {
+#ifdef ENOTSUP
+	    if ((mode & nonblocking) && (e == ENOTSUP)) {
+		mode &= ~nonblocking;
+		continue;
+	    }
+#endif
+	    if (gc_done || !rb_gc_for_fd(e)) {
 		rb_load_fail(fname_v, strerror(e));
 	    }
-	    if ((fd = rb_cloexec_open(fname, mode, 0)) < 0) {
-		rb_load_fail(fname_v, strerror(errno));
-	    }
+	    gc_done = true;
 	}
 	rb_update_max_fd(fd);
 
 #if defined HAVE_FCNTL && MODE_TO_LOAD != O_RDONLY
 	/* disabling O_NONBLOCK */
-	if (fcntl(fd, F_SETFL, 0) < 0) {
+	if ((mode & nonblocking) && fcntl(fd, F_SETFL, 0) < 0) {
 	    e = errno;
 	    (void)close(fd);
 	    rb_load_fail(fname_v, strerror(e));
