@@ -2017,7 +2017,8 @@ BigDecimal_ceil(int argc, VALUE *argv, VALUE self)
  * A space at the start of s returns positive values with a leading space.
  *
  * If s contains a number, a space is inserted after each group of that many
- * fractional digits.
+ * fractional digits, and before each group of that many integral digits,
+ * counting from the decimal dot.
  *
  * If s ends with an 'E', engineering notation (0.xxxxEnn) is used.
  *
@@ -5461,13 +5462,28 @@ VPrint(FILE *fp, const char *cntl_chr, Real *a)
 static void
 VpFormatSt(char *psz, size_t fFmt)
 {
-    size_t ie, i, nf = 0;
+    size_t ie, i = 0, nf = 0;
     char ch;
+    char *dot;
 
     if (fFmt == 0) return;
 
     ie = strlen(psz);
-    for (i = 0; i < ie; ++i) {
+    dot = strchr(psz, '.');
+    if (dot) {
+	for (i = dot - psz; --i > 0; ) {
+	    if (!ISDIGIT(psz[i])) break;
+	    if (++nf >= fFmt) {
+		memmove(psz + i + 1, psz + i, ie - i + 1);
+		++ie;
+		nf = 0;
+		psz[i] = ' ';
+	    }
+	}
+	nf = 0;
+	i = strchr(psz, '.') - psz + 1;
+    }
+    for (; i < ie; ++i) {
 	ch = psz[i];
 	if (!ch) break;
 	if (ISSPACE(ch) || ch=='-' || ch=='+') continue;

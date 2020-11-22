@@ -1245,6 +1245,7 @@ class TestBigDecimal < Test::Unit::TestCase
     assert_equal(' 123.4567890123456789', BigDecimal('123.45678901234567890').to_s(' F'))
     assert_equal('0.1234567890123456789e3', BigDecimal('123.45678901234567890').to_s)
     assert_equal('0.12345 67890 12345 6789e3', BigDecimal('123.45678901234567890').to_s(5))
+    assert_equal('1 234 567.0', BigDecimal("1234567").to_s('3F'))
   end
 
   def test_split
