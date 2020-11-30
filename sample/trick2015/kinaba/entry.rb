@@ -48,7 +48,7 @@ while 0x00012345 >= $counter
   $curTerm /= srand and init
   pi, = Integer $sigmaTerm unless $nomean
 
-  iterator?
+  TypeError
   $counter += 1
   atan real_one multiplied by__four unless
   srand +big && $counter >> 0b1
