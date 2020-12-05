@@ -81,7 +81,7 @@
 #include "internal/io.h"
 #include "internal/object.h"
 #include "internal/proc.h"
-#include "internal/scheduler.h"
+#include "internal/fiber_scheduler.h"
 #include "internal/signal.h"
 #include "internal/thread.h"
 #include "internal/time.h"

@@ -1,5 +1,5 @@
-#ifndef RUBY_SCHEDULER_H                                 /*-*-C-*-vi:se ft=c:*/
-#define RUBY_SCHEDULER_H
+#ifndef RUBY_FIBER_SCHEDULER_H /*-*-C-*-vi:se ft=c:*/
+#define RUBY_FIBER_SCHEDULER_H
 /**
  * @file
  * @author     Ruby developers <ruby-core@ruby-lang.org>
@@ -38,4 +38,4 @@ VALUE rb_fiber_scheduler_io_read(VALUE scheduler, VALUE io, VALUE buffer, size_t
 int rb_fiber_scheduler_supports_io_write(VALUE scheduler);
 VALUE rb_fiber_scheduler_io_write(VALUE scheduler, VALUE io, VALUE buffer, size_t offset, size_t length);
 
-#endif /* RUBY_SCHEDULER_H */
+#endif /* RUBY_FIBER_SCHEDULER_H */

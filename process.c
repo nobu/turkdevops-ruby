@@ -13,7 +13,7 @@
 
 #include "ruby/internal/config.h"
 
-#include "internal/scheduler.h"
+#include "internal/fiber_scheduler.h"
 
 #include <ctype.h>
 #include <errno.h>

@@ -29,7 +29,7 @@
 #include "internal/object.h"
 #include "internal/thread.h"
 #include "internal/variable.h"
-#include "internal/scheduler.h"
+#include "internal/fiber_scheduler.h"
 #include "iseq.h"
 #include "mjit.h"
 #include "probes.h"

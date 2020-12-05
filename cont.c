@@ -24,7 +24,7 @@
 #include "internal/cont.h"
 #include "internal/proc.h"
 #include "internal/warnings.h"
-#include "internal/scheduler.h"
+#include "internal/fiber_scheduler.h"
 #include "mjit.h"
 #include "vm_core.h"
 #include "id_table.h"

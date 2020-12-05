@@ -13,7 +13,7 @@
 
 #include "ruby/internal/config.h"
 
-#include "internal/scheduler.h"
+#include "internal/fiber_scheduler.h"
 
 #ifdef _WIN32
 # include "ruby/ruby.h"

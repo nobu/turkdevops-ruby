@@ -9,7 +9,7 @@
 **********************************************************************/
 
 #include "vm_core.h"
-#include "internal/scheduler.h"
+#include "internal/fiber_scheduler.h"
 #include "ruby/io.h"
 
 static ID id_close;
