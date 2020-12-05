@@ -1,4 +1,4 @@
-# Scheduler
+# Fiber Scheduler
 
 The scheduler interface is used to intercept blocking operations. A typical
 implementation would be a wrapper for a gem like `EventMachine` or `Async`. This
@@ -63,10 +63,10 @@ in order to enable these hooks.
 
 ## Non-blocking Execution
 
-The scheduler hooks will only be used in special non-blocking execution
-contexts. Non-blocking execution contexts introduce non-determinism because the
-execution of scheduler hooks may introduce context switching points into your
-program.
+The fiber scheduler hooks will only be used in special non-blocking execution
+contexts. Non-blocking execution contexts introduce non-determinism because
+the execution of fiber scheduler hooks may introduce context switching points
+into your program.
 
 ### Fibers
 
@@ -96,16 +96,16 @@ Fiber.schedule do
 end
 ~~~
 
-The purpose of this method is to allow the scheduler to internally decide the
-policy for when to start the fiber, and whether to use symmetric or asymmetric
-fibers.
+The purpose of this method is to allow the fiber scheduler to internally decide
+the policy for when to start the fiber, and whether to use symmetric or
+asymmetric fibers.
 
 ### IO
 
 By default, I/O is non-blocking. Not all operating systems support non-blocking
 I/O. Windows is a notable example where socket I/O can be non-blocking but pipe
-I/O is blocking. Provided that there *is* a scheduler and the current thread *is
-non-blocking*, the operation will invoke the scheduler.
+I/O is blocking. Provided that there *is* a fiber scheduler and the current
+thread *is non-blocking*, the operation will invoke the fiber scheduler.
 
 ### Mutex
 

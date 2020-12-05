@@ -136,8 +136,8 @@ Outstanding ones only.
 
 * ConditionVariable
 
-    * ConditionVariable#wait may now invoke the `block`/`unblock` scheduler
-      hooks in a non-blocking context. [[Feature #16786]]
+    * ConditionVariable#wait may now invoke the `block`/`unblock`
+      fiber scheduler hooks in a non-blocking context. [[Feature #16786]]
 
 * Dir
 
@@ -186,9 +186,9 @@ Outstanding ones only.
     * IO#nonblock? now defaults to `true`. [[Feature #16786]]
 
     * IO#wait_readable, IO#wait_writable, IO#read, IO#write and other
-      related methods (e.g. IO#puts, IO#gets) may invoke the scheduler hook
-      `#io_wait(io, events, timeout)` in a non-blocking execution context.
-      [[Feature #16786]]
+      related methods (e.g. IO#puts, IO#gets) may invoke the fiber
+      scheduler hook `#io_wait(io, events, timeout)` in a non-blocking
+      execution context.  [[Feature #16786]]
 
 * Kernel
 
@@ -208,8 +208,8 @@ Outstanding ones only.
     * Kernel#lambda now warns if called without a literal block.
       [[Feature #15973]]
 
-    * Kernel.sleep invokes the scheduler hook `#kernel_sleep(...)` in a
-      non-blocking execution context. [[Feature #16786]]
+    * Kernel.sleep invokes the fiber scheduler hook `#kernel_sleep(...)`
+      in a non-blocking execution context. [[Feature #16786]]
 
 * Module
 
@@ -232,7 +232,7 @@ Outstanding ones only.
 
     * `Mutex` is now acquired per-`Fiber` instead of per-`Thread`. This change
       should be compatible for essentially all usages and avoids blocking when
-      using a scheduler. [[Feature #16792]]
+      using a fiber scheduler. [[Feature #16792]]
 
 * Proc
 
@@ -243,7 +243,7 @@ Outstanding ones only.
 * Queue / SizedQueue
 
     * Queue#pop, SizedQueue#push and related methods may now invoke the
-      `block`/`unblock` scheduler hooks in a non-blocking context.
+      `block`/`unblock` fiber scheduler hooks in a non-blocking context.
       [[Feature #16786]]
 
 * Ractor
@@ -301,13 +301,13 @@ Outstanding ones only.
 * Thread
 
     * Introduce Fiber.set_scheduler for intercepting blocking operations and
-      Fiber.scheduler for accessing the current scheduler. See
+      Fiber.scheduler for accessing the current fiber scheduler. See
       doc/scheduler.md for more details. [[Feature #16786]]
 
     * Fiber.blocking? tells whether the current execution context is
       blocking. [[Feature #16786]]
 
-    * Thread#join invokes the scheduler hooks `block`/`unblock` in a
+    * Thread#join invokes the fiber scheduler hooks `block`/`unblock` in a
       non-blocking execution context. [[Feature #16786]]
 
     * Thread.ignore_deadlock accessor has been added for disabling the
