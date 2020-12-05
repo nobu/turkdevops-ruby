@@ -1880,17 +1880,17 @@ rb_f_fiber(int argc, VALUE *argv, VALUE obj)
 static VALUE
 rb_fiber_scheduler(VALUE klass)
 {
-    return rb_scheduler_get();
+    return rb_fiber_scheduler_get();
 }
 
 static VALUE
 rb_fiber_set_scheduler(VALUE klass, VALUE scheduler)
 {
-    // if (rb_scheduler_get() != Qnil) {
+    // if (rb_fiber_scheduler_get() != Qnil) {
     //     rb_raise(rb_eFiberError, "Scheduler is already defined!");
     // }
 
-    return rb_scheduler_set(scheduler);
+    return rb_fiber_scheduler_set(scheduler);
 }
 
 static void rb_fiber_terminate(rb_fiber_t *fiber, int need_interrupt);

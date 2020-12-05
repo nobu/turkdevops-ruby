@@ -1264,10 +1264,10 @@ io_fflush(rb_io_t *fptr)
 VALUE
 rb_io_wait(VALUE io, VALUE events, VALUE timeout)
 {
-    VALUE scheduler = rb_scheduler_current();
+    VALUE scheduler = rb_fiber_scheduler_current();
 
     if (scheduler != Qnil) {
-        return rb_scheduler_io_wait(scheduler, io, events, timeout);
+        return rb_fiber_scheduler_io_wait(scheduler, io, events, timeout);
     }
 
     rb_io_t * fptr = NULL;
@@ -1306,10 +1306,10 @@ rb_io_from_fd(int fd)
 int
 rb_io_wait_readable(int f)
 {
-    VALUE scheduler = rb_scheduler_current();
+    VALUE scheduler = rb_fiber_scheduler_current();
     if (scheduler != Qnil) {
         return RTEST(
-            rb_scheduler_io_wait_readable(scheduler, rb_io_from_fd(f))
+            rb_fiber_scheduler_io_wait_readable(scheduler, rb_io_from_fd(f))
         );
     }
 
@@ -1337,10 +1337,10 @@ rb_io_wait_readable(int f)
 int
 rb_io_wait_writable(int f)
 {
-    VALUE scheduler = rb_scheduler_current();
+    VALUE scheduler = rb_fiber_scheduler_current();
     if (scheduler != Qnil) {
         return RTEST(
-            rb_scheduler_io_wait_writable(scheduler, rb_io_from_fd(f))
+            rb_fiber_scheduler_io_wait_writable(scheduler, rb_io_from_fd(f))
         );
     }
 
@@ -1377,11 +1377,11 @@ rb_io_wait_writable(int f)
 int
 rb_wait_for_single_fd(int fd, int events, struct timeval *timeout)
 {
-    VALUE scheduler = rb_scheduler_current();
+    VALUE scheduler = rb_fiber_scheduler_current();
 
     if (scheduler != Qnil) {
         return RTEST(
-            rb_scheduler_io_wait(scheduler, rb_io_from_fd(fd), RB_INT2NUM(events), rb_scheduler_timeout(timeout))
+            rb_fiber_scheduler_io_wait(scheduler, rb_io_from_fd(fd), RB_INT2NUM(events), rb_fiber_scheduler_timeout(timeout))
         );
     }
 
@@ -1538,10 +1538,10 @@ io_binwrite(VALUE str, const char *ptr, long len, rb_io_t *fptr, int nosync)
 
     if ((n = len) <= 0) return n;
 
-    VALUE scheduler = rb_scheduler_current();
-    if (scheduler != Qnil && rb_scheduler_supports_io_write(scheduler)) {
+    VALUE scheduler = rb_fiber_scheduler_current();
+    if (scheduler != Qnil && rb_fiber_scheduler_supports_io_write(scheduler)) {
         ssize_t length = RB_NUM2SSIZE(
-            rb_scheduler_io_write(scheduler, fptr->self, str, offset, len)
+            rb_fiber_scheduler_io_write(scheduler, fptr->self, str, offset, len)
         );
 
         if (length < 0) rb_sys_fail_path(fptr->pathv);
@@ -2623,10 +2623,10 @@ bufread_call(VALUE arg)
 static long
 io_fread(VALUE str, long offset, long size, rb_io_t *fptr)
 {
-    VALUE scheduler = rb_scheduler_current();
-    if (scheduler != Qnil && rb_scheduler_supports_io_read(scheduler)) {
+    VALUE scheduler = rb_fiber_scheduler_current();
+    if (scheduler != Qnil && rb_fiber_scheduler_supports_io_read(scheduler)) {
         ssize_t length = RB_NUM2SSIZE(
-            rb_scheduler_io_read(scheduler, fptr->self, str, offset, size)
+            rb_fiber_scheduler_io_read(scheduler, fptr->self, str, offset, size)
         );
 
         if (length < 0) rb_sys_fail_path(fptr->pathv);
@@ -11011,7 +11011,7 @@ rb_thread_scheduler_wait_for_single_fd(void * _args)
 {
     struct wait_for_single_fd *args = (struct wait_for_single_fd *)_args;
 
-    args->result = rb_scheduler_io_wait(args->scheduler, rb_io_from_fd(args->fd), INT2NUM(args->events), Qnil);
+    args->result = rb_fiber_scheduler_io_wait(args->scheduler, rb_io_from_fd(args->fd), INT2NUM(args->events), Qnil);
 
     return NULL;
 }

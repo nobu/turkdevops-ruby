@@ -12,30 +12,30 @@
 #include "ruby/ruby.h"
 #include "ruby/intern.h"
 
-VALUE rb_scheduler_get();
-VALUE rb_scheduler_set(VALUE scheduler);
+VALUE rb_fiber_scheduler_get();
+VALUE rb_fiber_scheduler_set(VALUE scheduler);
 
-VALUE rb_scheduler_current();
+VALUE rb_fiber_scheduler_current();
 VALUE rb_thread_scheduler_current(VALUE thread);
 
-VALUE rb_scheduler_timeout(struct timeval *timeout);
+VALUE rb_fiber_scheduler_timeout(struct timeval *timeout);
 
-VALUE rb_scheduler_close(VALUE scheduler);
+VALUE rb_fiber_scheduler_close(VALUE scheduler);
 
-VALUE rb_scheduler_kernel_sleep(VALUE scheduler, VALUE duration);
-VALUE rb_scheduler_kernel_sleepv(VALUE scheduler, int argc, VALUE * argv);
+VALUE rb_fiber_scheduler_kernel_sleep(VALUE scheduler, VALUE duration);
+VALUE rb_fiber_scheduler_kernel_sleepv(VALUE scheduler, int argc, VALUE * argv);
 
-VALUE rb_scheduler_block(VALUE scheduler, VALUE blocker, VALUE timeout);
-VALUE rb_scheduler_unblock(VALUE scheduler, VALUE blocker, VALUE fiber);
+VALUE rb_fiber_scheduler_block(VALUE scheduler, VALUE blocker, VALUE timeout);
+VALUE rb_fiber_scheduler_unblock(VALUE scheduler, VALUE blocker, VALUE fiber);
 
-VALUE rb_scheduler_io_wait(VALUE scheduler, VALUE io, VALUE events, VALUE timeout);
-VALUE rb_scheduler_io_wait_readable(VALUE scheduler, VALUE io);
-VALUE rb_scheduler_io_wait_writable(VALUE scheduler, VALUE io);
+VALUE rb_fiber_scheduler_io_wait(VALUE scheduler, VALUE io, VALUE events, VALUE timeout);
+VALUE rb_fiber_scheduler_io_wait_readable(VALUE scheduler, VALUE io);
+VALUE rb_fiber_scheduler_io_wait_writable(VALUE scheduler, VALUE io);
 
-int rb_scheduler_supports_io_read(VALUE scheduler);
-VALUE rb_scheduler_io_read(VALUE scheduler, VALUE io, VALUE buffer, size_t offset, size_t length);
+int rb_fiber_scheduler_supports_io_read(VALUE scheduler);
+VALUE rb_fiber_scheduler_io_read(VALUE scheduler, VALUE io, VALUE buffer, size_t offset, size_t length);
 
-int rb_scheduler_supports_io_write(VALUE scheduler);
-VALUE rb_scheduler_io_write(VALUE scheduler, VALUE io, VALUE buffer, size_t offset, size_t length);
+int rb_fiber_scheduler_supports_io_write(VALUE scheduler);
+VALUE rb_fiber_scheduler_io_write(VALUE scheduler, VALUE io, VALUE buffer, size_t offset, size_t length);
 
 #endif /* RUBY_SCHEDULER_H */

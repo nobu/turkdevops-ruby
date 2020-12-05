@@ -80,8 +80,8 @@ static ID id_getc, id_console, id_close, id_min, id_time, id_intr;
 static ID id_gets;
 #endif
 
-#ifdef HAVE_RB_SCHEDULER_TIMEOUT
-extern VALUE rb_scheduler_timeout(struct timeval *timeout);
+#ifdef HAVE_RB_FIBER_SCHEDULER_TIMEOUT
+extern VALUE rb_fiber_scheduler_timeout(struct timeval *timeout);
 #endif
 
 #define sys_fail_fptr(fptr) rb_sys_fail_str((fptr)->pathv)
@@ -534,7 +534,7 @@ console_getch(int argc, VALUE *argv, VALUE io)
 	    tv.tv_sec = optp->vtime / 10;
 	    tv.tv_usec = (optp->vtime % 10) * 100000;
 # ifdef HAVE_RB_IO_WAIT
-	    timeout = rb_scheduler_timeout(&tv);
+	    timeout = rb_fiber_scheduler_timeout(&tv);
 # endif
 	}
 	switch (optp->vmin) {

@@ -153,7 +153,7 @@ rb_ec_scheduler_finalize(rb_execution_context_t *ec)
 
     EC_PUSH_TAG(ec);
     if ((state = EC_EXEC_TAG()) == TAG_NONE) {
-        rb_scheduler_set(Qnil);
+        rb_fiber_scheduler_set(Qnil);
     }
     else {
         state = error_handle(ec, state);
