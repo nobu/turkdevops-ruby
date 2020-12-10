@@ -99,8 +99,9 @@ class TestDir < Test::Unit::TestCase
     ENV["HOME"] = pwd
     Dir.chdir do
       assert_equal(pwd, Dir.pwd)
-      assert_raise(RuntimeError) { Dir.chdir(@root) }
-      assert_equal(pwd, Dir.pwd)
+      assert_warn(/conflicting chdir/) { Dir.chdir(@root) }
+      assert_equal(@root, Dir.pwd)
+      assert_warn(/conflicting chdir/) { Dir.chdir(pwd) }
       Dir.chdir(@root) do
         assert_equal(@root, Dir.pwd)
       end
