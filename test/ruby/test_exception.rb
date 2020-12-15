@@ -964,13 +964,21 @@ $stderr = $stdout; raise "\x82\xa0"') do |outs, errs, status|
   end
 
   def test_warn_deprecated_backwards_compatibility_category
-    warning = capture_warning_warn { Dir.exists?("non-existent") }
+    require '-test-/warning'
+
+    warning = capture_warning_warn do
+      ::Bug::Warning.deprecated_method
+    end
 
     assert_match(/deprecated/, warning[0])
   end
 
   def test_warn_deprecated_category
-    warning = capture_warning_warn(category: true) { Dir.exists?("non-existent") }
+    require '-test-/warning'
+
+    warning = capture_warning_warn(category: true) do
+      ::Bug::Warning.deprecated_method
+    end
 
     assert_equal :deprecated, warning[0][1]
   end
