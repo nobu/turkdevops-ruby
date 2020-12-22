@@ -654,11 +654,8 @@ RUBY_SYMBOL_EXPORT_END
 static void error_duplicate_pattern_variable(struct parser_params *p, ID id, const YYLTYPE *loc);
 static void error_duplicate_pattern_key(struct parser_params *p, ID id, const YYLTYPE *loc);
 static void parser_token_value_print(struct parser_params *p, enum yytokentype type, const YYSTYPE *valp);
-#ifndef RIPPER
+static const char *formal_argument_error(enum ruby_id_types type);
 static ID formal_argument(struct parser_params*, ID);
-#else
-static ID formal_argument(struct parser_params*, VALUE);
-#endif
 static ID shadowing_lvar(struct parser_params*,ID);
 static void new_bv(struct parser_params*,ID);
 
@@ -5152,7 +5149,7 @@ args_forward	: tBDOT3
 
 f_bad_arg	: tCONSTANT
 		    {
-			static const char mesg[] = "formal argument cannot be a constant";
+			const char *mesg = formal_argument_error(ID_CONST);
 		    /*%%%*/
 			yyerror1(&@1, mesg);
 			$$ = 0;
@@ -5161,7 +5158,7 @@ f_bad_arg	: tCONSTANT
 		    }
 		| tIVAR
 		    {
-			static const char mesg[] = "formal argument cannot be an instance variable";
+			const char *mesg = formal_argument_error(ID_INSTANCE);
 		    /*%%%*/
 			yyerror1(&@1, mesg);
 			$$ = 0;
@@ -5170,7 +5167,7 @@ f_bad_arg	: tCONSTANT
 		    }
 		| tGVAR
 		    {
-			static const char mesg[] = "formal argument cannot be a global variable";
+			const char *mesg = formal_argument_error(ID_GLOBAL);
 		    /*%%%*/
 			yyerror1(&@1, mesg);
 			$$ = 0;
@@ -5179,7 +5176,7 @@ f_bad_arg	: tCONSTANT
 		    }
 		| tCVAR
 		    {
-			static const char mesg[] = "formal argument cannot be a class variable";
+			const char *mesg = formal_argument_error(ID_CLASS);
 		    /*%%%*/
 			yyerror1(&@1, mesg);
 			$$ = 0;
@@ -5191,7 +5188,7 @@ f_bad_arg	: tCONSTANT
 f_norm_arg	: f_bad_arg
 		| tIDENTIFIER
 		    {
-			formal_argument(p, $1);
+			formal_argument(p, get_id($1));
 			p->max_numparam = ORDINAL_PARAM;
 			$$ = $1;
 		    }
@@ -5252,10 +5249,21 @@ f_arg		: f_arg_item
 
 f_label 	: tLABEL
 		    {
-			arg_var(p, formal_argument(p, $1));
-			p->cur_arg = get_id($1);
-			p->max_numparam = ORDINAL_PARAM;
-			$$ = $1;
+			ID id = get_id($1);
+			const char *mesg = formal_argument_error(id_type(id));
+			if (!mesg) {
+			    arg_var(p, formal_argument(p, id));
+			    p->cur_arg = id;
+			    p->max_numparam = ORDINAL_PARAM;
+			    $$ = $1;
+			}
+			else {
+			/*%%%*/
+			    yyerror0(mesg);
+			    $$ = 0;
+			/*% %*/
+			/*% ripper[error]: param_error!(ERR_MESG(), $1) %*/
+			}
 		    }
 		;
 
@@ -7858,39 +7866,29 @@ arg_ambiguous(struct parser_params *p, char c)
 }
 
 static ID
-#ifndef RIPPER
 formal_argument(struct parser_params *p, ID lhs)
-#else
-formal_argument(struct parser_params *p, VALUE lhs)
-#endif
 {
-    switch (id_type(get_id(lhs))) {
-      case ID_LOCAL:
-	break;
-#ifndef RIPPER
-# define ERR(mesg) yyerror0(mesg)
-#else
-# define ERR(mesg) (dispatch2(param_error, WARN_S(mesg), lhs), ripper_error(p))
-#endif
-      case ID_CONST:
-	ERR("formal argument cannot be a constant");
-	return 0;
-      case ID_INSTANCE:
-	ERR("formal argument cannot be an instance variable");
-	return 0;
-      case ID_GLOBAL:
-	ERR("formal argument cannot be a global variable");
-	return 0;
-      case ID_CLASS:
-	ERR("formal argument cannot be a class variable");
-	return 0;
-      default:
-	ERR("formal argument must be local variable");
-	return 0;
-#undef ERR
-    }
     shadowing_lvar(p, lhs);
     return lhs;
+}
+
+static const char *
+formal_argument_error(enum ruby_id_types type)
+{
+    switch (type) {
+      case ID_LOCAL:
+	return 0;
+      case ID_CONST:
+	return "formal argument cannot be a constant";
+      case ID_INSTANCE:
+	return "formal argument cannot be an instance variable";
+      case ID_GLOBAL:
+	return "formal argument cannot be a global variable";
+      case ID_CLASS:
+	return "formal argument cannot be a class variable";
+      default:
+	return "formal argument must be local variable";
+    }
 }
 
 static int
