@@ -31,7 +31,7 @@ jobs:
         working-directory: src
       - name: Set ENV
         run: |
-          echo "JOBS=-j$((1 + $(sysctl -n hw.activecpu)))" >> $GITHUB_ENV
+          echo "JOBS=-j$(($(sysctl -n hw.activecpu) * 3 / 2))" >> $GITHUB_ENV
       - run: autoconf
         working-directory: src
       - name: Run configure
