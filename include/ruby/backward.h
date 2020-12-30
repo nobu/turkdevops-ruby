@@ -15,25 +15,12 @@
 #define RBIMPL_ATTR_DEPRECATED_SINCE(ver) RBIMPL_ATTR_DEPRECATED(("since " #ver))
 #define RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED(("internal function"))
 
-/* eval.c */
-RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_disable_super();
-RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_enable_super();
-
-/* string.c */
-RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_str_associate();
-RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_str_associated();
-
 /* variable.c */
 RBIMPL_ATTR_DEPRECATED_SINCE(2.5) void rb_autoload();
 
 /* eval.c */
 RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.6) void rb_frozen_class_p();
 RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.7) void rb_exec_end_proc();
-
-/* error.c */
-RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.3) void rb_compile_error();
-RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.3) void rb_compile_error_with_enc();
-RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.3) void rb_compile_error_append();
 
 /* gc.c */
 RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.7) void rb_gc_call_finalizer_at_exit();
