@@ -26,9 +26,8 @@
 #include "ruby/internal/value_type.h"
 #include "ruby/internal/arithmetic/long.h"
 #include "ruby/internal/arithmetic/int.h"
-#if !defined RUBY_EXPORT && !defined RUBY_NO_OLD_COMPATIBILITY
-# include "ruby/backward.h"
-#endif
+
+RBIMPL_ATTR_DEPRECATED(("internal function only in 2.4")) void rb_struct_ptr();
 
 #define RSTRUCT_PTR(st) rb_struct_ptr(st)
 /** @cond INTERNAL_MACRO */

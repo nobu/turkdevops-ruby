@@ -41,9 +41,6 @@ RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.7) void rb_gc_call_finaliz
 /* signal.c */
 RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.7) void rb_trap_exit();
 
-/* struct.c */
-RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.4) void rb_struct_ptr();
-
 /* thread.c */
 RBIMPL_ATTR_INTERNAL() RBIMPL_ATTR_DEPRECATED_SINCE(2.7) void rb_clear_trace_func();
 
