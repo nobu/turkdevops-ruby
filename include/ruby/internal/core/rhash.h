@@ -40,9 +40,9 @@
 
 #include "ruby/internal/dllexport.h"
 #include "ruby/internal/value.h"
-#if !defined RUBY_EXPORT && !defined RUBY_NO_OLD_COMPATIBILITY
-# include "ruby/backward.h"
-#endif
+
+RBIMPL_ATTR_DEPRECATED(("since 2.2")) void rb_hash_iter_lev();
+RBIMPL_ATTR_DEPRECATED(("since 2.2")) void rb_hash_ifnone();
 
 #define RHASH_TBL(h)                rb_hash_tbl(h, __FILE__, __LINE__)
 #define RHASH_ITER_LEV(h)           rb_hash_iter_lev(h)

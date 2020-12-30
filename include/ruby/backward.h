@@ -19,10 +19,6 @@
 RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_disable_super();
 RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_enable_super();
 
-/* hash.c */
-RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_hash_iter_lev();
-RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_hash_ifnone();
-
 /* string.c */
 RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_str_associate();
 RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_str_associated();

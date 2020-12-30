@@ -52,6 +52,8 @@
 #include "gc.h"
 #endif
 
+#undef RHASH_ITER_LEV
+
 #define HAS_EXTRA_STATES(hash, klass) ( \
     ((klass = has_extra_methods(rb_obj_class(hash))) != 0) || \
     FL_TEST((hash), FL_EXIVAR|RHASH_PROC_DEFAULT) || \
