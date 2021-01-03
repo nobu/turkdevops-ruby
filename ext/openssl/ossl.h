@@ -10,8 +10,6 @@
 #if !defined(_OSSL_H_)
 #define _OSSL_H_
 
-#include RUBY_EXTCONF_H
-
 #include <assert.h>
 #include <ruby.h>
 #include <errno.h>
