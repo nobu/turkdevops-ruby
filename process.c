@@ -6969,7 +6969,10 @@ proc_setmaxgroups(VALUE obj, VALUE val)
 #endif
 
 #if defined(HAVE_DAEMON) || (defined(HAVE_WORKING_FORK) && defined(HAVE_SETSID))
+#ifndef HAVE_DAEMON
 static int rb_daemon(int nochdir, int noclose);
+#define daemon(nochdir, noclose) rb_daemon(nochdir, noclose)
+#endif
 
 /*
  *  call-seq:
@@ -6989,6 +6992,7 @@ static VALUE
 proc_daemon(int argc, VALUE *argv, VALUE _)
 {
     int n, nochdir = FALSE, noclose = FALSE;
+    struct child_handler_disabler_state old;
 
     switch (rb_check_arity(argc, 0, 2)) {
       case 2: noclose = TO_BOOL(argv[1], "noclose");
@@ -6996,28 +7000,30 @@ proc_daemon(int argc, VALUE *argv, VALUE _)
     }
 
     prefork();
-    n = rb_daemon(nochdir, noclose);
+    if (mjit_enabled) mjit_pause(false); // Don't leave locked mutex to child.
+    disable_child_handler_before_fork(&old);
+    before_fork_ruby();
+    n = daemon(nochdir, noclose);
+    after_fork_ruby();
+    disable_child_handler_fork_parent(&old);
+    rb_thread_atfork(); /* calls mjit_resume() */
     if (n < 0) rb_sys_fail("daemon");
     return INT2FIX(n);
 }
 
+#ifndef HAVE_DAEMON
 static int
 rb_daemon(int nochdir, int noclose)
 {
-    int err = 0;
-#ifdef HAVE_DAEMON
-    if (mjit_enabled) mjit_pause(false); // Don't leave locked mutex to child.
-    before_fork_ruby();
-    err = daemon(nochdir, noclose);
-    after_fork_ruby();
-    rb_thread_atfork(); /* calls mjit_resume() */
-#else
-    int n;
+    int err = 0, n;
 
+# if USE_MJIT
+    mjit_enabled = 0;
+# endif
 #define fork_daemon() \
-    switch (rb_fork_ruby(NULL)) { \
+    switch (rb_fork()) { \
       case -1: return -1; \
-      case 0:  rb_thread_atfork(); break; \
+      case 0:  break; \
       default: _exit(EXIT_SUCCESS); \
     }
 
@@ -7032,16 +7038,16 @@ rb_daemon(int nochdir, int noclose)
 	err = chdir("/");
 
     if (!noclose && (n = rb_cloexec_open("/dev/null", O_RDWR, 0)) != -1) {
-        rb_update_max_fd(n);
+        /* n is closed soon unless 0..2 */
 	(void)dup2(n, 0);
 	(void)dup2(n, 1);
 	(void)dup2(n, 2);
 	if (n > 2)
 	    (void)close (n);
     }
-#endif
     return err;
 }
+#endif
 #else
 #define proc_daemon rb_f_notimplement
 #endif
