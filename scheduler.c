@@ -20,9 +20,12 @@ static ID id_unblock;
 static ID id_kernel_sleep;
 static ID id_process_wait;
 
-static ID id_io_read;
-static ID id_io_write;
-static ID id_io_wait;
+ID ruby_id_io_read;
+ID ruby_id_io_write;
+ID ruby_id_io_wait;
+#define id_io_read ruby_id_io_read
+#define id_io_write ruby_id_io_write
+#define id_io_wait ruby_id_io_wait
 
 void
 Init_Scheduler(void)
@@ -91,10 +94,8 @@ VALUE rb_thread_scheduler_current(VALUE thread)
 VALUE
 rb_scheduler_close(VALUE scheduler)
 {
-    if (rb_respond_to(scheduler, id_close)) {
-        return rb_funcall(scheduler, id_close, 0);
-    }
-
+    VALUE ret = rb_check_funcall(scheduler, id_close, 0, NULL);
+    if (ret != Qundef) return ret;
     return Qnil;
 }
 

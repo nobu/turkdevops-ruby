@@ -180,6 +180,13 @@ off_t __syscall(quad_t number, ...);
 #define rename(f, t)	rb_w32_urename((f), (t))
 #endif
 
+extern ID ruby_id_io_read;
+extern ID ruby_id_io_write;
+extern ID ruby_id_io_wait;
+#define id_io_read ruby_id_io_read
+#define id_io_write ruby_id_io_write
+#define id_io_wait ruby_id_io_wait
+
 VALUE rb_cIO;
 VALUE rb_eEOFError;
 VALUE rb_eIOError;
@@ -1539,14 +1546,14 @@ io_binwrite(VALUE str, const char *ptr, long len, rb_io_t *fptr, int nosync)
     if ((n = len) <= 0) return n;
 
     VALUE scheduler = rb_scheduler_current();
-    if (scheduler != Qnil && rb_scheduler_supports_io_write(scheduler)) {
-        ssize_t length = RB_NUM2SSIZE(
-            rb_scheduler_io_write(scheduler, fptr->self, str, offset, len)
-        );
-
-        if (length < 0) rb_sys_fail_path(fptr->pathv);
-
-        return length;
+    if (!NIL_P(scheduler)) {
+        VALUE args[] = {fptr->self, str, SIZET2NUM(offset), SIZET2NUM(len)};
+        VALUE ret = rb_check_funcall(scheduler, id_io_write, numberof(args), args);
+        if (ret != Qundef) {
+            ssize_t length = RB_NUM2SSIZE(ret);
+            if (length < 0) rb_sys_fail_path(fptr->pathv);
+            return length;
+        }
     }
 
     if (fptr->wbuf.ptr == NULL && !(!nosync && (fptr->mode & FMODE_SYNC))) {
@@ -2624,14 +2631,14 @@ static long
 io_fread(VALUE str, long offset, long size, rb_io_t *fptr)
 {
     VALUE scheduler = rb_scheduler_current();
-    if (scheduler != Qnil && rb_scheduler_supports_io_read(scheduler)) {
-        ssize_t length = RB_NUM2SSIZE(
-            rb_scheduler_io_read(scheduler, fptr->self, str, offset, size)
-        );
-
-        if (length < 0) rb_sys_fail_path(fptr->pathv);
-
-        return length;
+    if (!NIL_P(scheduler)) {
+        VALUE args[] = {fptr->self, str, SIZET2NUM(offset), SIZET2NUM(size)};
+        VALUE ret = rb_check_funcall(scheduler, id_io_read, numberof(args), args);
+        if (ret != Qundef) {
+            ssize_t length = RB_NUM2SSIZE(ret);
+            if (length < 0) rb_sys_fail_path(fptr->pathv);
+            return length;
+        }
     }
 
     long len;
