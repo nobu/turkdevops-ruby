@@ -20,3 +20,15 @@ module Kernel
 
   private :pp
 end
+
+autoload :Set, "set"
+
+module Enumerable
+  def to_set(*args, &block)
+    require 'set'
+    to_set(*args, &block)
+  end
+
+  alias to_set to_set
+end
+
