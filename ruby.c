@@ -295,8 +295,7 @@ usage(const char *name, int help, int highlight, int columns)
 	M("-w",		   "",			   "turn warnings on for your script"),
 	M("-W[level=2|:category]",   "",	   "set warning level; 0=silence, 1=medium, 2=verbose"),
 	M("-x[directory]", "",			   "strip off text before #!ruby line and perhaps cd to directory"),
-        M("--jit",         "",                     "enable JIT with default options (experimental)"),
-        M("--jit-[option]","",                     "enable JIT with an option (experimental)"),
+        M("--jit[-option]","",                     "enable JIT with an option or default options (experimental)"),
 	M("-h",		   "",			   "show this message, --help for more info"),
     };
     static const struct message help_msg[] = {
@@ -330,6 +329,7 @@ usage(const char *name, int help, int highlight, int columns)
         M("experimental", "",     "experimental features"),
     };
     static const struct message mjit_options[] = {
+        M("--jit",               "", "Enable JIT with default options"),
         M("--jit-warnings",      "", "Enable printing JIT warnings"),
         M("--jit-debug",         "", "Enable JIT debugging (very slow), or add cflags if specified"),
         M("--jit-wait",          "", "Wait until JIT compilation finishes every time (for testing)"),
