@@ -11,5 +11,15 @@ class TestMkmf
     def test_not_have_func
       assert_equal(false, egrep_cpp(/never match/, ""), MKMFLOG)
     end
+
+    def test_cxx_egrep_cpp
+      assert_equal(true, MakeMakefile["C++"].egrep_cpp(/^ok/, <<~SRC), MKMFLOG)
+      #ifdef __cplusplus
+      ok
+      #else
+      #error not C++
+      #endif
+      SRC
+    end
   end
 end

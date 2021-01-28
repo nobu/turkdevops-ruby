@@ -516,11 +516,16 @@ MSG
                      conf)
   end
 
-  def cpp_command(outfile, opt="")
+  def cpp_config(opt)
     conf = cc_config(opt)
     if $universal and (arch_flag = conf['ARCH_FLAG']) and !arch_flag.empty?
       conf['ARCH_FLAG'] = arch_flag.gsub(/(?:\G|\s)-arch\s+\S+/, '')
     end
+    conf
+  end
+
+  def cpp_command(outfile, opt="")
+    conf = cpp_config(opt)
     RbConfig::expand("$(CPP) #$INCFLAGS #$CPPFLAGS #$CFLAGS #{opt} #{CONFTEST_C} #{outfile}",
                      conf)
   end
@@ -2813,6 +2818,15 @@ realclean: distclean
     def cc_command(opt="")
       conf = cc_config(opt)
       RbConfig::expand("$(CXX) #$INCFLAGS #$CPPFLAGS #$CXXFLAGS #$ARCH_FLAG #{opt} -c #{CONFTEST_CXX}",
+                       conf)
+    end
+
+    def cpp_command(outfile, opt="")
+      conf = cpp_config(opt)
+      cpp = conf['CPP'].sub(/(\A|\s)#{Regexp.quote(conf['CC'])}(?=\z|\s)/) {
+        "#$1#{conf['CXX']}"
+      }
+      RbConfig::expand("#{cpp} #$INCFLAGS #$CPPFLAGS #$CXXFLAGS #{opt} #{CONFTEST_CXX} #{outfile}",
                        conf)
     end
 
