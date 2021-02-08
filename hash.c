@@ -3410,11 +3410,23 @@ rb_hash_to_a(VALUE hash)
 }
 
 static int
-inspect_i(VALUE key, VALUE value, VALUE str)
+inspect_i(VALUE key, VALUE value, VALUE args)
 {
+    VALUE *argp = (VALUE *)args;
+    VALUE str = argp[0];
+    VALUE inspect = argp[1];
     VALUE str2;
+    const char *sep = "=>";
 
-    str2 = rb_inspect(key);
+    if (inspect && SYMBOL_P(key)) {
+        str2 = rb_sym2str(key);
+        if (!rb_str_symname_p(str2))
+            str2 = rb_inspect(str2);
+        sep = ": ";
+    }
+    else {
+        str2 = rb_inspect(key);
+    }
     if (RSTRING_LEN(str) > 1) {
 	rb_str_buf_cat_ascii(str, ", ");
     }
@@ -3422,24 +3434,34 @@ inspect_i(VALUE key, VALUE value, VALUE str)
 	rb_enc_copy(str, str2);
     }
     rb_str_buf_append(str, str2);
-    rb_str_buf_cat_ascii(str, "=>");
-    str2 = rb_inspect(value);
+    rb_str_buf_cat_ascii(str, sep);
+    str2 = inspect ? rb_inspect(value) : rb_String(value);
     rb_str_buf_append(str, str2);
 
     return ST_CONTINUE;
 }
 
 static VALUE
-inspect_hash(VALUE hash, VALUE dummy, int recur)
+inspect_hash(VALUE hash, VALUE inspect, int recur)
 {
-    VALUE str;
+    VALUE args[2], str;
 
     if (recur) return rb_usascii_str_new2("{...}");
     str = rb_str_buf_new2("{");
-    rb_hash_foreach(hash, inspect_i, str);
+    args[0] = str;
+    args[1] = inspect;
+    rb_hash_foreach(hash, inspect_i, (VALUE)args);
     rb_str_buf_cat2(str, "}");
 
     return str;
+}
+
+static VALUE
+hash_inspect_string(VALUE hash, VALUE inspect)
+{
+    if (RHASH_EMPTY_P(hash))
+	return rb_usascii_str_new2("{}");
+    return rb_exec_recursive(inspect_hash, hash, inspect);
 }
 
 /*
@@ -3448,17 +3470,28 @@ inspect_hash(VALUE hash, VALUE dummy, int recur)
  *
  *  Returns a new \String containing the hash entries:
  *    h = {foo: 0, bar: 1, baz: 2}
- *    h.inspect # => "{:foo=>0, :bar=>1, :baz=>2}"
- *
- *  Hash#to_s is an alias for Hash#inspect.
+ *    h.inspect # => "{foo: 0, bar: 1, baz: 2}"
  */
 
 static VALUE
 rb_hash_inspect(VALUE hash)
 {
-    if (RHASH_EMPTY_P(hash))
-	return rb_usascii_str_new2("{}");
-    return rb_exec_recursive(inspect_hash, hash, 0);
+    return hash_inspect_string(hash, Qtrue);
+}
+
+/*
+ *  call-seq:
+ *    hash.to_s -> new_string
+ *
+ *  Returns a new \String containing the hash entries:
+ *    h = {foo: 0, bar: 1, baz: 2}
+ *    h.inspect # => "{:foo=>0, :bar=>1, :baz=>2}"
+ */
+
+static VALUE
+rb_hash_to_s(VALUE hash)
+{
+    return hash_inspect_string(hash, Qfalse);
 }
 
 /*
@@ -6993,7 +7026,7 @@ Init_Hash(void)
     rb_define_method(rb_cHash, "to_h", rb_hash_to_h, 0);
     rb_define_method(rb_cHash, "to_a", rb_hash_to_a, 0);
     rb_define_method(rb_cHash, "inspect", rb_hash_inspect, 0);
-    rb_define_alias(rb_cHash, "to_s", "inspect");
+    rb_define_method(rb_cHash, "to_s", rb_hash_to_s, 0);
     rb_define_method(rb_cHash, "to_proc", rb_hash_to_proc, 0);
 
     rb_define_method(rb_cHash, "==", rb_hash_equal, 1);
