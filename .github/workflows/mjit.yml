@@ -53,6 +53,7 @@ jobs:
           ulimit -c unlimited
           make $JOBS -s test-all RUN_OPTS="$RUN_OPTS"
         timeout-minutes: 60
+      - run: "[ ! -e tmp ] || rmdir -p tmp"
       - name: Run test-spec
         run: |
           ulimit -c unlimited

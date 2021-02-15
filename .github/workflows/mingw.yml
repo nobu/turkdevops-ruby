@@ -112,6 +112,9 @@ jobs:
           if ($env:BUNDLER_VERSION) { Remove-Item env:\BUNDLER_VERSION }
           make test-all TESTOPTS="-j $jobs --retry --job-status=normal --show-skip --timeout-scale=1.5"
 
+      - run: "[ ! -e tmp ] || rmdir -p tmp"
+        shell: sh
+
       - name: test-spec
         timeout-minutes: 10
         working-directory: src/spec/ruby

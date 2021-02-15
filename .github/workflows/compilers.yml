@@ -196,6 +196,8 @@ jobs:
         if: "matrix.entry.name == '-O3'"
       - run: $make test-all TESTS='-- ruby -ext-'
         if: "matrix.entry.name == '-O3'"
+      - run: "[ ! -e tmp ] || rmdir -p tmp"
+        if: "matrix.entry.name == '-O3'"
       - run: $make test-spec
         if: "matrix.entry.name == '-O3'"
 

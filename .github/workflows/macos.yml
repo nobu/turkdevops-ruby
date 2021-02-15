@@ -42,6 +42,8 @@ jobs:
         env:
           RUBY_TESTOPTS: "-q --tty=no"
           TEST_BUNDLED_GEMS_ALLOW_FAILURES: "rexml"
+      - run: "[ ! -e tmp ] || rmdir -p tmp"
+        if: matrix.test_task == 'check'
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |
