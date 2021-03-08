@@ -1675,7 +1675,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
     rb_ast_t *ast = 0;
     VALUE parser;
     VALUE script_name;
-    const rb_iseq_t *iseq;
+    const rb_iseq_t *iseq = 0;
     rb_encoding *enc, *lenc;
 #if UTF8_PATH
     rb_encoding *ienc = 0;
@@ -1683,7 +1683,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
 #endif
     const char *s;
     char fbuf[MAXPATHLEN];
-    int i = (int)proc_options(argc, argv, opt, 0);
+    int argi = (int)proc_options(argc, argv, opt, 0);
     unsigned int dump = opt->dump & dump_exit_bits;
 
     if (opt->dump & (DUMP_BIT(usage)|DUMP_BIT(help))) {
@@ -1746,10 +1746,10 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
 	return Qtrue;
     }
 
-    argc -= i;
-    argv += i;
+    argc -= argi;
+    argv += argi;
 
-    if ((opt->features.set & FEATURE_BIT(rubyopt)) && (s = getenv("RUBYOPT"))) {
+    if (argi && (opt->features.set & FEATURE_BIT(rubyopt)) && (s = getenv("RUBYOPT"))) {
 	VALUE src_enc_name = opt->src.enc.name;
 	VALUE ext_enc_name = opt->ext.enc.name;
 	VALUE int_enc_name = opt->intern.enc.name;
@@ -1953,7 +1953,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
 			      opt->do_line, opt->do_split);
 	ast = rb_parser_compile_string(parser, opt->script, opt->e_script, 1);
     }
-    else {
+    else if (argi) {
 	VALUE f;
 	f = open_load_file(script_name, &opt->xflag);
 	ast = load_file(parser, opt->script_name, f, 1, opt);
@@ -1981,7 +1981,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
 	rb_enc_set_default_internal(Qnil);
     rb_stdio_set_default_encoding();
 
-    if (!ast->body.root) {
+    if (ast && !ast->body.root) {
 	rb_ast_dispose(ast);
 	return Qfalse;
     }
@@ -2012,7 +2012,7 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
 	}
     }
 
-    {
+    if (ast) {
 	VALUE path = Qnil;
 	if (!opt->e_script && strcmp(opt->script, "-")) {
 	    path = rb_realpath_internal(Qnil, script_name, 1);
