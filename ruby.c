@@ -2635,7 +2635,7 @@ ruby_sysinit(int *argc, char ***argv)
 #if defined(_WIN32)
     rb_w32_sysinit(argc, argv);
 #endif
-    if (*argc >= 0 && *argv) {
+    if (argc && argv && *argc >= 0 && *argv) {
 	origarg.argc = *argc;
 	origarg.argv = *argv;
 #if defined(USE_DLN_A_OUT)
