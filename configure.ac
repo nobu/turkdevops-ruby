@@ -457,12 +457,12 @@ AS_CASE(["$target_os"],
 	RT_VER=`echo "$rb_cv_msvcrt" | tr -cd [0-9]`
 	test "$RT_VER" = "" && RT_VER=60
 	test "$rb_cv_msvcrt" = "ucrt" && RT_VER=140
-	AC_DEFINE_UNQUOTED(RUBY_MSVCRT_VERSION, $RT_VER)
+	AC_DEFINE_UNQUOTED(RUBY_MSVCRT_VERSION, $RT_VER, [MSVCRT version])
 	sysconfdir=
     ])
     : ${enable_shared=yes}
     ],
-[hiuxmpp*], [AC_DEFINE(__HIUX_MPP__)])    # by TOYODA Eizi <toyoda@npd.kishou.go.jp>
+[hiuxmpp*], [AC_DEFINE(__HIUX_MPP__, 1, [HI/UX-MPP])])    # by TOYODA Eizi <toyoda@npd.kishou.go.jp>
 
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -797,7 +797,7 @@ AS_IF([test "$GCC" = yes], [
 	  CFLAGS="$save_CFLAGS"
 	])
       AS_IF([test "$rb_cv_mingw64_broken_frexp_modf" = yes], [
-	AC_DEFINE(RUBY_MINGW64_BROKEN_FREXP_MODF)
+	AC_DEFINE(RUBY_MINGW64_BROKEN_FREXP_MODF, 1, [mingw64 frexp and modf are broken])
       ])
     ],
     [cygwin*|msys*|darwin*|netbsd*], [
@@ -851,8 +851,8 @@ AS_IF([test "$GCC" = yes], [
     AC_SUBST(WERRORFLAG, "-Werror")
     AS_IF([test "$visibility_option" = yes], [
 	RUBY_APPEND_OPTION(XCFLAGS, -fvisibility=hidden)
-	AC_DEFINE(RUBY_SYMBOL_EXPORT_BEGIN, [_Pragma("GCC visibility push(default)")])
-	AC_DEFINE(RUBY_SYMBOL_EXPORT_END,   [_Pragma("GCC visibility pop")])
+	AC_DEFINE(RUBY_SYMBOL_EXPORT_BEGIN, [_Pragma("GCC visibility push(default)")], [beginning of symbol export])
+	AC_DEFINE(RUBY_SYMBOL_EXPORT_END,   [_Pragma("GCC visibility pop")],           [end of symbol export])
     ], [
 	RUBY_TRY_LDFLAGS([-Wl,-unexported_symbol,_Init_*], [visibility_option=ld], [visibility_option=no])
     ])
@@ -918,7 +918,7 @@ AC_CACHE_CHECK([whether compiler has statement and declarations in expressions],
   [rb_cv_have_stmt_and_decl_in_expr=yes],
   [rb_cv_have_stmt_and_decl_in_expr=no])])
 AS_IF([test "$rb_cv_have_stmt_and_decl_in_expr" = yes], [
-  AC_DEFINE(HAVE_STMT_AND_DECL_IN_EXPR)
+  AC_DEFINE(HAVE_STMT_AND_DECL_IN_EXPR, 1, [statement expressions])
 ])
 
 : "header and library section" && {
@@ -1046,7 +1046,7 @@ main()
 		    rb_cv_broken_crypt=yes,
 		    rb_cv_broken_crypt=yes)])
 		AS_IF([test "$rb_cv_broken_crypt" = yes], [
-		   AC_DEFINE(BROKEN_CRYPT, 1)
+		   AC_DEFINE(BROKEN_CRYPT, 1, [broken crypt])
 		])
 		POSTLINK=""
 		AC_CHECK_PROGS(codesign, codesign)
@@ -1161,15 +1161,15 @@ main()
 			      [@%:@include <winsock2.h>
 			      @%:@include <iphlpapi.h>])
 		AS_IF([test x"$ac_cv_type_NET_LUID" = xyes], [
-		    AC_DEFINE(HAVE_TYPE_NET_LUID, 1)
+		    AC_DEFINE(HAVE_TYPE_NET_LUID, 1, [NET_LUID type])
 		])
 		AC_CHECK_FUNCS(_gmtime64_s)
 		AC_CHECK_FUNCS(_wfreopen_s)
 		AC_LIBOBJ([langinfo])
 		],
 [bsdi*], [	LIBS="-lm $LIBS"
-		AC_DEFINE(BROKEN_SETREUID, 1)
-		AC_DEFINE(BROKEN_SETREGID, 1)
+		AC_DEFINE(BROKEN_SETREUID, 1, [broken setreuid])
+		AC_DEFINE(BROKEN_SETREGID, 1, [broken setregid])
                 ac_cv_sizeof_rlim_t=8],
 [freebsd*], [	LIBS="-lm $LIBS"
 		ac_cv_func_getpeername=no
@@ -1293,7 +1293,7 @@ AS_IF([test "x$with_gmp" != xno],
   [AC_CHECK_HEADERS(gmp.h)
    AS_IF([test "x$ac_cv_header_gmp_h" != xno],
      AC_SEARCH_LIBS([__gmpz_init], [gmp],
-       [AC_DEFINE(HAVE_LIBGMP, 1)]))])
+       [AC_DEFINE(HAVE_LIBGMP, 1, [libgmp])]))])
 
 AC_ARG_WITH([jemalloc],
   [AS_HELP_STRING([--with-jemalloc],[use jemalloc allocator])],
@@ -1305,7 +1305,7 @@ AS_IF([test "x$with_jemalloc" != xno],[
     AC_CHECK_HEADER(jemalloc.h, [malloc_header=jemalloc.h])
   ])
   AS_IF([test "$malloc_header" != ""], [
-    AC_DEFINE_UNQUOTED(RUBY_ALTERNATIVE_MALLOC_HEADER, [<$malloc_header>])
+    AC_DEFINE_UNQUOTED(RUBY_ALTERNATIVE_MALLOC_HEADER, [<$malloc_header>], [alternative malloc header])
   ])
   save_LIBS="$LIBS"
   AC_CACHE_CHECK([for jemalloc library], rb_cv_jemalloc_library, [
@@ -1341,9 +1341,9 @@ AS_IF([test "x$with_jemalloc" != xno],[
   ])
   AS_CASE(["$with_jemalloc"],
   [*" with mangle"], [
-    AC_DEFINE(JEMALLOC_MANGLE)
+    AC_DEFINE(JEMALLOC_MANGLE, 1, [jemalloc mangles names])
   ])
-  AC_DEFINE(HAVE_MALLOC_CONF)
+  AC_DEFINE(HAVE_MALLOC_CONF, 1 [malloc_conf])
   ac_cv_func_malloc_usable_size=yes
 ]) # with_jemalloc
 
@@ -1362,7 +1362,7 @@ AS_IF([test x"$enable_largefile" != xno], [
 	# that is the same order as "getconf LFS_CFLAGS" output
 	mv confdefs.h largefile0.h
 	: > confdefs.h
-	AC_DEFINE(_LARGEFILE_SOURCE)
+	AC_DEFINE(_LARGEFILE_SOURCE, 1, [needs _LARGEFILE_SOURCE])
 	cat largefile0.h >> confdefs.h
 	rm largefile0.h
 	AC_MSG_RESULT([yes])
@@ -1429,9 +1429,9 @@ AC_CACHE_CHECK(packed struct attribute, rb_cv_packed_struct,
     done])
 AS_IF([test "$rb_cv_packed_struct" != no], [
     AC_DEFINE_UNQUOTED([PACKED_STRUCT(x)], [$rb_cv_packed_struct])
-    RUBY_TRY_CFLAGS(-Wno-address-of-packed-member, [AC_DEFINE(USE_UNALIGNED_MEMBER_ACCESS)])
+    RUBY_TRY_CFLAGS(-Wno-address-of-packed-member, [AC_DEFINE(USE_UNALIGNED_MEMBER_ACCESS, 1, [unaligned member access])])
 ], [
-    AC_DEFINE_UNQUOTED([PACKED_STRUCT(x)], x)
+    AC_DEFINE_UNQUOTED([PACKED_STRUCT(x)], x, [packed struct])
 ])
 
 AS_IF([test "x$ac_cv_type_long_long" = xyes], [
@@ -1474,7 +1474,7 @@ int foo(const char*);
   rb_cv_va_args_macro=yes,
   rb_cv_va_args_macro=no)])
 AS_IF([test "$rb_cv_va_args_macro" = yes], [
-  AC_DEFINE(HAVE_VA_ARGS_MACRO)
+  AC_DEFINE(HAVE_VA_ARGS_MACRO, 1, [__VA_ARGS__])
 ])
 
 # We want C11's  `_Alignof`.  GCC (and alike) have  `__alignof__`, which behave
@@ -1514,7 +1514,7 @@ AC_CACHE_CHECK([if _Alignof() works], rb_cv_have__alignof,[
     ])
 ])
 AS_IF([test "$rb_cv_have__alignof" != no], [
-    AC_DEFINE(HAVE__ALIGNOF)
+    AC_DEFINE(HAVE__ALIGNOF, 1, [_Alignof])
 ])
 
 RUBY_FUNC_ATTRIBUTE(__const__, CONSTFUNC)
@@ -1533,7 +1533,7 @@ RUBY_FUNC_ATTRIBUTE(__error__ mesg, ERRORFUNC(mesg,x), rb_cv_func___error__)
 RUBY_FUNC_ATTRIBUTE(__warning__ mesg, WARNINGFUNC(mesg,x), rb_cv_func___warning__)
 RUBY_FUNC_ATTRIBUTE(__weak__, WEAK, rb_cv_func_weak)
 AS_IF([test "$rb_cv_func_weak" != x], [
-   AC_DEFINE(HAVE_FUNC_WEAK)
+   AC_DEFINE(HAVE_FUNC_WEAK, 1, [weak alias function])
 ])
 
 AC_CACHE_CHECK([for __attribute__((__depreacted__(msg))) in C++],
@@ -1549,7 +1549,7 @@ AC_CACHE_CHECK([for __attribute__((__depreacted__(msg))) in C++],
     AC_LANG_POP()]))
 AS_IF([test "$rb_cv_CentOS6_CXX_workaround" != no],[
   AC_DEFINE([RUBY_CXX_DEPRECATED(msg)],
-    [__attribute__((__deprecated__(msg)))])])
+    [__attribute__((__deprecated__(msg)))], [C++ deprecation])])
 
 AC_CACHE_CHECK([for std::nullptr_t], rb_cv_CXX_nullptr, [
   AC_LANG_PUSH([C++])
@@ -1560,7 +1560,7 @@ AC_CACHE_CHECK([for std::nullptr_t], rb_cv_CXX_nullptr, [
     [rb_cv_CXX_nullptr=yes],
     [rb_cv_CXX_nullptr=no])
   AC_LANG_POP()])
-AS_IF([test "$rb_cv_CXX_nullptr" != no],[AC_DEFINE(HAVE_NULLPTR)])
+AS_IF([test "$rb_cv_CXX_nullptr" != no],[AC_DEFINE(HAVE_NULLPTR, 1, [C++ nullptr])])
 
 if_i386=${universal_binary+[defined __i386__]}
 RUBY_FUNC_ATTRIBUTE(__stdcall__,  FUNC_STDCALL,  rb_cv_func_stdcall,  ${if_i386})
@@ -1578,11 +1578,12 @@ AS_IF([test "$GCC" = yes], [
 		[rb_cv_gcc_function_alias=$a; break])
 	done])
     AS_IF([test "$rb_cv_gcc_function_alias" != no], [
-	AC_DEFINE(HAVE_ATTRIBUTE_FUNCTION_ALIAS)
+	AC_DEFINE(HAVE_ATTRIBUTE_FUNCTION_ALIAS, 1, [function alias])
 	AC_DEFINE_UNQUOTED([RUBY_ALIAS_FUNCTION_TYPE(type, prot, name, args)],
-			   [type prot __attribute__(($rb_cv_gcc_function_alias(@%:@name)));])
+			   [type prot __attribute__(($rb_cv_gcc_function_alias(@%:@name)));],
+			   [function alias])
 	AC_DEFINE_UNQUOTED([RUBY_ALIAS_FUNCTION_VOID(prot, name, args)],
-			   [RUBY_ALIAS_FUNCTION_TYPE(void, prot, name, args)])
+			   [RUBY_ALIAS_FUNCTION_TYPE(void, prot, name, args)], [void function alias])
     ])
 ])
 
@@ -1599,7 +1600,7 @@ AS_IF([test "$GCC" = yes], [
 		    [rb_cv_gcc_atomic_builtins=yes],
 		    [rb_cv_gcc_atomic_builtins=no])])
     AS_IF([test "$rb_cv_gcc_atomic_builtins" = yes], [
-	AC_DEFINE(HAVE_GCC_ATOMIC_BUILTINS)
+	AC_DEFINE(HAVE_GCC_ATOMIC_BUILTINS, 1, [gcc atomic builtins])
     ])
 
     AC_CACHE_CHECK([for __sync builtins], [rb_cv_gcc_sync_builtins], [
@@ -1615,7 +1616,7 @@ AS_IF([test "$GCC" = yes], [
 		    [rb_cv_gcc_sync_builtins=yes],
 		    [rb_cv_gcc_sync_builtins=no])])
     AS_IF([test "$rb_cv_gcc_sync_builtins" = yes], [
-	AC_DEFINE(HAVE_GCC_SYNC_BUILTINS)
+	AC_DEFINE(HAVE_GCC_SYNC_BUILTINS, 1, [gcc sync builtins])
     ])
 
     AC_CACHE_CHECK(for __builtin_unreachable, rb_cv_func___builtin_unreachable,
@@ -1627,7 +1628,7 @@ AS_IF([test "$GCC" = yes], [
     ])
     ])
     AS_IF([test "$rb_cv_func___builtin_unreachable" = yes], [
-	AC_DEFINE_UNQUOTED(UNREACHABLE, [__builtin_unreachable()])
+	AC_DEFINE_UNQUOTED(UNREACHABLE, [__builtin_unreachable()], [UNREACHABLE])
     ])
 }
 
@@ -1641,7 +1642,7 @@ for mac in '__attribute__ ((__visibility__("default")))' '__declspec(dllexport)'
 done
 ])])
 AS_IF([test "$rb_cv_func_exported" != no], [
-    AC_DEFINE_UNQUOTED(RUBY_FUNC_EXPORTED, [$rb_cv_func_exported extern])
+    AC_DEFINE_UNQUOTED(RUBY_FUNC_EXPORTED, [$rb_cv_func_exported extern], [exported function])
 ])
 RUBY_DECL_ATTRIBUTE([__nonnull__(n)], [RUBY_FUNC_NONNULL(n,x)], [rb_cv_func_nonnull],
                     [], [function], [
@@ -1671,7 +1672,7 @@ AC_CACHE_CHECK(for function name string predefined identifier,
       ])])]
 )
 AS_IF([test "$rb_cv_function_name_string" != no], [
-    AC_DEFINE_UNQUOTED(RUBY_FUNCTION_NAME_STRING, [$rb_cv_function_name_string])
+    AC_DEFINE_UNQUOTED(RUBY_FUNCTION_NAME_STRING, [$rb_cv_function_name_string], [function name string])
 ])
 
 AC_CACHE_CHECK(if enum over int is allowed, rb_cv_enum_over_int, [
@@ -1697,7 +1698,7 @@ AC_CACHE_CHECK(if enum over int is allowed, rb_cv_enum_over_int, [
     ])
 ])
 AS_IF([test $rb_cv_enum_over_int = yes], [
-    AC_DEFINE(ENUM_OVER_INT, 1)
+    AC_DEFINE(ENUM_OVER_INT, 1, [enum over int range])
 ])
 
 dnl Check whether we need to define sys_nerr locally
@@ -1777,7 +1778,7 @@ AS_IF([test "${ac_cv_type_struct_timeval}" = yes], [
 	    [SIZEOF_LONG_LONG], [t=LONG_LONG],
 	    [t=])
     AS_IF([test "${t}" != ""], [
-	AC_DEFINE_UNQUOTED(TYPEOF_TIMEVAL_TV_SEC, [$t])
+	AC_DEFINE_UNQUOTED(TYPEOF_TIMEVAL_TV_SEC, [$t], [typeof(timeval::tv_sec)])
     ])
 ])
 
@@ -1801,7 +1802,7 @@ AC_CACHE_VAL([rb_cv_large_fd_select],
 @%:@ include <sys/select.h>
 @%:@endif])])
 AS_IF([test "$rb_cv_large_fd_select" = yes], [
-    AC_DEFINE(HAVE_RB_FD_INIT, 1)
+    AC_DEFINE(HAVE_RB_FD_INIT, 1, [define rb_fd_init])
 ])
 
 RUBY_DEFINT(int8_t, 1)
@@ -1832,7 +1833,7 @@ AC_CACHE_CHECK(for stack end address, rb_cv_stack_end_address,
     [rb_cv_stack_end_address="__libc_stack_end"])
 ])
 AS_IF([test $rb_cv_stack_end_address != no], [
-  AC_DEFINE_UNQUOTED(STACK_END_ADDRESS, $rb_cv_stack_end_address)
+  AC_DEFINE_UNQUOTED(STACK_END_ADDRESS, $rb_cv_stack_end_address, [stack end address])
 ])
 
 dnl Checks for library functions.
@@ -1841,7 +1842,7 @@ AS_CASE(["${target_cpu}-${target_os}:${target_archs}"],
 [powerpc-darwin*], [
   AC_LIBSOURCES(alloca.c)
   AC_SUBST([ALLOCA], [\${LIBOBJDIR}alloca.${ac_objext}])
-  AC_DEFINE(C_ALLOCA)
+  AC_DEFINE(C_ALLOCA, 1, [alloca in missing])
   AC_DEFINE_UNQUOTED(alloca, alloca)
   ],
 [universal-darwin*:*ppc*], [
@@ -1867,7 +1868,7 @@ AS_IF([test "x$ALLOCA" = "x"], [
 	    [rb_cv_dynamic_alloca=$chk; break])
     done])
     AS_IF([test "x$rb_cv_dynamic_alloca" = "x__chkstk"], [
-	AC_DEFINE_UNQUOTED(RUBY_ALLOCA_CHKSTK, _$rb_cv_dynamic_alloca)
+	AC_DEFINE_UNQUOTED(RUBY_ALLOCA_CHKSTK, _$rb_cv_dynamic_alloca, [alloca chkstk])
 	AS_CASE("$target_cpu",
 	[x64|x86_64], [
 	    AC_SUBST([ALLOCA], [\${LIBOBJDIR}x86_64-chkstk.${ac_objext}])
@@ -1877,7 +1878,7 @@ AS_IF([test "x$ALLOCA" = "x"], [
 AC_FUNC_MEMCMP
 
 AS_CASE(["$target_os"],[freebsd*],[
-	 AC_DEFINE(BROKEN_CLOSE)
+	 AC_DEFINE(BROKEN_CLOSE, 1, [wrongly sets ECONNRESET])
 	 AC_REPLACE_FUNCS(close)
 	 ])
 
@@ -1913,12 +1914,12 @@ AC_DEFINE(HAVE_ISFINITE)        # C99; backward compatibility
 # for missing/setproctitle.c
 AS_CASE(["$target_os"],
 [aix* | k*bsd*-gnu | kopensolaris*-gnu | linux* | darwin*], [AC_DEFINE(SPT_TYPE,SPT_REUSEARGV)],
-[hpux*], [AC_DEFINE(SPT_TYPE,SPT_PSTAT) ],
+[hpux*], [AC_DEFINE(SPT_TYPE,SPT_PSTAT,[setproctitle]) ],
 [])
 AC_CHECK_HEADERS(sys/pstat.h)
 
 
-AC_DEFINE(HAVE_SIGNBIT)         # C99; backward compatibility
+AC_DEFINE(HAVE_SIGNBIT, 1, [signbit])         # C99; backward compatibility
 
 AC_FUNC_FORK
 
@@ -2096,7 +2097,7 @@ main(int argc, char **argv)
 		[linux*|darwin*|*bsd|cygwin*|msys*|mingw*|mswin*],
 		[rb_cv_getcwd_malloc=yes],
 		[rb_cv_getcwd_malloc=no]))])
-    AS_IF([test "$rb_cv_getcwd_malloc" = no], [AC_DEFINE(NO_GETCWD_MALLOC, 1)])
+    AS_IF([test "$rb_cv_getcwd_malloc" = no], [AC_DEFINE(NO_GETCWD_MALLOC, 1, [getcwd does not malloc])])
 ])
 
 AS_IF([test "$ac_cv_func_crypt_r" = yes],
@@ -2158,10 +2159,10 @@ void (qsort_r)(void *base, size_t nmemb, size_t size,
   ])
   AS_CASE("$rb_cv_gnu_qsort_r:$rb_cv_bsd_qsort_r",
   [yes:no], [
-    AC_DEFINE(HAVE_GNU_QSORT_R, 1)
+    AC_DEFINE(HAVE_GNU_QSORT_R, 1, [GNU qsort_r])
   ],
   [no:yes], [
-    AC_DEFINE(HAVE_BSD_QSORT_R, 1)
+    AC_DEFINE(HAVE_BSD_QSORT_R, 1, [BSD qsort_r])
   ])
 ])
 
@@ -2192,7 +2193,7 @@ main(int argc, char **argv)
 	)
     ], [rb_cv_atan2_inf_c99=no])
 ])
-AS_IF([test "x$rb_cv_atan2_inf_c99" = xyes], [AC_DEFINE(ATAN2_INF_C99)])
+AS_IF([test "x$rb_cv_atan2_inf_c99" = xyes], [AC_DEFINE(ATAN2_INF_C99, 1, [atan2 handles Inf as C99])])
 
 # Some platform need -lrt for clock_gettime, but the other don't.
 AS_IF([test x"$ac_cv_func_clock_gettime" != xyes], [
@@ -2200,17 +2201,17 @@ AS_IF([test x"$ac_cv_func_clock_gettime" != xyes], [
     # http://sourceware.org/ml/libc-announce/2012/msg00001.html
     AC_CHECK_LIB(rt, clock_gettime)
     AS_IF([test x"$ac_cv_lib_rt_clock_gettime" = xyes], [
-	AC_DEFINE(HAVE_CLOCK_GETTIME, 1)
+	AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [clock_gettime])
     ])
 ])
 AC_CHECK_FUNCS(clock_getres) # clock_getres should be tested after clock_gettime test including librt test.
 AC_CHECK_LIB([rt], [timer_create])
 AC_CHECK_LIB([rt], [timer_settime])
 AS_IF([test x"$ac_cv_lib_rt_timer_create" = xyes], [
-    AC_DEFINE(HAVE_TIMER_CREATE, 1)
+    AC_DEFINE(HAVE_TIMER_CREATE, 1, [timer_create])
 ])
 AS_IF([test x"$ac_cv_lib_rt_timer_settime" = xyes], [
-    AC_DEFINE(HAVE_TIMER_SETTIME, 1)
+    AC_DEFINE(HAVE_TIMER_SETTIME, 1, [timer_settime])
 ])
 
 AC_CACHE_CHECK(for unsetenv returns a value, rb_cv_unsetenv_return_value,
@@ -2220,7 +2221,7 @@ AC_CACHE_CHECK(for unsetenv returns a value, rb_cv_unsetenv_return_value,
 	rb_cv_unsetenv_return_value=yes,
 	rb_cv_unsetenv_return_value=no)])
 AS_IF([test "$rb_cv_unsetenv_return_value" = no], [
-  AC_DEFINE(VOID_UNSETENV)
+  AC_DEFINE(VOID_UNSETENV, 1, [unsetenv is void])
 ])
 
 # End of setjmp check.
@@ -2229,8 +2230,8 @@ AC_ARG_ENABLE(setreuid,
        AS_HELP_STRING([--enable-setreuid], [use setreuid()/setregid() according to need even if obsolete]),
        [use_setreuid=$enableval])
 AS_IF([test "$use_setreuid" = yes], [
-    AC_DEFINE(USE_SETREUID)
-    AC_DEFINE(USE_SETREGID)
+    AC_DEFINE(USE_SETREUID, 1, [use setreuid])
+    AC_DEFINE(USE_SETREGID, 1, [use setregid])
 ])
 AC_STRUCT_TIMEZONE
 AC_CACHE_CHECK(for struct tm.tm_gmtoff, rb_cv_member_struct_tm_tm_gmtoff,
@@ -2243,7 +2244,7 @@ AC_CACHE_CHECK(for struct tm.tm_gmtoff, rb_cv_member_struct_tm_tm_gmtoff,
   [rb_cv_member_struct_tm_tm_gmtoff=yes],
   [rb_cv_member_struct_tm_tm_gmtoff=no])])
 AS_IF([test "$rb_cv_member_struct_tm_tm_gmtoff" = yes], [
-  AC_DEFINE(HAVE_STRUCT_TM_TM_GMTOFF)
+  AC_DEFINE(HAVE_STRUCT_TM_TM_GMTOFF, 1, [struct tm::tm_gmtoff])
 ])
 AC_CACHE_CHECK(for external int daylight, rb_cv_have_daylight,
   [AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <time.h>
@@ -2252,7 +2253,7 @@ AC_CACHE_CHECK(for external int daylight, rb_cv_have_daylight,
 	rb_cv_have_daylight=yes,
 	rb_cv_have_daylight=no)])
 AS_IF([test "$rb_cv_have_daylight" = yes], [
-  AC_DEFINE(HAVE_DAYLIGHT)
+  AC_DEFINE(HAVE_DAYLIGHT, 1, [daylight])
 ])
 
 AC_CACHE_CHECK(for negative time_t for gmtime(3), rb_cv_negative_time_t,
@@ -2291,7 +2292,7 @@ main()
 	rb_cv_negative_time_t=no,
 	rb_cv_negative_time_t=yes)])
 AS_IF([test "$rb_cv_negative_time_t" = yes], [
-  AC_DEFINE(NEGATIVE_TIME_T)
+  AC_DEFINE(NEGATIVE_TIME_T, 1, [negative time_t for gmtime])
 ])
 
 # [ruby-dev:40910] overflow of time on FreeBSD
@@ -2334,11 +2335,11 @@ main()
 	rb_cv_localtime_overflow=no,
 	rb_cv_localtime_overflow=no)])
 AS_IF([test "$rb_cv_localtime_overflow" = no], [
-  AC_DEFINE(LOCALTIME_OVERFLOW_PROBLEM)
+  AC_DEFINE(LOCALTIME_OVERFLOW_PROBLEM, 1, [localtime overflow problem])
 ])
 
 AS_IF([test "$ac_cv_func_sigprocmask" = yes && test "$ac_cv_func_sigaction" = yes], [
-   AC_DEFINE(POSIX_SIGNAL)
+   AC_DEFINE(POSIX_SIGNAL, 1, [POSIX signal])
 ], [
   AC_CHECK_FUNCS(sigsetmask)
   AC_CACHE_CHECK(for BSD signal semantics, rb_cv_bsd_signal,
@@ -2365,7 +2366,7 @@ main()
 	rb_cv_bsd_signal=no,
 	rb_cv_bsd_signal=$ac_cv_func_sigsetmask)])
   AS_IF([test "$rb_cv_bsd_signal" = yes], [
-    AC_DEFINE(BSD_SIGNAL)
+    AC_DEFINE(BSD_SIGNAL, 1, [BSD signal])
   ])
 ])
 
@@ -2398,7 +2399,7 @@ AC_CACHE_CHECK(whether right shift preserve sign bit, rb_cv_rshift_sign,
 	rb_cv_rshift_sign=yes,
 	rb_cv_rshift_sign=no)])
 AS_IF([test "$rb_cv_rshift_sign" = yes], [
-  AC_DEFINE(RSHIFT(x,y), ((x)>>(int)(y)))
+  AC_DEFINE(RSHIFT(x,y), ((x)>>(int)(y)), [signed right shift])
 ], [
   AC_DEFINE(RSHIFT(x,y), (((x)<0) ? ~((~(x))>>(int)(y)) : (x)>>(int)(y)))
 ])
@@ -2439,7 +2440,7 @@ main()
     [rb_cv_use_copy_file_range=no])])
 ])
 AS_CASE(["$ac_cv_func_copy_file_range:$rb_cv_use_copy_file_range"], [*yes*], [
-  AC_DEFINE(USE_COPY_FILE_RANGE)
+  AC_DEFINE(USE_COPY_FILE_RANGE, 1, [use copy_file_range])
 ])
 
 AS_CASE(["$ac_cv_func_gettimeofday:$ac_cv_func_clock_gettime"],
@@ -2578,7 +2579,7 @@ AS_IF([test ! -f "$srcdir/$COROUTINE_H"],
 COROUTINE_SRC=coroutine/$coroutine_type/Context.c
 AS_IF([test ! -f "$srcdir/$COROUTINE_SRC"],
       [COROUTINE_SRC=coroutine/$coroutine_type/Context.'$(ASMEXT)'])
-AC_DEFINE_UNQUOTED(COROUTINE_H, ["$COROUTINE_H"])
+AC_DEFINE_UNQUOTED(COROUTINE_H, ["$COROUTINE_H"], [Coroutine header])
 AC_SUBST(X_COROUTINE_H, [$COROUTINE_H])
 AC_SUBST(X_COROUTINE_SRC, [$COROUTINE_SRC])
 
@@ -2589,9 +2590,9 @@ AS_IF([test x"$enable_pthread" = xyes], [
 	AS_IF([test "$rb_with_pthread" = "yes"], [break])
     done
     AS_IF([test x"$rb_with_pthread" = xyes], [
-	AC_DEFINE(_REENTRANT)
-	AC_DEFINE(_THREAD_SAFE)
-	AC_DEFINE(HAVE_LIBPTHREAD)
+	AC_DEFINE(_REENTRANT, 1, [reentrant])
+	AC_DEFINE(_THREAD_SAFE, 1, [thread-safe])
+	AC_DEFINE(HAVE_LIBPTHREAD, 1, [libpthread])
 	AC_CHECK_HEADERS(pthread_np.h, [], [], [@%:@include <pthread.h>])
 	AS_CASE(["$pthread_lib:$target_os"],
 		[c:*], [],
@@ -2613,7 +2614,7 @@ AS_IF([test x"$enable_pthread" = xyes], [
     AS_IF([test x"$rb_cv_scalar_pthread_t" = xyes], [
 	: # RUBY_CHECK_SIZEOF(pthread_t, [void* int long], [], [@%:@include <pthread.h>])
     ], [
-	AC_DEFINE(NON_SCALAR_THREAD_ID)
+	AC_DEFINE(NON_SCALAR_THREAD_ID, 1, [pthread_t is not scalar])
     ])
     AC_CHECK_FUNCS(sched_yield pthread_attr_setinheritsched \
 	pthread_attr_get_np pthread_attr_getstack pthread_attr_getguardsize \
@@ -2655,11 +2656,11 @@ AS_IF([test x"$enable_pthread" = xyes], [
 	set_current_thread_name="pthread_set_name_np(pthread_self(), name)"
     ])
     AS_IF([test -n "$set_current_thread_name"], [
-	AC_DEFINE_UNQUOTED(SET_CURRENT_THREAD_NAME(name), $set_current_thread_name)
+	AC_DEFINE_UNQUOTED(SET_CURRENT_THREAD_NAME(name), $set_current_thread_name, [set current thread name])
 	AS_CASE([$set_current_thread_name],
 	    [*'pthread_self()'*], [
 		set_another_thread_name=`echo "$set_current_thread_name" | sed 's/pthread_self()/thid/'`
-		AC_DEFINE_UNQUOTED(SET_ANOTHER_THREAD_NAME(thid,name), $set_another_thread_name)
+		AC_DEFINE_UNQUOTED(SET_ANOTHER_THREAD_NAME(thid,name), $set_another_thread_name, [set another thread name])
 	    ])
     ])
 ])
@@ -2670,7 +2671,7 @@ AS_IF([test x"$ac_cv_header_ucontext_h" = xno], [
 					    [[size_t size = sizeof(ucontext_t);]])],
 	[rb_cv_ucontext_in_signal_h=yes], [rb_cv_ucontext_in_signal_h=no])])
     AS_IF([test x"$rb_cv_ucontext_in_signal_h" = xyes], [
-	    AC_DEFINE_UNQUOTED(UCONTEXT_IN_SIGNAL_H, 1)
+	    AC_DEFINE_UNQUOTED(UCONTEXT_IN_SIGNAL_H, 1, [ucontext in signal.h])
     ])
 ])
 AS_IF([test x"$ac_cv_header_ucontext_h" = xyes -o x"$rb_cv_ucontext_in_signal_h" = xyes], [
@@ -2685,7 +2686,7 @@ AS_IF([test x"$ac_cv_header_ucontext_h" = xyes -o x"$rb_cv_ucontext_in_signal_h"
 	  [[test(0);]])],
 	[rb_cv_mcontext_t_ptr=yes], [rb_cv_mcontext_t_ptr=no])])
     AS_IF([test x"$rb_cv_mcontext_t_ptr" = xyes], [
-	AC_DEFINE_UNQUOTED(DEFINE_MCONTEXT_PTR(mc, uc), mcontext_t mc = (uc)->uc_mcontext)
+	AC_DEFINE_UNQUOTED(DEFINE_MCONTEXT_PTR(mc, uc), mcontext_t mc = (uc)->uc_mcontext, [mcontext pointer initializer])
     ], [
 	AC_DEFINE_UNQUOTED(DEFINE_MCONTEXT_PTR(mc, uc), mcontext_t *mc = &(uc)->uc_mcontext)
     ])
@@ -2756,7 +2757,7 @@ main(int argc, char *argv[])
 	rb_cv_fork_with_pthread=yes,
 	rb_cv_fork_with_pthread=no,
 	rb_cv_fork_with_pthread=yes)])
-    test x$rb_cv_fork_with_pthread = xyes || AC_DEFINE(CANNOT_FORK_WITH_PTHREAD)
+    test x$rb_cv_fork_with_pthread = xyes || AC_DEFINE(CANNOT_FORK_WITH_PTHREAD, 1, [cannot fork with pthread])
 ])
 
 AC_CHECK_HEADERS([sys/user.h])
@@ -2823,7 +2824,7 @@ AS_CASE(["`head -1 conftest$EXEEXT | tr -dc '\177ELF' | tr '\177' .`"],
 rb_cv_binary_elf=no)])
 
 AS_IF([test "$rb_cv_binary_elf" = yes], [
-  AC_DEFINE(USE_ELF)
+  AC_DEFINE(USE_ELF, 1, [use ELF binary])
   AC_CHECK_HEADERS([elf.h elf_abi.h])
   AS_IF([test $ac_cv_header_elf_h = yes -o $ac_cv_header_elf_abi_h = yes], [
     AC_LIBOBJ([addr2line])
@@ -3146,7 +3147,7 @@ main(void)
 	rb_cv_broken_backtrace=yes,
 	rb_cv_broken_backtrace=no)])
   AS_IF([test "$rb_cv_broken_backtrace" = yes], [
-    AC_DEFINE(BROKEN_BACKTRACE, 1)
+    AC_DEFINE(BROKEN_BACKTRACE, 1, [backtrace is broken])
   ])
 ])
 
@@ -3186,8 +3187,8 @@ AS_IF([test x"$LOAD_RELATIVE" = x1], [
 
 len=2 # .rb
 n=`expr "$DLEXT"  : '.*'`; test "$n" -gt "$len" && len=$n
-AC_DEFINE_UNQUOTED(DLEXT_MAXLEN, `expr $len + 1`)
-test ".$DLEXT"  = "." || AC_DEFINE_UNQUOTED(DLEXT,  ".$DLEXT")
+AC_DEFINE_UNQUOTED(DLEXT_MAXLEN, `expr $len + 1`, [Maximum length of DLEXT])
+test ".$DLEXT"  = "." || AC_DEFINE_UNQUOTED(DLEXT,  ".$DLEXT", [DL file extension])
 AC_SUBST(DLEXT)
 
 : "strip" && {
@@ -3220,7 +3221,7 @@ AC_ARG_WITH(static-linked-ext,
 AS_CASE([",$EXTSTATIC,"], [,static,|*,enc,*], [
   ENCOBJS='enc/encinit.$(OBJEXT) enc/libenc.$(LIBEXT) enc/libtrans.$(LIBEXT)'
   EXTOBJS='ext/extinit.$(OBJEXT)'
-  AC_DEFINE_UNQUOTED(EXTSTATIC, 1)
+  AC_DEFINE_UNQUOTED(EXTSTATIC, 1, [statically link extensions])
   AC_SUBST(ENCSTATIC, static)
 ], [
   ENCOBJS='dmyenc.$(OBJEXT)'
@@ -3293,7 +3294,7 @@ AS_IF([test x"$cross_compiling" = xyes], [
   XRUBY='$(MINIRUBY)'
   TEST_RUNNABLE=no
   CROSS_COMPILING=yes
-  AC_DEFINE(CROSS_COMPILING, 1)
+  AC_DEFINE(CROSS_COMPILING, 1, [cross compiling builtins])
 ], [
   MINIRUBY='./miniruby$(EXEEXT) -I$(srcdir)/lib -I.'
   MINIRUBY="$MINIRUBY"' -I$(EXTOUT)/common'
@@ -3335,7 +3336,7 @@ AC_ARG_ENABLE(multiarch,
 	      AS_HELP_STRING([--enable-multiarch], [enable multiarch compatible directories]),
 	      [multiarch=], [unset multiarch])
 AS_IF([test ${multiarch+set}], [
-   AC_DEFINE(ENABLE_MULTIARCH)
+   AC_DEFINE(ENABLE_MULTIARCH, 1, [enable multiarch])
    MJIT_HEADER_INSTALL_DIR=include/'${arch}/${RUBY_VERSION_NAME}'
 ], [
    MJIT_HEADER_INSTALL_DIR=include/'${RUBY_VERSION_NAME}/${arch}'
@@ -3391,7 +3392,7 @@ AS_CASE("$enable_shared", [yes], [
   AS_IF([test "$bindir" = '${exec_prefix}/bin'], [
     AS_CASE(["$libdir"], ['${exec_prefix}/'*], [libdir_basename=`basename "$libdir"`])
   ])
-  AC_DEFINE_UNQUOTED(LIBDIR_BASENAME, ["${libdir_basename}"])
+  AC_DEFINE_UNQUOTED(LIBDIR_BASENAME, ["${libdir_basename}"], [libdir basename])
   libdir_basename="${libdir_basename}"${multiarch+'/${arch}'}
 
   # Debian bullseye reportedly has its ld(1) patched, which breaks
@@ -3541,7 +3542,7 @@ AC_SUBST(ARCHFILE)
 
 AS_IF([test "$EXEEXT" = .exe], [
     EXECUTABLE_EXTS='".exe",".com",".cmd",".bat"'
-    AC_DEFINE_UNQUOTED(EXECUTABLE_EXTS, $EXECUTABLE_EXTS)
+    AC_DEFINE_UNQUOTED(EXECUTABLE_EXTS, $EXECUTABLE_EXTS, [Executable file extensions])
     EXECUTABLE_EXTS=`echo $EXECUTABLE_EXTS | tr -d '"' | tr , ' '`
     AC_SUBST(EXECUTABLE_EXTS)
 ])
@@ -3668,10 +3669,10 @@ AC_ARG_ENABLE(jit-support,
         AS_HELP_STRING([--disable-jit-support], [disable JIT features]),
         [MJIT_SUPPORT=$enableval
          AS_IF([test x"$enable_jit_support" = "xyes"],
-                 [AC_DEFINE(USE_MJIT, 1)],
+                 [AC_DEFINE(USE_MJIT, 1, [use MJIT])],
                  [AC_DEFINE(USE_MJIT, 0)])],
         [MJIT_SUPPORT=yes
-         AC_DEFINE(USE_MJIT, 1)])
+         AC_DEFINE(USE_MJIT, 1, [use MJIT])])
 
 AC_SUBST(MJIT_SUPPORT)
 
@@ -4028,7 +4029,7 @@ AC_ARG_WITH(vendorarchdir,
             [vendorarchdir=${multiarch+'${rubysitearchprefix}/vendor_ruby/${ruby_version}'}${multiarch-'${vendorlibdir}/${sitearch}'}])
 
 AS_IF([test "${LOAD_RELATIVE+set}"], [
-    AC_DEFINE_UNQUOTED(LOAD_RELATIVE, $LOAD_RELATIVE)
+    AC_DEFINE_UNQUOTED(LOAD_RELATIVE, $LOAD_RELATIVE, [load from relative paths])
     RUBY_EXEC_PREFIX=''
 ])
 
@@ -4069,9 +4070,9 @@ AS_IF([test "${universal_binary-no}" = yes ], [
     test "$ac_cv_type_long_long" = yes && ints="'long long' $ints"
     AC_SUBST(UNIVERSAL_ARCHNAMES, "${universal_archnames}")
     AC_SUBST(UNIVERSAL_INTS, "${ints}")
-    AC_DEFINE_UNQUOTED(RUBY_PLATFORM_OS, "${target_os}")
-    AC_DEFINE_UNQUOTED(RUBY_ARCH, "universal-" RUBY_PLATFORM_OS)
-    AC_DEFINE_UNQUOTED(RUBY_PLATFORM, "universal." RUBY_PLATFORM_CPU "-" RUBY_PLATFORM_OS)
+    AC_DEFINE_UNQUOTED(RUBY_PLATFORM_OS, "${target_os}", [platform OS])
+    AC_DEFINE_UNQUOTED(RUBY_ARCH, "universal-" RUBY_PLATFORM_OS, [universal arch])
+    AC_DEFINE_UNQUOTED(RUBY_PLATFORM, "universal." RUBY_PLATFORM_CPU "-" RUBY_PLATFORM_OS, [universal platform])
 ], [
     AS_IF([test "${target_os}-${rb_cv_msvcrt}" = "mingw32-ucrt" ], [
         arch="${target_cpu}-mingw-ucrt"
