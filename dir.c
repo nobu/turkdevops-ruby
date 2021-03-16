@@ -1648,12 +1648,27 @@ remove_backslashes(char *p, register const char *pend, rb_encoding *enc)
 }
 
 struct glob_pattern {
-    char *str;
+    union {
+	char *str;
+	int depth;
+    } as;
     enum glob_pattern_type type;
     struct glob_pattern *next;
 };
 
 static void glob_free_pattern(struct glob_pattern *list);
+
+static const int recursive_pattern_length_nofollow = rb_strlen_lit("**/");
+static const int recursive_pattern_length_with_follow = rb_strlen_lit("***/");
+
+static inline int
+recursive_pattern(const char *p, const char *e)
+{
+    if (!(p + 2 < e && p[0] == '*' && p[1] == '*')) return 0;
+    if (p[2] == '/') return recursive_pattern_length_nofollow;
+    if (!(p + 3 < e && p[2] == '*' && p[3] == '/')) return 0;
+    return recursive_pattern_length_with_follow;
+}
 
 static struct glob_pattern *
 glob_make_pattern(const char *p, const char *e, int flags, rb_encoding *enc)
@@ -1665,11 +1680,16 @@ glob_make_pattern(const char *p, const char *e, int flags, rb_encoding *enc)
     while (p < e && *p) {
 	tmp = GLOB_ALLOC(struct glob_pattern);
 	if (!tmp) goto error;
-	if (p + 2 < e && p[0] == '*' && p[1] == '*' && p[2] == '/') {
+	if ((recursive = recursive_pattern(p, e)) != 0) {
 	    /* fold continuous RECURSIVEs (needed in glob_helper) */
-	    do { p += 3; while (*p == '/') p++; } while (p[0] == '*' && p[1] == '*' && p[2] == '/');
+	    int depth = 0;
+	    do {
+		p += recursive;
+		depth |= recursive - recursive_pattern_length_nofollow;
+		while (*p == '/') p++;
+	    } while ((recursive = recursive_pattern(p, e)) != 0);
 	    tmp->type = RECURSIVE;
-	    tmp->str = 0;
+	    tmp->as.depth = depth;
 	    dirsep = 1;
 	    recursive = 1;
 	}
@@ -1694,7 +1714,7 @@ glob_make_pattern(const char *p, const char *e, int flags, rb_encoding *enc)
 	    memcpy(buf, p, m-p);
 	    buf[m-p] = '\0';
 	    tmp->type = magic > MAGICAL ? MAGICAL : magic > non_magic ? magic : PLAIN;
-	    tmp->str = buf;
+	    tmp->as.str = buf;
 	    if (*m) {
 		dirsep = 1;
 		p = m + 1;
@@ -1713,7 +1733,7 @@ glob_make_pattern(const char *p, const char *e, int flags, rb_encoding *enc)
         goto error;
     }
     tmp->type = dirsep ? MATCH_DIR : MATCH_ALL;
-    tmp->str = 0;
+    tmp->as.str = 0;
     *tail = tmp;
     tmp->next = 0;
 
@@ -1731,8 +1751,8 @@ glob_free_pattern(struct glob_pattern *list)
     while (list) {
 	struct glob_pattern *tmp = list;
 	list = list->next;
-	if (tmp->str)
-	    GLOB_FREE(tmp->str);
+	if (tmp->type != RECURSIVE && tmp->as.str)
+	    GLOB_FREE(tmp->as.str);
 	GLOB_FREE(tmp);
     }
 }
@@ -2060,14 +2080,14 @@ join_path_from_pattern(struct glob_pattern **beg)
 	const char *str;
 	switch (p->type) {
 	  case RECURSIVE:
-	    str = "**";
+	    str = &"***"[!p->as.depth];
 	    break;
 	  case MATCH_DIR:
 	    /* append last slash */
 	    str = "";
 	    break;
 	  default:
-	    str = p->str;
+	    str = p->as.str;
 	    if (!str) continue;
 	}
 	if (!path) {
@@ -2279,7 +2299,7 @@ glob_helper(
     for (cur = beg; cur < end; ++cur) {
 	struct glob_pattern *p = *cur;
 	if (p->type == RECURSIVE) {
-	    recursive = 1;
+	    recursive = p->as.depth + 1;
 	    p = p->next;
 	}
 	switch (p->type) {
@@ -2468,7 +2488,7 @@ glob_helper(
 	    if (recursive && dotfile < ((flags & FNM_DOTMATCH) ? 2 : 1) &&
 		new_pathtype == path_unknown) {
 		/* RECURSIVE never match dot files unless FNM_DOTMATCH is set */
-		if (do_lstat(fd, baselen, buf, &st, flags, enc) == 0)
+		if ((recursive>1 ? do_stat : do_lstat)(fd, baselen, buf, &st, flags, enc) == 0)
 		    new_pathtype = IFTODT(st.st_mode);
 		else
 		    new_pathtype = path_noent;
@@ -2486,6 +2506,7 @@ glob_helper(
 		struct dirent_brace_args args;
 		if (p->type == RECURSIVE) {
 		    if (new_pathtype == path_directory || /* not symlink but real directory */
+			(new_pathtype == path_symlink && p->type == RECURSIVE && p->as.depth > 0) ||
 			new_pathtype == path_exist) {
 			if (dotfile < ((flags & FNM_DOTMATCH) ? 2 : 1))
 			    *new_end++ = p; /* append recursive pattern */
@@ -2497,7 +2518,7 @@ glob_helper(
 		    args.name = name;
 		    args.dp = dp;
 		    args.flags = flags;
-		    if (ruby_brace_expand(p->str, flags, dirent_match_brace,
+		    if (ruby_brace_expand(p->as.str, flags, dirent_match_brace,
 					  (VALUE)&args, enc, Qfalse) > 0)
 			*new_end++ = p->next;
 		    break;
@@ -2510,7 +2531,7 @@ glob_helper(
 # endif
 		  case PLAIN:
 		  case MAGICAL:
-		    if (dirent_match(p->str, enc, name, dp, flags))
+		    if (dirent_match(p->as.str, enc, name, dp, flags))
 			*new_end++ = p->next;
 		  default:
 		    break;
@@ -2543,13 +2564,13 @@ glob_helper(
 		rb_pathtype_t new_pathtype = path_unknown;
 		char *buf;
 		char *name;
-		size_t len = strlen((*cur)->str) + 1;
+		size_t len = strlen((*cur)->as.str) + 1;
 		name = GLOB_ALLOC_N(char, len);
 		if (!name) {
 		    status = -1;
 		    break;
 		}
-		memcpy(name, (*cur)->str, len);
+		memcpy(name, (*cur)->as.str, len);
 		if (escape)
 		    len = remove_backslashes(name, name+len-1, enc) - name;
 
@@ -2561,7 +2582,7 @@ glob_helper(
 		}
 		*new_end++ = (*cur)->next;
 		for (cur2 = cur + 1; cur2 < copy_end; ++cur2) {
-		    if (*cur2 && fnmatch((*cur2)->str, enc, name, flags) == 0) {
+		    if (*cur2 && fnmatch((*cur2)->as.str, enc, name, flags) == 0) {
 			*new_end++ = (*cur2)->next;
 			*cur2 = 0;
 		    }

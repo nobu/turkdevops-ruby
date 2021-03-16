@@ -202,9 +202,11 @@ class TestDir < Test::Unit::TestCase
     bug8006 = '[ruby-core:53108] [Bug #8006]'
     Dir.chdir(@root) do
       assert_include(Dir.glob("a/**/*", File::FNM_DOTMATCH), "a/.", bug8006)
+      assert_include(Dir.glob("a/***/*", File::FNM_DOTMATCH), "a/.")
 
       Dir.mkdir("a/b")
       assert_not_include(Dir.glob("a/**/*", File::FNM_DOTMATCH), "a/b/.")
+      assert_not_include(Dir.glob("a/***/*", File::FNM_DOTMATCH), "a/b/.")
 
       FileUtils.mkdir_p("a/b/c/d/e/f")
       assert_equal(["a/b/c/d/e/f"], Dir.glob("a/**/e/f"), bug6977)
@@ -214,6 +216,13 @@ class TestDir < Test::Unit::TestCase
       assert_equal(["a/b/c/d/e/f"], Dir.glob("a/**/c/?/e/f"), bug6977)
       assert_equal(["a/b/c/d/e/f"], Dir.glob("a/**/c/**/d/e/f"), bug6977)
       assert_equal(["a/b/c/d/e/f"], Dir.glob("a/**/c/**/d/e/f"), bug6977)
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/e/f"))
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/d/e/f"))
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/c/d/e/f"))
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/b/c/d/e/f"))
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/c/?/e/f"))
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/c/***/d/e/f"))
+      assert_equal(["a/b/c/d/e/f"], Dir.glob("a/***/c/***/d/e/f"))
 
       bug8283 = '[ruby-core:54387] [Bug #8283]'
       dirs = ["a/.x", "a/b/.y"]
@@ -223,6 +232,10 @@ class TestDir < Test::Unit::TestCase
       assert_equal(["a/.x/z"], Dir.glob("a/**/.x/z"), bug8283)
       assert_equal(["a/.x/z"], Dir.glob("a/.x/**/z"), bug8283)
       assert_equal(["a/b/.y/z"], Dir.glob("a/**/.y/z"), bug8283)
+      assert_equal([], Dir.glob("a/***/z"))
+      assert_equal(["a/.x/z"], Dir.glob("a/***/.x/z"))
+      assert_equal(["a/.x/z"], Dir.glob("a/.x/***/z"))
+      assert_equal(["a/b/.y/z"], Dir.glob("a/***/.y/z"))
     end
   end
 
@@ -240,6 +253,12 @@ class TestDir < Test::Unit::TestCase
 
       assert_equal(["c/e/a/", "c/e/a/b/", "c/e/a/b/c/", "c/d/a/", "c/d/a/b/", "c/d/a/b/c/"],
                    Dir.glob('c/{e,d}/a/**/'))
+
+      assert_equal(["c/d/a/", "c/d/a/b/", "c/d/a/b/c/", "c/e/a/", "c/e/a/b/", "c/e/a/b/c/"],
+                   Dir.glob('c/{d,e}/a/***/'))
+
+      assert_equal(["c/e/a/", "c/e/a/b/", "c/e/a/b/c/", "c/d/a/", "c/d/a/b/", "c/d/a/b/c/"],
+                   Dir.glob('c/{e,d}/a/***/'))
     end
   end
 
@@ -302,6 +321,11 @@ class TestDir < Test::Unit::TestCase
     assert_equal(%w[dir/], Dir.chdir(@root) {Dir.glob("**/*/", base: "a")})
     assert_equal(dirs, Dir.chdir(@root) {Dir.glob("**/*/", base: "")})
     assert_equal(dirs, Dir.chdir(@root) {Dir.glob("**/*/", base: nil)})
+    assert_equal(dirs, Dir.glob("***/*/", base: @root))
+    assert_equal(dirs, Dir.chdir(@root) {Dir.glob("***/*/", base: ".")})
+    assert_equal(%w[dir/], Dir.chdir(@root) {Dir.glob("***/*/", base: "a")})
+    assert_equal(dirs, Dir.chdir(@root) {Dir.glob("***/*/", base: "")})
+    assert_equal(dirs, Dir.chdir(@root) {Dir.glob("***/*/", base: nil)})
 
     assert_equal(files, Dir.glob("*/*.c", base: @root, sort: false).sort)
     assert_equal(files, Dir.chdir(@root) {Dir.glob("*/*.c", base: ".", sort: false).sort})
@@ -318,6 +342,11 @@ class TestDir < Test::Unit::TestCase
     assert_equal(%w[dir/], Dir.chdir(@root) {Dir.glob("**/*/", base: "a", sort: false).sort})
     assert_equal(dirs, Dir.chdir(@root) {Dir.glob("**/*/", base: "", sort: false).sort})
     assert_equal(dirs, Dir.chdir(@root) {Dir.glob("**/*/", base: nil, sort: false).sort})
+    assert_equal(dirs, Dir.glob("***/*/", base: @root))
+    assert_equal(dirs, Dir.chdir(@root) {Dir.glob("***/*/", base: ".", sort: false).sort})
+    assert_equal(%w[dir/], Dir.chdir(@root) {Dir.glob("***/*/", base: "a", sort: false).sort})
+    assert_equal(dirs, Dir.chdir(@root) {Dir.glob("***/*/", base: "", sort: false).sort})
+    assert_equal(dirs, Dir.chdir(@root) {Dir.glob("***/*/", base: nil, sort: false).sort})
   end
 
   def test_glob_base_dir
@@ -333,6 +362,8 @@ class TestDir < Test::Unit::TestCase
     assert_equal(%w[dir/], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("*/", base: d)}})
     assert_equal(dirs, Dir.open(@root) {|d| Dir.glob("**/*/", base: d)})
     assert_equal(%w[dir/], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("**/*/", base: d)}})
+    assert_equal(dirs, Dir.open(@root) {|d| Dir.glob("***/*/", base: d)})
+    assert_equal(%w[dir/], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("***/*/", base: d)}})
 
     assert_equal(files, Dir.open(@root) {|d| Dir.glob("*/*.c", base: d, sort: false).sort})
     assert_equal(%w[foo.c], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("*.c", base: d, sort: false).sort}})
@@ -340,6 +371,8 @@ class TestDir < Test::Unit::TestCase
     assert_equal(%w[dir/], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("*/", base: d, sort: false).sort}})
     assert_equal(dirs, Dir.open(@root) {|d| Dir.glob("**/*/", base: d, sort: false).sort})
     assert_equal(%w[dir/], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("**/*/", base: d, sort: false).sort}})
+    assert_equal(dirs, Dir.open(@root) {|d| Dir.glob("***/*/", base: d, sort: false).sort})
+    assert_equal(%w[dir/], Dir.chdir(@root) {Dir.open("a") {|d| Dir.glob("***/*/", base: d, sort: false).sort}})
   end
 
   def test_glob_ignore_casefold_invalid_encoding
@@ -452,6 +485,9 @@ class TestDir < Test::Unit::TestCase
 
     assert_equal([@root + "/", *[*"a".."z"].each_slice(2).map {|f, _| File.join(@root, f + "/") }],
                  Dir.glob(File.join(@root, "**/")))
+
+    assert_equal([@root + "/", *[*"a".."z", *"symlink-a".."symlink-z"].each_slice(2).map {|f, _| File.join(@root, f + "/") }.sort],
+                 Dir.glob(File.join(@root, "***/")))
   end
 
   def test_glob_metachar
@@ -537,6 +573,30 @@ class TestDir < Test::Unit::TestCase
 
         assert_equal [ 'dir-symlink', 'some-dir' ], Dir['*']
         assert_equal [ 'dir-symlink', 'some-dir', 'some-dir/foo' ], Dir['**/*']
+        assert_equal [ 'dir-symlink', 'dir-symlink/foo', 'some-dir', 'some-dir/foo' ], Dir['***/*']
+      end
+    end
+  end
+
+  def test_symlinks_recursive
+    Dir.mktmpdir do |dirname|
+      Dir.chdir(dirname) do
+        Dir.mkdir('dir-a')
+        Dir.mkdir('dir-b')
+        begin
+          File.symlink('../dir-a', 'dir-b/dir-c')
+        rescue NotImplementedError, Errno::EACCES
+          return
+        end
+
+        File.write('dir-a/foo', 'some content')
+        assert_equal [], Dir['dir-b/**/foo']
+        assert_equal ['dir-b/dir-c/foo'], Dir['dir-b/***/foo']
+
+        File.symlink('../dir-b', 'dir-a/dir-b')
+        assert_raise(Errno::ELOOP) {
+          Dir['dir-b/***/foo']
+        }
       end
     end
   end
