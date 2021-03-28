@@ -20,7 +20,7 @@ jobs:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
     strategy:
       matrix:
-        test_task: [ "check" ] # to make job names consistent
+        test_task: [ "test" ] # to make job names consistent
       fail-fast: false
     steps:
       - run: mkdir build

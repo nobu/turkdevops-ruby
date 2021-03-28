@@ -4,7 +4,7 @@ jobs:
   make:
     strategy:
       matrix:
-        test_task: [ "check", "test-bundler-parallel", "test-bundled-gems", "test-all TESTS=--repeat-count=2" ]
+        test_task: [ "test" ]
         os:
           - ubuntu-20.04
 #         - ubuntu-18.04
