@@ -21,6 +21,7 @@ exts = {}
 ].each do |t, d, o|
   exts[t] = [o, Dir.glob("#{srcdir}/#{d}/*/").map {|n| n[(srcdir.size+1)..-2]}]
 end
+exts["exts"][1] = exts["exts"][1].partition {|d| d.start_with?("ext/-")}.reverse.inject(:+)
 %>
 MINIRUBY = <%=miniruby%>
 SCRIPT_ARGS = <%=script_args.gsub("#", "\\#")%>
