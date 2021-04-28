@@ -673,6 +673,7 @@ static int  local_id_ref(struct parser_params*, ID, ID **);
 static ID   internal_id(struct parser_params*);
 static NODE *new_args_forward_call(struct parser_params*, NODE*, const YYLTYPE*, const YYLTYPE*);
 static NODE *new_args_forward_def(struct parser_params*, NODE*, const YYLTYPE*);
+static NODE *fcall_unused_var(struct parser_params *p, NODE *call);
 #endif
 static int check_forwarding_args(struct parser_params*);
 static void add_forwarding_args(struct parser_params *p);
@@ -1805,6 +1806,7 @@ command		: fcall command_args       %prec tLOWEST
 		    {
 		    /*%%%*/
 			$1->nd_args = $2;
+			fcall_unused_var(p, $1);
 			nd_set_last_loc($1, @2.end_pos);
 			$$ = $1;
 		    /*% %*/
@@ -1815,6 +1817,7 @@ command		: fcall command_args       %prec tLOWEST
 		    /*%%%*/
 			block_dup_check(p, $2, $3);
 			$1->nd_args = $2;
+			fcall_unused_var(p, $1);
 			$$ = method_add_block(p, $1, $3, &@$);
 			fixpos($$, $1);
 			nd_set_last_loc($1, @2.end_pos);
@@ -2961,6 +2964,7 @@ primary		: literal
 		| fcall brace_block
 		    {
 		    /*%%%*/
+			fcall_unused_var(p, $1);
 			$$ = method_add_block(p, $1, $2, &@$);
 		    /*% %*/
 		    /*% ripper: method_add_block!(method_add_arg!(fcall!($1), args_new!), $2) %*/
@@ -3777,6 +3781,7 @@ method_call	: fcall paren_args
 		    /*%%%*/
 			$$ = $1;
 			$$->nd_args = $2;
+			fcall_unused_var(p, $1);
 			nd_set_last_loc($1, @2.end_pos);
 		    /*% %*/
 		    /*% ripper: method_add_arg!(fcall!($1), $2) %*/
@@ -10320,7 +10325,7 @@ gettable(struct parser_params *p, ID id, const YYLTYPE *loc)
 	}
 # endif
 	/* method call without arguments */
-	return NEW_VCALL(id, loc);
+	return fcall_unused_var(p, NEW_VCALL(id, loc));
       case ID_GLOBAL:
 	return NEW_GVAR(id, loc);
       case ID_INSTANCE:
@@ -12373,6 +12378,21 @@ new_bodystmt(struct parser_params *p, NODE *head, NODE *rescue, NODE *rescue_els
     }
     fixpos(result, head);
     return result;
+}
+
+static NODE *
+fcall_unused_var(struct parser_params *p, NODE *fcall)
+{
+    if (fcall->nd_mid == idBinding && !fcall->nd_args) {
+	struct vtable *unused = p->lvtbl->used, *prev;
+	p->lvtbl->used = 0;
+	while (unused) {
+	    prev = unused->prev;
+	    vtable_free(unused);
+	    unused = prev;
+	}
+    }
+    return fcall;
 }
 #endif
 

@@ -919,6 +919,7 @@ x = __ENCODING__
     o = Object.new
     assert_warning(/assigned but unused variable/) {o.instance_eval("def foo; a=1; nil; end")}
     assert_warning(/assigned but unused variable/) {o.instance_eval("def bar; a=1; a(); end")}
+    assert_warning('') {o.instance_eval("def baz; binding; a=1; nil; end")}
     a = "\u{3042}"
     assert_warning(/#{a}/) {o.instance_eval("def foo0; #{a}=1; nil; end")}
     assert_warning(/assigned but unused variable/) {o.instance_eval("def foo1; tap {a=1; a()}; end")}
