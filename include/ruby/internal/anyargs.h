@@ -248,7 +248,7 @@
 # define RBIMPL_ANYARGS_DISPATCH_rb_define_method(n, f)           RBIMPL_ANYARGS_DISPATCH(RBIMPL_CFUNC_IS_rb_f_notimplement(f), rb_define_method_m3,           RBIMPL_ANYARGS_DISPATCH_rb_define_method_15(n))
 # define RBIMPL_ANYARGS_ATTRSET(sym) RBIMPL_ATTR_MAYBE_UNUSED() RBIMPL_ATTR_NONNULL() RBIMPL_ATTR_WEAKREF(sym)
 # define RBIMPL_ANYARGS_DECL(sym, ...) \
-RBIMPL_ANYARGS_ATTRSET(sym) static void sym ## _m3(__VA_ARGS__, VALUE(*)(ANYARGS), int); \
+RBIMPL_ANYARGS_ATTRSET(sym) static void sym ## _m3(__VA_ARGS__, ruby_method_func_type, int); \
 RBIMPL_ANYARGS_ATTRSET(sym) static void sym ## _m2(__VA_ARGS__, VALUE(*)(VALUE, VALUE), int); \
 RBIMPL_ANYARGS_ATTRSET(sym) static void sym ## _m1(__VA_ARGS__, VALUE(*)(int, union { VALUE *x; const VALUE *y; } __attribute__((__transparent_union__)), VALUE), int); \
 RBIMPL_ANYARGS_ATTRSET(sym) static void sym ## _00(__VA_ARGS__, VALUE(*)(VALUE), int); \
@@ -359,13 +359,13 @@ RBIMPL_ANYARGS_DECL(rb_define_method, VALUE, const char *)
  * @param  func  A pointer to a function that implements a method.
  */
 #if ! defined(RUBY_DEVEL)
-# define RUBY_METHOD_FUNC(func) RBIMPL_CAST((VALUE (*)(ANYARGS))(func))
+# define RUBY_METHOD_FUNC(func) RBIMPL_CAST((ruby_method_func_type)(func))
 
 #elif ! RUBY_DEVEL
-# define RUBY_METHOD_FUNC(func) RBIMPL_CAST((VALUE (*)(ANYARGS))(func))
+# define RUBY_METHOD_FUNC(func) RBIMPL_CAST((ruby_method_func_type)(func))
 
 #elif ! defined(rb_define_method)
-# define RUBY_METHOD_FUNC(func) RBIMPL_CAST((VALUE (*)(ANYARGS))(func))
+# define RUBY_METHOD_FUNC(func) RBIMPL_CAST((ruby_method_func_type)(func))
 
 #else
 # define RUBY_METHOD_FUNC(func) (func)

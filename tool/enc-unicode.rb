@@ -464,11 +464,7 @@ struct uniname2ctype_struct {
 };
 #define uniname2ctype_offset(str) offsetof(struct uniname2ctype_pool_t, uniname2ctype_pool_##str)
 
-static const struct uniname2ctype_struct *uniname2ctype_p(
-#if !(/*ANSI*/+0) /* if ANSI, old style not to conflict with generated prototype */
-    const char *, unsigned int
-#endif
-);
+static const struct uniname2ctype_struct *uniname2ctype_p(const char *, size_t);
 %}
 struct uniname2ctype_struct;
 %%

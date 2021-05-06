@@ -57,6 +57,8 @@ RUBY_FUNC_EXPORTED void ruby_init_setproctitle(int argc, char *argv[]);
 # else
 #  include "crt_externs.h"
 # endif
+#else
+extern char **environ;
 #endif
 
 #define SPT_NONE	0	/* don't use it at all */
@@ -84,7 +86,6 @@ void
 compat_init_setproctitle(int argc, char *argv[])
 {
 #if defined(SPT_TYPE) && SPT_TYPE == SPT_REUSEARGV
-	extern char **environ;
 	char *lastargv = NULL;
 	char *lastenvp = NULL;
 	char **envp = environ;

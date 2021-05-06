@@ -24,6 +24,13 @@
 #include "ruby/internal/value.h"
 #include "ruby/backward/2/stdarg.h"
 
+RBIMPL_WARNING_PUSH()
+#ifdef __GNUC__
+RBIMPL_WARNING_IGNORED(-Wstrict-prototypes)
+#endif
+typedef VALUE (*ruby_method_func_type)(ANYARGS);
+RBIMPL_WARNING_POP()
+
 RBIMPL_SYMBOL_EXPORT_BEGIN()
 
 /* class.c */
@@ -45,11 +52,11 @@ VALUE rb_class_public_instance_methods(int, const VALUE*, VALUE);
 VALUE rb_class_protected_instance_methods(int, const VALUE*, VALUE);
 VALUE rb_class_private_instance_methods(int, const VALUE*, VALUE);
 VALUE rb_obj_singleton_methods(int, const VALUE*, VALUE);
-void rb_define_method_id(VALUE, ID, VALUE (*)(ANYARGS), int);
+void rb_define_method_id(VALUE, ID, ruby_method_func_type, int);
 void rb_undef(VALUE, ID);
-void rb_define_protected_method(VALUE, const char*, VALUE (*)(ANYARGS), int);
-void rb_define_private_method(VALUE, const char*, VALUE (*)(ANYARGS), int);
-void rb_define_singleton_method(VALUE, const char*, VALUE(*)(ANYARGS), int);
+void rb_define_protected_method(VALUE, const char*, ruby_method_func_type, int);
+void rb_define_private_method(VALUE, const char*, ruby_method_func_type, int);
+void rb_define_singleton_method(VALUE, const char*, ruby_method_func_type, int);
 VALUE rb_singleton_class(VALUE);
 
 RBIMPL_SYMBOL_EXPORT_END()

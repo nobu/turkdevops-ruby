@@ -26,9 +26,9 @@
 
 RBIMPL_SYMBOL_EXPORT_BEGIN()
 
-void rb_define_method(VALUE,const char*,VALUE(*)(ANYARGS),int);
-void rb_define_module_function(VALUE,const char*,VALUE(*)(ANYARGS),int);
-void rb_define_global_function(const char*,VALUE(*)(ANYARGS),int);
+void rb_define_method(VALUE,const char*,ruby_method_func_type,int);
+void rb_define_module_function(VALUE,const char*,ruby_method_func_type,int);
+void rb_define_global_function(const char*,ruby_method_func_type,int);
 
 void rb_undef_method(VALUE,const char*);
 void rb_define_alias(VALUE,const char*,const char*);

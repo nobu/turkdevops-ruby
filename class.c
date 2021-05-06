@@ -1779,7 +1779,7 @@ rb_obj_singleton_methods(int argc, const VALUE *argv, VALUE obj)
 #undef rb_define_method_id
 #endif
 void
-rb_define_method_id(VALUE klass, ID mid, VALUE (*func)(ANYARGS), int argc)
+rb_define_method_id(VALUE klass, ID mid, ruby_method_func_type func, int argc)
 {
     rb_add_method_cfunc(klass, mid, func, argc, METHOD_VISI_PUBLIC);
 }
@@ -1788,7 +1788,7 @@ rb_define_method_id(VALUE klass, ID mid, VALUE (*func)(ANYARGS), int argc)
 #undef rb_define_method
 #endif
 void
-rb_define_method(VALUE klass, const char *name, VALUE (*func)(ANYARGS), int argc)
+rb_define_method(VALUE klass, const char *name, ruby_method_func_type func, int argc)
 {
     rb_add_method_cfunc(klass, rb_intern(name), func, argc, METHOD_VISI_PUBLIC);
 }
@@ -1797,7 +1797,7 @@ rb_define_method(VALUE klass, const char *name, VALUE (*func)(ANYARGS), int argc
 #undef rb_define_protected_method
 #endif
 void
-rb_define_protected_method(VALUE klass, const char *name, VALUE (*func)(ANYARGS), int argc)
+rb_define_protected_method(VALUE klass, const char *name, ruby_method_func_type func, int argc)
 {
     rb_add_method_cfunc(klass, rb_intern(name), func, argc, METHOD_VISI_PROTECTED);
 }
@@ -1806,7 +1806,7 @@ rb_define_protected_method(VALUE klass, const char *name, VALUE (*func)(ANYARGS)
 #undef rb_define_private_method
 #endif
 void
-rb_define_private_method(VALUE klass, const char *name, VALUE (*func)(ANYARGS), int argc)
+rb_define_private_method(VALUE klass, const char *name, ruby_method_func_type func, int argc)
 {
     rb_add_method_cfunc(klass, rb_intern(name), func, argc, METHOD_VISI_PRIVATE);
 }
@@ -1989,7 +1989,7 @@ rb_singleton_class(VALUE obj)
  * \param argc   the number of parameters, or -1 or -2. see \ref defmethod.
  */
 void
-rb_define_singleton_method(VALUE obj, const char *name, VALUE (*func)(ANYARGS), int argc)
+rb_define_singleton_method(VALUE obj, const char *name, ruby_method_func_type func, int argc)
 {
     rb_define_method(singleton_class_of(obj), name, func, argc);
 }
@@ -2005,7 +2005,7 @@ rb_define_singleton_method(VALUE obj, const char *name, VALUE (*func)(ANYARGS), 
  * \param argc    the number of parameters, or -1 or -2. see \ref defmethod.
  */
 void
-rb_define_module_function(VALUE module, const char *name, VALUE (*func)(ANYARGS), int argc)
+rb_define_module_function(VALUE module, const char *name, ruby_method_func_type func, int argc)
 {
     rb_define_private_method(module, name, func, argc);
     rb_define_singleton_method(module, name, func, argc);
@@ -2021,7 +2021,7 @@ rb_define_module_function(VALUE module, const char *name, VALUE (*func)(ANYARGS)
  * \param argc    the number of parameters, or -1 or -2. see \ref defmethod.
  */
 void
-rb_define_global_function(const char *name, VALUE (*func)(ANYARGS), int argc)
+rb_define_global_function(const char *name, ruby_method_func_type func, int argc)
 {
     rb_define_module_function(rb_mKernel, name, func, argc);
 }

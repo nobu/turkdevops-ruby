@@ -1435,9 +1435,9 @@ SRC
         else
           next unless signed = try_signedness(typedef, member, [prelude])
           u = "unsigned " if signed > 0
-          prelude << "extern rbcv_typedef_ foo();"
+          prelude << "extern rbcv_typedef_ foo(rbcv_typedef_);"
           compat = UNIVERSAL_INTS.find {|t|
-            try_compile([prelude, "extern #{u}#{t} foo();"].join("\n"), opts, :werror=>true, &b)
+            try_compile([prelude, "extern #{u}#{t} foo(#{u}#{t});"].join("\n"), opts, :werror=>true, &b)
           }
         end
         if compat

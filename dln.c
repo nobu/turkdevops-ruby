@@ -69,10 +69,6 @@ void *xrealloc();
 # include <unistd.h>
 #endif
 
-#ifndef _WIN32
-char *getenv();
-#endif
-
 #ifdef __APPLE__
 # if defined(HAVE_DLOPEN)
    /* Mac OS X with dlopen (10.3 or later) */

@@ -6488,7 +6488,7 @@ rb_find_file(VALUE path)
 }
 
 static void
-define_filetest_function(const char *name, VALUE (*func)(ANYARGS), int argc)
+define_filetest_function(const char *name, ruby_method_func_type func, int argc)
 {
     rb_define_module_function(rb_mFileTest, name, func, argc);
     rb_define_singleton_method(rb_cFile, name, func, argc);

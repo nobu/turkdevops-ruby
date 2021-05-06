@@ -137,8 +137,8 @@ typedef struct rb_method_iseq_struct {
 } rb_method_iseq_t; /* check rb_add_method_iseq() when modify the fields */
 
 typedef struct rb_method_cfunc_struct {
-    VALUE (*func)(ANYARGS);
-    VALUE (*invoker)(VALUE recv, int argc, const VALUE *argv, VALUE (*func)(ANYARGS));
+    ruby_method_func_type func;
+    VALUE (*invoker)(VALUE recv, int argc, const VALUE *argv, ruby_method_func_type func);
     int argc;
 } rb_method_cfunc_t;
 
@@ -199,7 +199,7 @@ STATIC_ASSERT(sizeof_method_def, offsetof(rb_method_definition_t, body)==8);
     ((def)->type == VM_METHOD_TYPE_REFINED && \
      UNDEFINED_METHOD_ENTRY_P((def)->body.refined.orig_me))
 
-void rb_add_method_cfunc(VALUE klass, ID mid, VALUE (*func)(ANYARGS), int argc, rb_method_visibility_t visi);
+void rb_add_method_cfunc(VALUE klass, ID mid, ruby_method_func_type func, int argc, rb_method_visibility_t visi);
 void rb_add_method_iseq(VALUE klass, ID mid, const rb_iseq_t *iseq, rb_cref_t *cref, rb_method_visibility_t visi);
 void rb_add_refined_method_entry(VALUE refined_class, ID mid);
 void rb_add_method(VALUE klass, ID mid, rb_method_type_t type, void *option, rb_method_visibility_t visi);

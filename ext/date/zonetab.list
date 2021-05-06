@@ -3,7 +3,7 @@ struct zone {
     int name;
     int offset;
 };
-static const struct zone *zonetab();
+static const struct zone *zonetab(const char *, size_t);
 %}
 
 struct zone;

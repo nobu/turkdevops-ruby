@@ -309,7 +309,7 @@ rb_define_notimplement_method_id(VALUE mod, ID id, rb_method_visibility_t visi)
 }
 
 void
-rb_add_method_cfunc(VALUE klass, ID mid, VALUE (*func)(ANYARGS), int argc, rb_method_visibility_t visi)
+rb_add_method_cfunc(VALUE klass, ID mid, ruby_method_func_type func, int argc, rb_method_visibility_t visi)
 {
     if (argc < -2 || 15 < argc) rb_raise(rb_eArgError, "arity out of range: %d for -2..15", argc);
     if (func != rb_f_notimplement) {
@@ -363,7 +363,7 @@ static inline rb_method_entry_t *search_method(VALUE klass, ID id, VALUE *define
 extern int rb_method_definition_eq(const rb_method_definition_t *d1, const rb_method_definition_t *d2);
 
 static VALUE
-(*call_cfunc_invoker_func(int argc))(VALUE recv, int argc, const VALUE *, VALUE (*func)(ANYARGS))
+(*call_cfunc_invoker_func(int argc))(VALUE recv, int argc, const VALUE *, ruby_method_func_type func)
 {
     if (!GET_THREAD()->ext_config.ractor_safe) {
         switch (argc) {
@@ -416,7 +416,7 @@ static VALUE
 }
 
 static void
-setup_method_cfunc_struct(rb_method_cfunc_t *cfunc, VALUE (*func)(ANYARGS), int argc)
+setup_method_cfunc_struct(rb_method_cfunc_t *cfunc, ruby_method_func_type func, int argc)
 {
     cfunc->func = func;
     cfunc->argc = argc;

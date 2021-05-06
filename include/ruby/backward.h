@@ -15,6 +15,11 @@
 #define RBIMPL_ATTR_DEPRECATED_SINCE(ver) RBIMPL_ATTR_DEPRECATED(("since " #ver))
 #define RBIMPL_ATTR_DEPRECATED_INTERNAL(ver) RBIMPL_ATTR_DEPRECATED(("since "#ver", also internal"))
 
+RBIMPL_WARNING_PUSH()
+#ifdef __GNUC__
+RBIMPL_WARNING_IGNORED(-Wstrict-prototypes)
+#endif
+
 /* eval.c */
 RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_disable_super();
 RBIMPL_ATTR_DEPRECATED_SINCE(2.2) void rb_enable_super();
@@ -68,5 +73,7 @@ ruby_show_copyright_to_die(int exitcode)
 #define ruby_show_copyright() /* defer EXIT_SUCCESS */ \
     (exit(ruby_show_copyright_to_die(EXIT_SUCCESS)))
 #endif
+
+RBIMPL_WARNING_POP()
 
 #endif /* RUBY_RUBY_BACKWARD_H */

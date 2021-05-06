@@ -316,13 +316,13 @@ fiddle_handle_sym(void *handle, VALUE symbol)
 #else
 # define CHECK_DLERROR
 #endif
-    void (*func)();
+    void (*func)(void);
     const char *name = StringValueCStr(symbol);
 
 #ifdef HAVE_DLERROR
     dlerror();
 #endif
-    func = (void (*)())(VALUE)dlsym(handle, name);
+    func = (void (*)(void))(VALUE)dlsym(handle, name);
     CHECK_DLERROR;
 #if defined(FUNC_STDCALL)
     if( !func ){
