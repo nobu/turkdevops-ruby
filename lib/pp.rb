@@ -96,7 +96,7 @@ class PP < PrettyPrint
     begin
       require 'io/console'
       _, width = out.winsize
-    rescue LoadError, NoMethodError, Errno::ENOTTY
+    rescue LoadError, NoMethodError, Errno::ENOTTY, Errno::EBADF
     end
     (width || ENV['COLUMNS']&.to_i&.nonzero? || 80) - 1
   end
