@@ -68,7 +68,7 @@ class PP < PrettyPrint
   # If +width+ is omitted, 79 is assumed.
   #
   # PP.pp returns +out+.
-  def PP.pp(obj, out=$>, width=79)
+  def PP.pp(obj, out=$>, width=PP.width_for(out))
     q = PP.new(out, width)
     q.guard_inspect_key {q.pp obj}
     q.flush
@@ -90,6 +90,15 @@ class PP < PrettyPrint
   # :stopdoc:
   def PP.mcall(obj, mod, meth, *args, &block)
     mod.instance_method(meth).bind_call(obj, *args, &block)
+  end
+
+  def PP.width_for(out)
+    begin
+      require 'io/console'
+      _, width = out.winsize
+    rescue LoadError, NoMethodError, Errno::ENOTTY
+    end
+    (width || ENV['COLUMNS']&.to_i&.nonzero? || 80) - 1
   end
   # :startdoc:
 
@@ -599,9 +608,9 @@ module Kernel
   # prints arguments in pretty form.
   #
   # pp returns argument(s).
-  def pp(*objs)
+  def pp(*objs, out: $>, width: PP.width_for(out))
     objs.each {|obj|
-      PP.pp(obj)
+      PP.pp(obj, out, width)
     }
     objs.size <= 1 ? objs.first : objs
   end
