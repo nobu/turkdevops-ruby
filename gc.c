@@ -6172,6 +6172,21 @@ mark_tbl(rb_objspace_t *objspace, st_table *tbl)
 }
 
 static int
+mark_key_no_pin(st_data_t key, st_data_t value, st_data_t data)
+{
+    rb_objspace_t *objspace = (rb_objspace_t *)data;
+    gc_mark(objspace, (VALUE)key);
+    return ST_CONTINUE;
+}
+
+static void
+mark_set_no_pin(rb_objspace_t *objspace, st_table *tbl)
+{
+    if (!tbl) return;
+    st_foreach(tbl, mark_key_no_pin, (st_data_t)objspace);
+}
+
+static int
 mark_key(st_data_t key, st_data_t value, st_data_t data)
 {
     rb_objspace_t *objspace = (rb_objspace_t *)data;
@@ -11836,14 +11851,20 @@ static const rb_data_type_t weakmap_type = {
 static VALUE wmap_finalize(RB_BLOCK_CALL_FUNC_ARGLIST(objid, self));
 
 static VALUE
-wmap_allocate(VALUE klass)
+wmap_init(VALUE obj, struct weakmap *w)
 {
-    struct weakmap *w;
-    VALUE obj = TypedData_Make_Struct(klass, struct weakmap, &weakmap_type, w);
     w->obj2wmap = rb_init_identtable();
     w->wmap2obj = rb_init_identtable();
     w->final = rb_func_lambda_new(wmap_finalize, obj, 1, 1);
     return obj;
+}
+
+static VALUE
+wmap_allocate(VALUE klass)
+{
+    struct weakmap *w;
+    VALUE obj = TypedData_Make_Struct(klass, struct weakmap, &weakmap_type, w);
+    return wmap_init(obj, w);
 }
 
 static int
@@ -12164,6 +12185,33 @@ wmap_size(VALUE self)
 #else
     return ULL2NUM(n);
 #endif
+}
+
+static void
+extattr_mark(void *ptr)
+{
+    struct weakmap *w = ptr;
+    mark_set_no_pin(&rb_objspace, w->wmap2obj);
+    wmap_mark(ptr);
+}
+
+static const rb_data_type_t extattr_type = {
+    "extattr",
+    {
+	extattr_mark,
+	wmap_free,
+	wmap_memsize,
+        wmap_compact,
+    },
+    &weakmap_type, 0, RUBY_TYPED_FREE_IMMEDIATELY
+};
+
+static VALUE
+extattr_allocate(VALUE klass)
+{
+    struct weakmap *w;
+    VALUE obj = TypedData_Make_Struct(klass, struct weakmap, &extattr_type, w);
+    return wmap_init(obj, w);
 }
 
 /*
@@ -13396,6 +13444,8 @@ Init_GC(void)
 	rb_define_method(rb_cWeakMap, "size", wmap_size, 0);
 	rb_define_method(rb_cWeakMap, "length", wmap_size, 0);
 	rb_include_module(rb_cWeakMap, rb_mEnumerable);
+	VALUE rb_cExternalAttributeMap = rb_define_class_under(rb_mObjSpace, "ExternalAttributeMap", rb_cWeakMap);
+	rb_define_alloc_func(rb_cExternalAttributeMap, extattr_allocate);
     }
 
     /* internal methods */
