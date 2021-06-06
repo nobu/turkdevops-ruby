@@ -390,8 +390,8 @@ special_object_p(VALUE obj)
     }
 }
 
-static VALUE
-obj_freeze_opt(VALUE freeze)
+VALUE
+rb_obj_freeze_opt(VALUE freeze)
 {
     switch(freeze) {
       case Qfalse:
@@ -408,7 +408,7 @@ obj_freeze_opt(VALUE freeze)
 static VALUE
 rb_obj_clone2(rb_execution_context_t *ec, VALUE obj, VALUE freeze)
 {
-    VALUE kwfreeze = obj_freeze_opt(freeze);
+    VALUE kwfreeze = rb_obj_freeze_opt(freeze);
     if (!special_object_p(obj))
 	return mutable_obj_clone(obj, kwfreeze);
     return immutable_obj_clone(obj, kwfreeze);
@@ -436,7 +436,7 @@ freeze_opt(int argc, VALUE *argv)
     if (!NIL_P(opt)) {
 	rb_get_kwargs(opt, keyword_ids, 0, 1, &kwfreeze);
         if (kwfreeze != Qundef)
-            kwfreeze = obj_freeze_opt(kwfreeze);
+            kwfreeze = rb_obj_freeze_opt(kwfreeze);
     }
     return kwfreeze;
 }

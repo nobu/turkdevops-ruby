@@ -1022,6 +1022,7 @@ BUILTIN_RB_SRCS = \
 		$(srcdir)/ast.rb \
 		$(srcdir)/dir.rb \
 		$(srcdir)/gc.rb \
+		$(srcdir)/hash.rb \
 		$(srcdir)/numeric.rb \
 		$(srcdir)/io.rb \
 		$(srcdir)/pack.rb \
@@ -6222,6 +6223,7 @@ hash.$(OBJEXT): {$(VPATH)}debug_counter.h
 hash.$(OBJEXT): {$(VPATH)}defines.h
 hash.$(OBJEXT): {$(VPATH)}encoding.h
 hash.$(OBJEXT): {$(VPATH)}hash.c
+hash.$(OBJEXT): {$(VPATH)}hash.rbinc
 hash.$(OBJEXT): {$(VPATH)}id.h
 hash.$(OBJEXT): {$(VPATH)}id_table.h
 hash.$(OBJEXT): {$(VPATH)}intern.h

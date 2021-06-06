@@ -7194,6 +7194,12 @@ Init_Hash(void)
     rb_define_singleton_method(envtbl, "assoc", env_assoc, 1);
     rb_define_singleton_method(envtbl, "rassoc", env_rassoc, 1);
 
+    VALUE envtbl_class = rb_singleton_class(envtbl);
+    rb_undef_method(envtbl_class, "initialize");
+    rb_undef_method(envtbl_class, "initialize_clone");
+    rb_undef_method(envtbl_class, "initialize_copy");
+    rb_undef_method(envtbl_class, "initialize_dup");
+
     /*
      * ENV is a Hash-like accessor for environment variables.
      *
@@ -7206,3 +7212,5 @@ Init_Hash(void)
 
     HASH_ASSERT(sizeof(ar_hint_t) * RHASH_AR_TABLE_MAX_SIZE == sizeof(VALUE));
 }
+
+#include "hash.rbinc"
