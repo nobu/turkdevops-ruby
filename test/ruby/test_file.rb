@@ -460,6 +460,45 @@ class TestFile < Test::Unit::TestCase
     end
   end
 
+  def test_file_open_newline_option_write
+    Dir.mktmpdir(__method__.to_s) do |tmpdir|
+      path = File.join(tmpdir, "foo")
+
+      test = lambda do |newline|
+        File.open(path, "wt", newline: newline) do |f|
+          f.write "a\n"
+          f.puts "b"
+        end
+        File.binread(path)
+      end
+      all_assertions do |a|
+        a.for("lf") {assert_equal("a\n""b\n", test.(:lf))}
+        a.for("universal") {assert_equal("a\n""b\n", test.(:universal))}
+        a.for("crlf") {assert_equal("a\r\n""b\r\n", test.(:crlf))}
+        a.for("cr") {assert_equal("a\r""b\r", test.(:cr))}
+      end
+    end
+  end
+
+  def test_file_open_newline_option_read
+    Dir.mktmpdir(__method__.to_s) do |tmpdir|
+      path = File.join(tmpdir, "foo")
+
+      File.binwrite(path, "a\n""b\r""c\r\n")
+      test = lambda do |newline|
+        File.open(path, newline: newline) do |f|
+          f.readlines
+        end
+      end
+      all_assertions do |a|
+        a.for("lf") {assert_equal(["a\n", "b\r""c\r\n"], test.(:lf))}
+        a.for("universal") {assert_equal(["a\n", "b\n", "c\n"], test.(:universal))}
+        a.for("crlf") {assert_equal(["a\n""b\r""c\r\n"], test.(:crlf))}
+        a.for("cr") {assert_equal(["a\n""b\r", "c\r", "\n"], test.(:cr))}
+      end
+    end
+  end
+
   def test_open_nul
     Dir.mktmpdir(__method__.to_s) do |tmpdir|
       path = File.join(tmpdir, "foo")

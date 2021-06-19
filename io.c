@@ -3534,7 +3534,7 @@ extract_getline_opts(VALUE opts, struct getline_arg *args)
 static void
 extract_getline_args(int argc, VALUE *argv, struct getline_arg *args)
 {
-    VALUE rs = rb_rs, lim = Qnil;
+    VALUE rs = Qundef, lim = Qnil;
 
     if (argc == 1) {
         VALUE tmp = Qnil;
@@ -3558,13 +3558,28 @@ extract_getline_args(int argc, VALUE *argv, struct getline_arg *args)
 static void
 check_getline_args(VALUE *rsp, long *limit, VALUE io)
 {
-    rb_io_t *fptr;
+    rb_io_t *fptr = 0;
     VALUE rs = *rsp;
 
+    if (rs == Qundef) {
+	GetOpenFile(io, fptr);
+        switch (fptr->encs.ecflags & RUBY_ECONV_NEWLINE_DECORATOR_MASK) {
+          case RUBY_ECONV_CR_NEWLINE_DECORATOR:
+            rs = rb_fstring_lit("\r");
+            break;
+          case RUBY_ECONV_CRLF_NEWLINE_DECORATOR:
+            rs = rb_fstring_lit("\r\n");
+            break;
+          default:
+            rs = rb_rs;
+            break;
+        }
+        *rsp = rs;
+    }
     if (!NIL_P(rs)) {
 	rb_encoding *enc_rs, *enc_io;
 
-	GetOpenFile(io, fptr);
+	if (!fptr) GetOpenFile(io, fptr);
 	enc_rs = rb_enc_get(rs);
 	enc_io = io_read_encoding(fptr);
 	if (enc_io != enc_rs &&
