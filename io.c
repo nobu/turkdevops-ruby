@@ -3570,6 +3570,13 @@ check_getline_args(VALUE *rsp, long *limit, VALUE io)
           case RUBY_ECONV_CRLF_NEWLINE_DECORATOR:
             rs = rb_fstring_lit("\r\n");
             break;
+#if defined(RUBY_TEST_CRLF_ENVIRONMENT) || defined(_WIN32)
+          case RUBY_ECONV_LF_NEWLINE_DECORATOR:
+            setmode(fptr->fd, O_BINARY);
+            fptr->mode |= FMODE_BINMODE;
+            fptr->mode &= ~FMODE_TEXTMODE;
+            /* fall through */
+#endif
           default:
             rs = rb_rs;
             break;

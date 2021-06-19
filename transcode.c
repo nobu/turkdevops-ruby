@@ -1026,6 +1026,7 @@ decorator_names(int ecflags, const char **decorators_ret)
 
     switch (ecflags & ECONV_NEWLINE_DECORATOR_MASK) {
       case ECONV_UNIVERSAL_NEWLINE_DECORATOR:
+      case ECONV_LF_NEWLINE_DECORATOR:
       case ECONV_CRLF_NEWLINE_DECORATOR:
       case ECONV_CR_NEWLINE_DECORATOR:
       case 0:
@@ -2478,7 +2479,7 @@ econv_opts(VALUE opt, int ecflags)
 	    ecflags |= ECONV_CR_NEWLINE_DECORATOR;
 	}
 	else if (v == sym_lf) {
-	    /* ecflags |= ECONV_LF_NEWLINE_DECORATOR; */
+	    ecflags |= ECONV_LF_NEWLINE_DECORATOR;
 	}
 	else if (SYMBOL_P(v)) {
 	    rb_raise(rb_eArgError, "unexpected value for newline option: %"PRIsVALUE,
