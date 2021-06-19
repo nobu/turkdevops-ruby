@@ -3556,6 +3556,16 @@ extract_getline_args(int argc, VALUE *argv, struct getline_arg *args)
 }
 
 static void
+disable_text_mode(rb_io_t *fptr)
+{
+#if defined(RUBY_TEST_CRLF_ENVIRONMENT) || defined(_WIN32)
+    setmode(fptr->fd, O_BINARY);
+    fptr->mode |= FMODE_BINMODE;
+    fptr->mode &= ~FMODE_TEXTMODE;
+#endif
+}
+
+static void
 check_getline_args(VALUE *rsp, long *limit, VALUE io)
 {
     rb_io_t *fptr = 0;
@@ -3568,15 +3578,12 @@ check_getline_args(VALUE *rsp, long *limit, VALUE io)
             rs = rb_fstring_lit("\r");
             break;
           case RUBY_ECONV_CRLF_NEWLINE_DECORATOR:
+            disable_text_mode(fptr);
             rs = rb_fstring_lit("\r\n");
             break;
-#if defined(RUBY_TEST_CRLF_ENVIRONMENT) || defined(_WIN32)
           case RUBY_ECONV_LF_NEWLINE_DECORATOR:
-            setmode(fptr->fd, O_BINARY);
-            fptr->mode |= FMODE_BINMODE;
-            fptr->mode &= ~FMODE_TEXTMODE;
+            disable_text_mode(fptr);
             /* fall through */
-#endif
           default:
             rs = rb_rs;
             break;
