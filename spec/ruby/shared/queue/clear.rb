@@ -8,5 +8,5 @@ describe :queue_clear, shared: true do
     queue.empty?.should be_true
   end
 
-  # TODO: test for atomicity of Queue#clear
+  # TODO: test for atomicity of Thread::Queue#clear
 end

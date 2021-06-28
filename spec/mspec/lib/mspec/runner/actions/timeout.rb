@@ -1,7 +1,7 @@
 class TimeoutAction
   def initialize(timeout)
     @timeout = timeout
-    @queue = Queue.new
+    @queue = Thread::Queue.new
     @started = now
   end
 
