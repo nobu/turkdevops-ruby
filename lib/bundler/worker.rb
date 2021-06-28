@@ -2,6 +2,7 @@
 
 module Bundler
   class Worker
+    Mutex = Thread::Mutex         # :nodoc:
     POISON = Object.new
 
     class WrappedException < StandardError

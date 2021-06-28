@@ -34,6 +34,9 @@ require_relative "bundler/build_metadata"
 # of loaded and required modules.
 #
 module Bundler
+  Mutex = Thread::Mutex         # :nodoc:
+  ConditionVariable = Thread::ConditionVariable # :nodoc:
+
   environment_preserver = EnvironmentPreserver.from_env
   ORIGINAL_ENV = environment_preserver.restore
   environment_preserver.replace_with_backup

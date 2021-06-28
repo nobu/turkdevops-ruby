@@ -28,6 +28,9 @@ class Bundler::ConnectionPool::PoolShuttingDownError < RuntimeError; end
 #    #=> raises Timeout::Error after 5 seconds
 
 class Bundler::ConnectionPool::TimedStack
+  Mutex = Thread::Mutex         # :nodoc:
+  ConditionVariable = Thread::ConditionVariable # :nodoc:
+
   attr_reader :max
 
   ##
