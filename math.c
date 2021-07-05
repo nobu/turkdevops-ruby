@@ -38,12 +38,31 @@ VALUE rb_eMathDomainError;
 
 #define Get_Double(x) rb_num_to_dbl(x)
 
-#define domain_error(msg) \
-    rb_raise(rb_eMathDomainError, "Numerical argument is out of domain - " msg)
-#define domain_check_min(val, min, msg) \
-    ((val) < (min) ? domain_error(msg) : (void)0)
-#define domain_check_range(val, min, max, msg) \
-    ((val) < (min) || (max) < (val) ? domain_error(msg) : (void)0)
+NORETURN(static inline void domain_error(const char *msg));
+static inline void
+domain_error(const char *msg)
+{
+    rb_raise(rb_eMathDomainError, "Numerical argument is out of domain - %s", msg);
+}
+
+static inline void
+domain_check_min(double val, double min, const char *msg)
+{
+    if (val < min) domain_error(msg);
+}
+
+static inline void
+domain_check_max(double val, double max, const char *msg)
+{
+    if (max < val) domain_error(msg);
+}
+
+static inline void
+domain_check_range(double val, double min, double max, const char *msg)
+{
+    domain_check_min(val, min, msg);
+    domain_check_max(val, max, msg);
+}
 
 /*
  *  call-seq:
