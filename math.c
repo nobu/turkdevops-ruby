@@ -38,6 +38,8 @@ VALUE rb_eMathDomainError;
 
 #define Get_Double(x) rb_num_to_dbl(x)
 
+#define CHECK_POLE_ERROR 0
+
 NORETURN(static inline void domain_error(const char *msg));
 static inline void
 domain_error(const char *msg)
@@ -409,9 +411,10 @@ math_atanh(VALUE unused_obj, VALUE x)
 
     d = Get_Double(x);
     domain_check_range(d, -1.0, +1.0, "atanh");
-    /* check for pole error */
+#if CHECK_POLE_ERROR
     if (d == -1.0) return DBL2NUM(-HUGE_VAL);
     if (d == +1.0) return DBL2NUM(+HUGE_VAL);
+#endif
     return DBL2NUM(atanh(d));
 }
 
@@ -521,8 +524,9 @@ math_log1(VALUE x)
     double d = get_double_rshift(x, &numbits);
 
     domain_check_min(d, 0.0, "log");
-    /* check for pole error */
+#if CHECK_POLE_ERROR
     if (d == 0.0) return -HUGE_VAL;
+#endif
 
     return log(d) + numbits * M_LN2; /* log(d * 2 ** numbits) */
 }
@@ -563,8 +567,9 @@ math_log2(VALUE unused_obj, VALUE x)
     double d = get_double_rshift(x, &numbits);
 
     domain_check_min(d, 0.0, "log2");
-    /* check for pole error */
+#if CHECK_POLE_ERROR
     if (d == 0.0) return DBL2NUM(-HUGE_VAL);
+#endif
 
     return DBL2NUM(log2(d) + numbits); /* log2(d * 2 ** numbits) */
 }
@@ -592,8 +597,9 @@ math_log10(VALUE unused_obj, VALUE x)
     double d = get_double_rshift(x, &numbits);
 
     domain_check_min(d, 0.0, "log10");
-    /* check for pole error */
+#if CHECK_POLE_ERROR
     if (d == 0.0) return DBL2NUM(-HUGE_VAL);
+#endif
 
     return DBL2NUM(log10(d) + numbits * log10(2)); /* log10(d * 2 ** numbits) */
 }
