@@ -289,6 +289,10 @@ f_eqeq_p(VALUE x, VALUE y)
 	return x == y;
     else if (RB_FLOAT_TYPE_P(x) || RB_FLOAT_TYPE_P(y))
 	return NUM2DBL(x) == NUM2DBL(y);
+    else if (RB_INTEGER_TYPE_P(x))
+	return RTEST(rb_int_equal(x, y));
+    else if (RB_INTEGER_TYPE_P(y))
+	return RTEST(rb_int_equal(y, x));
     return (int)rb_equal(x, y);
 }
 

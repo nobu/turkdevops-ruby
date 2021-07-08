@@ -1,0 +1,10 @@
+prelude: |
+  range = -1000...1000
+  a = Complex(rand(range), rand(range))
+  b = Complex(rand(range), rand(range))
+  big = 1 << 80
+benchmark:
+  complex_int_eq: a == b
+  complex_int_eq0: a == 0
+  complex_int_eq_big: a == big
+loop_count: 1000000
