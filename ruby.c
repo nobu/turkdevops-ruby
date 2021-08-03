@@ -57,6 +57,7 @@
 #include "internal/object.h"
 #include "internal/parse.h"
 #include "internal/process.h"
+#include "internal/util.h"
 #include "internal/variable.h"
 #include "mjit.h"
 #include "yjit.h"
@@ -1554,9 +1555,25 @@ proc_options(long argc, char **argv, ruby_cmdline_options_t *opt, int envopt)
 
 	  default:
 	    {
+                int c = (int)(unsigned char)*s;
+                char buf[5];
+                if (ISPRINT(c)) {
+                    buf[0] = (char)c;
+                    buf[1] = '\0';
+                    s = buf;
+                }
+                else if (!(s = ruby_escaped_char(c))) {
+                    const char *const upper_hexdigits = (ruby_hexdigits+16);
+                    buf[0] = '\\';
+                    buf[1] = 'x';
+                    buf[2] = upper_hexdigits[(c >> 4) & 0xf];
+                    buf[3] = upper_hexdigits[c & 0xf];
+                    buf[4] = '\0';
+                    s = buf;
+                }
                 rb_raise(rb_eRuntimeError,
-			"invalid option -%c  (-h will show valid options)",
-                        (int)(unsigned char)*s);
+                         "invalid option -%s  (-h will show valid options)",
+                         s);
 	    }
 	    goto switch_end;
 

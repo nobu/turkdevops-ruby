@@ -79,33 +79,60 @@ error_print(rb_execution_context_t *ec)
     rb_ec_error_print(ec, ec->errinfo);
 }
 
+#define CSI_BEGIN "\033["
+#define CSI_SGR "m"
+
+static const char underline[] = CSI_BEGIN"1;4"CSI_SGR;
+static const char bold[] = CSI_BEGIN"1"CSI_SGR;
+static const char revvideo[] = CSI_BEGIN"7"CSI_SGR;
+static const char reset[] = CSI_BEGIN""CSI_SGR;
+
+static long
+csi_sgr_length(const char *ptr, long len)
+{
+    const char *beg = ptr;
+    unsigned char c = *ptr;
+    if (c != '\033' || --len < 2 || (*++ptr != '[')) return 0;
+    while (--len > 0) {
+        if ((c = *++ptr) == 'm') return ptr - beg + 1;
+        if (c != ';' && !rb_isdigit(c)) break;
+    }
+    return 0;
+}
+
 static void
-write_warnq(VALUE out, VALUE str, const char *ptr, long len)
+write_warnq(VALUE out, VALUE str, const char *ptr, long len, int highlight)
 {
     if (NIL_P(out)) {
         const char *beg = ptr;
         const long olen = len;
         for (; len > 0; --len, ++ptr) {
             unsigned char c = *ptr;
+            long sgr = csi_sgr_length(ptr, len);
+            if (sgr > 0) {
+                ptr += sgr;
+                len -= sgr;
+                continue;
+            }
             switch (c) {
               case '\n': case '\t': continue;
             }
             if (rb_iscntrl(c)) {
-                char buf[5];
-                const char *cc = 0;
+                char buf[sizeof(revvideo) + sizeof(bold) + sizeof(reset)];
+                size_t pos = 0;
                 if (ptr > beg) rb_write_error2(beg, ptr - beg);
                 beg = ptr + 1;
-                cc = ruby_escaped_char(c);
-                if (cc) {
-                    rb_write_error2(cc, strlen(cc));
+                memcpy(buf, revvideo, sizeof(revvideo) - 1);
+                pos += sizeof(revvideo) - 1;
+                buf[pos++] = (c == 0x7f ? '?' : (c | 0x40));
+                memcpy(buf + pos, reset, sizeof(reset) - 1);
+                pos += sizeof(reset) - 1;
+                if (highlight) {
+                    buf[pos - 1] = ';';
+                    memcpy(buf + pos, bold + rb_strlen_lit(CSI_BEGIN), sizeof(bold) - sizeof(CSI_BEGIN));
+                    pos += sizeof(bold) - sizeof(CSI_BEGIN);
                 }
-                else {
-                    rb_write_error2(buf, snprintf(buf, sizeof(buf), "\\x%02X", c));
-                }
-            }
-            else if (c == '\\') {
-                rb_write_error2(beg, ptr - beg + 1);
-                beg = ptr;
+                rb_write_error2(buf, pos);
             }
         }
         if (ptr > beg) {
@@ -119,13 +146,6 @@ write_warnq(VALUE out, VALUE str, const char *ptr, long len)
         rb_str_cat(out, ptr, len);
     }
 }
-
-#define CSI_BEGIN "\033["
-#define CSI_SGR "m"
-
-static const char underline[] = CSI_BEGIN"1;4"CSI_SGR;
-static const char bold[] = CSI_BEGIN"1"CSI_SGR;
-static const char reset[] = CSI_BEGIN""CSI_SGR;
 
 static void
 print_errinfo(const VALUE eclass, const VALUE errat, const VALUE emesg, const VALUE str, int highlight)
@@ -174,11 +194,11 @@ print_errinfo(const VALUE eclass, const VALUE errat, const VALUE emesg, const VA
 	    if (RSTRING_PTR(epath)[0] == '#')
 		epath = 0;
 	    if ((tail = memchr(einfo, '\n', elen)) != 0) {
-                write_warnq(str, emesg, einfo, tail - einfo);
+                write_warnq(str, emesg, einfo, tail - einfo, highlight);
 		tail++;		/* skip newline */
 	    }
 	    else {
-                write_warnq(str, emesg, einfo, elen);
+                write_warnq(str, emesg, einfo, elen, highlight);
 	    }
 	    if (epath) {
 		write_warn(str, " (");
@@ -194,7 +214,7 @@ print_errinfo(const VALUE eclass, const VALUE errat, const VALUE emesg, const VA
 	    }
 	    if (tail && einfo+elen > tail) {
 		if (!highlight) {
-                    write_warnq(str, emesg, tail, einfo+elen-tail);
+                    write_warnq(str, emesg, tail, einfo+elen-tail, FALSE);
 		    if (einfo[elen-1] != '\n') write_warn2(str, "\n", 1);
 		}
 		else {
@@ -204,7 +224,7 @@ print_errinfo(const VALUE eclass, const VALUE errat, const VALUE emesg, const VA
 			tail = memchr(einfo, '\n', elen);
 			if (!tail || tail > einfo) {
 			    write_warn(str, bold);
-                            write_warnq(str, emesg, einfo, tail ? tail-einfo : elen);
+                            write_warnq(str, emesg, einfo, tail ? tail-einfo : elen, TRUE);
 			    write_warn(str, reset);
 			    if (!tail) {
 				write_warn2(str, "\n", 1);
@@ -214,7 +234,7 @@ print_errinfo(const VALUE eclass, const VALUE errat, const VALUE emesg, const VA
 			elen -= tail - einfo;
 			einfo = tail;
 			do ++tail; while (tail < einfo+elen && *tail == '\n');
-                        write_warnq(str, emesg, einfo, tail-einfo);
+                        write_warnq(str, emesg, einfo, tail-einfo, TRUE);
 			elen -= tail - einfo;
 			einfo = tail;
 		    }

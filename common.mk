@@ -13336,6 +13336,7 @@ ruby.$(OBJEXT): {$(VPATH)}internal/static_assert.h
 ruby.$(OBJEXT): {$(VPATH)}internal/stdalign.h
 ruby.$(OBJEXT): {$(VPATH)}internal/stdbool.h
 ruby.$(OBJEXT): {$(VPATH)}internal/symbol.h
+ruby.$(OBJEXT): {$(VPATH)}internal/util.h
 ruby.$(OBJEXT): {$(VPATH)}internal/value.h
 ruby.$(OBJEXT): {$(VPATH)}internal/value_type.h
 ruby.$(OBJEXT): {$(VPATH)}internal/variable.h
