@@ -43,4 +43,5 @@ PREFIXED_SYMBOL(SYMBOL_PREFIX,coroutine_transfer):
 
 #if (defined(__linux__) || defined(__FreeBSD__)) && defined(__ELF__)
 .section .note.GNU-stack,"",%progbits
+.section .note.gnu.property,"a"
 #endif
