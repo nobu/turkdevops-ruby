@@ -7714,6 +7714,7 @@ math.$(OBJEXT): $(top_srcdir)/internal/bignum.h
 math.$(OBJEXT): $(top_srcdir)/internal/class.h
 math.$(OBJEXT): $(top_srcdir)/internal/compilers.h
 math.$(OBJEXT): $(top_srcdir)/internal/complex.h
+math.$(OBJEXT): $(top_srcdir)/internal/error.h
 math.$(OBJEXT): $(top_srcdir)/internal/gc.h
 math.$(OBJEXT): $(top_srcdir)/internal/math.h
 math.$(OBJEXT): $(top_srcdir)/internal/object.h

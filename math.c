@@ -22,6 +22,7 @@
 #include "internal.h"
 #include "internal/bignum.h"
 #include "internal/complex.h"
+#include "internal/error.h"
 #include "internal/math.h"
 #include "internal/object.h"
 #include "internal/vm.h"

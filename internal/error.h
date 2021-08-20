@@ -28,7 +28,7 @@
 #endif
 
 #define rb_raise_static(e, m) \
-    rb_raise_cstr_i((e), rb_str_new_static((m), rb_strlen_lit(m)))
+    rb_raise_cstr_static((e), (m), rbimpl_strlen(m))
 #ifdef RUBY_FUNCTION_NAME_STRING
 # define rb_sys_fail_path(path) rb_sys_fail_path_in(RUBY_FUNCTION_NAME_STRING, path)
 # define rb_syserr_fail_path(err, path) rb_syserr_fail_path_in(RUBY_FUNCTION_NAME_STRING, (err), (path))
@@ -128,6 +128,7 @@ PRINTF_ARGS(VALUE rb_warning_string(const char *fmt, ...), 1, 2);
 NORETURN(void rb_vraise(VALUE, const char *, va_list));
 NORETURN(static inline void rb_raise_cstr(VALUE etype, const char *mesg));
 NORETURN(static inline void rb_raise_cstr_i(VALUE etype, VALUE mesg));
+NORETURN(static inline void rb_raise_cstr_static(VALUE etype, const char *mesg, long len));
 NORETURN(static inline void rb_name_err_raise_str(VALUE mesg, VALUE recv, VALUE name));
 NORETURN(static inline void rb_name_err_raise(const char *mesg, VALUE recv, VALUE name));
 NORETURN(static inline void rb_key_err_raise(VALUE mesg, VALUE recv, VALUE name));
@@ -158,6 +159,25 @@ rb_raise_cstr(VALUE etype, const char *mesg)
     VALUE str = rb_str_new_cstr(mesg);
     rb_raise_cstr_i(etype, str);
 }
+
+static inline void
+rb_raise_cstr_static(VALUE etype, const char *mesg, long len)
+{
+    VALUE str = rb_str_new_static(mesg, len);
+    rb_raise_cstr_i(etype, str);
+}
+
+# define rb_raise_cstr(etype, mesg) \
+    (RBIMPL_CONSTANT_P(mesg) ? \
+     rb_raise_static(etype, mesg) : \
+     rb_raise_cstr(etype, mesg))
+
+#if defined(__OPTIMIZE__) && defined(HAVE___VA_OPT__)
+#define rb_raise(etype, mesg, ...) \
+    ((#__VA_ARGS__)[0] /* constexpr */ ? \
+     rb_raise(etype, mesg __VA_OPT__(, __VA_ARGS__)) : \
+     rb_raise_cstr(etype, mesg))
+#endif
 
 static inline void
 rb_name_err_raise_str(VALUE mesg, VALUE recv, VALUE name)

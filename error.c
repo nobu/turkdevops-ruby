@@ -3018,6 +3018,7 @@ rb_vraise(VALUE exc, const char *fmt, va_list ap)
     rb_exc_raise(rb_exc_new3(exc, rb_vsprintf(fmt, ap)));
 }
 
+#undef rb_raise
 void
 rb_raise(VALUE exc, const char *fmt, ...)
 {
