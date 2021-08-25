@@ -182,6 +182,7 @@ EXTMK_ARGS    =	$(SCRIPT_ARGS) --extension $(EXTS) --extstatic $(EXTSTATIC) \
 		--
 INSTRUBY      =	$(SUDO) $(INSTRUBY_ENV) $(RUNRUBY) -r./$(arch)-fake $(tooldir)/rbinstall.rb
 INSTRUBY_ARGS =	$(SCRIPT_ARGS) \
+		prefix="$(prefix)" \
 		--data-mode=$(INSTALL_DATA_MODE) \
 		--prog-mode=$(INSTALL_PROG_MODE) \
 		--installed-list $(INSTALLED_LIST) \

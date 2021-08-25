@@ -22,7 +22,6 @@ require 'fileutils'
 require 'shellwords'
 require 'optparse'
 require 'optparse/shellwords'
-require 'rubygems'
 begin
   require "zlib"
 rescue LoadError
@@ -134,6 +133,9 @@ def parse_args(argv = ARGV)
   $destdir ||= $mflags.defined?("DESTDIR")
   if $extout ||= $mflags.defined?("EXTOUT")
     RbConfig.expand($extout)
+  end
+  $mflags.defined?("prefix") do |prefix|
+    RbConfig.fire_update!("prefix", prefix)
   end
 
   $continue = $mflags.set?(?k)
@@ -333,33 +335,27 @@ def CONFIG.[](name, mandatory = false)
   value
 end
 
-exeext = CONFIG["EXEEXT"]
-
-ruby_install_name = CONFIG["ruby_install_name", true]
-rubyw_install_name = CONFIG["rubyw_install_name"]
-goruby_install_name = "go" + ruby_install_name
-
-bindir = CONFIG["bindir", true]
-libdir = CONFIG[CONFIG.fetch("libdirname", "libdir"), true]
-rubyhdrdir = CONFIG["rubyhdrdir", true]
-archhdrdir = CONFIG["rubyarchhdrdir"] || (rubyhdrdir + "/" + CONFIG['arch'])
-rubylibdir = CONFIG["rubylibdir", true]
-archlibdir = CONFIG["rubyarchdir", true]
-if CONFIG["sitedir"]
-  sitelibdir = CONFIG["sitelibdir"]
-  sitearchlibdir = CONFIG["sitearchdir"]
-end
-if CONFIG["vendordir"]
-  vendorlibdir = CONFIG["vendorlibdir"]
-  vendorarchlibdir = CONFIG["vendorarchdir"]
-end
-mandir = CONFIG["mandir", true]
-docdir = CONFIG["docdir", true]
-enable_shared = CONFIG["ENABLE_SHARED"] == 'yes'
-dll = CONFIG["LIBRUBY_SO", enable_shared]
-lib = CONFIG["LIBRUBY", true]
-arc = CONFIG["LIBRUBY_A", true]
-load_relative = CONFIG["LIBRUBY_RELATIVE"] == 'yes'
+exeext = nil
+ruby_install_name = nil
+rubyw_install_name = nil
+goruby_install_name = nil
+bindir = nil
+libdir = nil
+rubyhdrdir = nil
+archhdrdir = nil
+rubylibdir = nil
+archlibdir = nil
+sitelibdir = nil
+sitearchlibdir = nil
+vendorlibdir = nil
+vendorarchlibdir = nil
+mandir = nil
+docdir = nil
+enable_shared = nil
+dll = nil
+lib = nil
+arc = nil
+load_relative = nil
 
 rdoc_noinst = %w[created.rid]
 
@@ -459,27 +455,27 @@ install?(:doc, :capi) do
   install_recursive "doc/capi", docdir+"/capi", :mode => $data_mode
 end
 
-prolog_script = <<EOS
+PROLOG_SCRIPT = Hash.new do |prologs, cmdtype|
+  prolog_script = <<EOS
 bindir="#{load_relative ? '${0%/*}' : bindir.gsub(/\"/, '\\\\"')}"
 EOS
-if CONFIG["LIBRUBY_RELATIVE"] != 'yes' and libpathenv = CONFIG["LIBPATHENV"]
-  pathsep = File::PATH_SEPARATOR
-  prolog_script << <<EOS
-libdir="#{load_relative ? '$\{bindir%/bin\}/lib' : libdir.gsub(/\"/, '\\\\"')}"
+  if !load_relative and libpathenv = CONFIG["LIBPATHENV"]
+    pathsep = File::PATH_SEPARATOR
+    prolog_script << <<EOS
+libdir="#{libdir.gsub(/\"/, '\\\\"')}"
 export #{libpathenv}="$libdir${#{libpathenv}:+#{pathsep}$#{libpathenv}}"
 EOS
-end
-prolog_script << %Q[exec "$bindir/#{ruby_install_name}" "-x" "$0" "$@"\n]
-PROLOG_SCRIPT = {}
-PROLOG_SCRIPT["exe"] = "#!#{bindir}/#{ruby_install_name}"
-PROLOG_SCRIPT["cmd"] = <<EOS
+  end
+  prolog_script << %Q[exec "$bindir/#{ruby_install_name}" "-x" "$0" "$@"\n]
+  prologs["exe"] = "#!#{bindir}/#{ruby_install_name}"
+  prologs["cmd"] = <<EOS
 :""||{ ""=> %q<-*- ruby -*-
 @"%~dp0#{ruby_install_name}" -x "%~f0" %*
 @exit /b %ERRORLEVEL%
 };{ #\n#{prolog_script.gsub(/(?=\n)/, ' #')}>,\n}
 EOS
-PROLOG_SCRIPT.default = (load_relative || /\s/ =~ bindir) ?
-                          <<EOS : PROLOG_SCRIPT["exe"]
+  prologs.default = (load_relative || /\s/ =~ bindir) ?
+                      <<EOS : prologs["exe"]
 #!/bin/sh
 # -*- ruby -*-
 _=_\\
@@ -487,6 +483,8 @@ _=_\\
 #{prolog_script.chomp}
 =end
 EOS
+  prologs[cmdtype]
+end
 
 installer = Struct.new(:ruby_shebang, :ruby_bin, :ruby_install_name, :stub, :trans) do
   def transform(name)
@@ -494,7 +492,7 @@ installer = Struct.new(:ruby_shebang, :ruby_bin, :ruby_install_name, :stub, :tra
   end
 end
 
-$script_installer = Class.new(installer) do
+installer_init = proc do
   ruby_shebang = File.join(bindir, ruby_install_name)
   if File::ALT_SEPARATOR
     ruby_bin = ruby_shebang.tr(File::SEPARATOR, File::ALT_SEPARATOR)
@@ -571,7 +569,7 @@ $script_installer = Class.new(installer) do
     super or self.stub = self.class.get_rubystub
   end
 
-  break new(ruby_shebang, ruby_bin, ruby_install_name, nil, trans)
+  new(ruby_shebang, ruby_bin, ruby_install_name, nil, trans)
 end
 
 install?(:local, :comm, :bin, :'bin-comm') do
@@ -681,6 +679,8 @@ install?(:dbg, :nodefault) do
 end
 
 module RbInstall
+end
+RbInstall::Init = proc do
   def self.no_write(options = nil)
     u = File.umask(0022)
     if $dryrun
@@ -703,7 +703,7 @@ module RbInstall
     File.umask(u)
   end
 
-  module Specs
+  module self::Specs
     class FileCollector
       def initialize(gemspec)
         @gemspec = gemspec
@@ -779,7 +779,7 @@ module RbInstall
     end
   end
 
-  class DirPackage
+  class self::DirPackage
     attr_reader :spec
 
     attr_accessor :dir_mode
@@ -812,10 +812,10 @@ module RbInstall
     end
   end
 
-  class GemInstaller < Gem::Installer
+  class self::GemInstaller < Gem::Installer
   end
 
-  class UnpackedInstaller < GemInstaller
+  class self::UnpackedInstaller < self::GemInstaller
     def write_cache_file
     end
 
@@ -867,7 +867,7 @@ module RbInstall
     end
   end
 
-  class GemInstaller
+  class self::GemInstaller
     def install
       spec.post_install_message = nil
       RbInstall.no_write(options) {super}
@@ -1059,6 +1059,40 @@ install?(:ext, :comm, :gem, :'bundled-gems') do
 end
 
 parse_args()
+
+exeext = CONFIG["EXEEXT"]
+
+ruby_install_name = CONFIG["ruby_install_name", true]
+rubyw_install_name = CONFIG["rubyw_install_name"]
+goruby_install_name = "go" + ruby_install_name
+
+bindir = CONFIG["bindir", true]
+libdir = CONFIG[CONFIG.fetch("libdirname", "libdir"), true]
+rubyhdrdir = CONFIG["rubyhdrdir", true]
+archhdrdir = CONFIG["rubyarchhdrdir"] || (rubyhdrdir + "/" + CONFIG['arch'])
+rubylibdir = CONFIG["rubylibdir", true]
+archlibdir = CONFIG["rubyarchdir", true]
+if CONFIG["sitedir"]
+  sitelibdir = CONFIG["sitelibdir"]
+  sitearchlibdir = CONFIG["sitearchdir"]
+end
+if CONFIG["vendordir"]
+  vendorlibdir = CONFIG["vendorlibdir"]
+  vendorarchlibdir = CONFIG["vendorarchdir"]
+end
+mandir = CONFIG["mandir", true]
+docdir = CONFIG["docdir", true]
+enable_shared = CONFIG["ENABLE_SHARED"] == 'yes'
+dll = CONFIG["LIBRUBY_SO", enable_shared]
+lib = CONFIG["LIBRUBY", true]
+arc = CONFIG["LIBRUBY_A", true]
+load_relative = CONFIG["LIBRUBY_RELATIVE"] == 'yes'
+
+$script_installer = installer.class_eval(&installer_init)
+
+require 'rubygems'
+
+RbInstall.module_eval(&RbInstall::Init)
 
 include FileUtils
 include FileUtils::NoWrite if $dryrun
