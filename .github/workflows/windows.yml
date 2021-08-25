@@ -4,13 +4,25 @@ jobs:
   make:
     strategy:
       matrix:
-        test_task: [check] # to make job names consistent
-        os: [windows-2019, windows-2022]
+        include:
+          - vs: 2019
+            os: windows-2019
+            vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+            test_task: [check] # to make job names consistent
+            bundled_libffi: true
+          - vs: 2022
+            os: windows-2022
+            vcvars: C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Auxiliary\Build\vcvars64.bat
+            test_task: [check] # to make job names consistent
+            continue-on-error: true
+
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
+      VCVARS: ${{matrix.vcvars}}
       PATCH: C:\msys64\usr\bin\patch.exe
+    name: MSVC-${{matrix.vs}}
     steps:
       - run: md build
         working-directory:
@@ -21,20 +33,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-vcpkg-download-${{ matrix.os }}-
             ${{ runner.os }}-vcpkg-download-
-      - name: Set VCVARS
-        run: |
-          IF ${{ matrix.os }}==windows-2022 (
-            echo VCVARS="C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Auxiliary\Build\vcvars64.bat" >> %GITHUB_ENV%
-          ) ELSE IF ${{ matrix.os }}==windows-2019 (
-            echo VCVARS="C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" >> %GITHUB_ENV%
-          )
       - name: Install libraries with vcpkg
         run: |
-          IF ${{ matrix.os }}==windows-2019 (
-            vcpkg --triplet x64-windows install readline zlib
-          ) ELSE (
-            vcpkg --triplet x64-windows install readline zlib libffi
-          )
+          vcpkg --triplet x64-windows install readline zlib ${{ !matrix.bundled_libffi && 'libffi' || '' }}
       - uses: actions/cache@v2
         with:
           path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
@@ -60,15 +61,11 @@ jobs:
           path: src
       - name: Configure
         run: |
-          call %VCVARS%
-          IF ${{ matrix.os }}==windows-2019 (
-            ..\src\win32\configure.bat --disable-install-doc --enable-bundled-libffi --with-opt-dir=C:/vcpkg/installed/x64-windows --with-openssl-dir="C:/Program Files/OpenSSL-Win64"
-          ) ELSE (
-            ..\src\win32\configure.bat --disable-install-doc --with-opt-dir=C:/vcpkg/installed/x64-windows --with-openssl-dir="C:/Program Files/OpenSSL-Win64"
-          )
+          call "%VCVARS%"
+          ../src/win32/configure.bat --disable-install-doc ${{ matrix.bundled_libffi && '--enable-bundled-libffi' || '' }} --with-opt-dir=C:/vcpkg/installed/x64-windows --with-openssl-dir="C:/Program Files/OpenSSL-Win64"
       - name: nmake
         run: |
-          call %VCVARS%
+          call "%VCVARS%"
           set YACC=win_bison
           echo on
           nmake incs
@@ -77,24 +74,24 @@ jobs:
       - name: nmake test
         timeout-minutes: 5
         run: |
-          call %VCVARS%
+          call "%VCVARS%"
           nmake test
       - name: nmake test-all
         timeout-minutes: 60
         run: |
-          call %VCVARS%
+          call "%VCVARS%"
           ::- %TEMP% is inconsistent with %TMP% and test-all expects they are consistent.
           ::- https://github.com/actions/virtual-environments/issues/712#issuecomment-613004302
           set TMP=%USERPROFILE%\AppData\Local\Temp
           set TEMP=%USERPROFILE%\AppData\Local\Temp
           nmake test-all
-        continue-on-error: ${{ matrix.os == 'windows-2022' }}
+        continue-on-error: ${{ matrix.continue-on-error }}
       - name: nmake test-spec
         timeout-minutes: 10
         run: |
-          call %VCVARS%
+          call "%VCVARS%"
           nmake test-spec
-        continue-on-error: ${{ matrix.os == 'windows-2022' }}
+        continue-on-error: ${{ matrix.continue-on-error }}
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |
