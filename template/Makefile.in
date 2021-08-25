@@ -315,10 +315,17 @@ $(LIBRUBY_SO):
 LIBRUBY_WITH_EXT = @LIBRUBY_WITH_EXT@
 $(LIBRUBY_$(LIBRUBY_WITH_EXT)): $(LIBRUBY_SO_UPDATE)
 
+PKG_CONFIG = @PKG_CONFIG@
 ruby_pc = @ruby_pc@
 ruby.pc: $(ruby_pc)
-$(ruby_pc): config.status
-		@./config.status --file=$@:$(srcdir)/template/ruby.pc.in
+main: $(ruby_pc)
+$(ruby_pc): $(srcdir)/template/ruby.pc.in config.status Makefile
+	exec > ruby.tmp.pc; \
+	echo prefix=$(prefix); \
+	./config.status --file=-:$(srcdir)/template/ruby.pc.in | \
+	    sed 's/\$$(\([A-Za-z_][A-Za-z0-9_]*\))/$${\1}/g;s/@[A-Za-z_][A-Za-z0-9_]*@//'
+	test -z "${PKG_CONFIG}" || PKG_CONFIG_PATH=. ${PKG_CONFIG} --print-errors ruby.tmp
+	mv -f ruby.tmp.pc $@
 
 ruby-runner.h: template/ruby-runner.h.in config.status
 		@./config.status --file=$@:$(srcdir)/template/$(@F).in
