@@ -1007,7 +1007,7 @@ enc/trans/newline.$(OBJEXT): $(NEWLINE_C)
 
 verconf.h: $(srcdir)/template/verconf.h.tmpl $(tooldir)/generic_erb.rb
 	$(ECHO) creating $@
-	$(Q) $(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ $(srcdir)/template/verconf.h.tmpl
+	$(Q) $(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ $(srcdir)/template/verconf.h.tmpl "RUBY_EXEC_PREFIX=$(exec_prefix)"
 
 ruby-glommed.$(OBJEXT): $(OBJS)
 
