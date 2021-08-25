@@ -9,7 +9,6 @@ jobs:
             os: windows-2019
             vcvars: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
             test_task: [check] # to make job names consistent
-            bundled_libffi: true
           - vs: 2022
             os: windows-2022
             vcvars: C:\Program Files\Microsoft Visual Studio\2022\Preview\VC\Auxiliary\Build\vcvars64.bat
@@ -24,6 +23,8 @@ jobs:
       PATCH: C:\msys64\usr\bin\patch.exe
     name: MSVC-${{matrix.vs}}
     steps:
+      - run: pacman -S --noconfirm patch
+        working-directory: C:/msys64/usr/bin
       - run: md build
         working-directory:
       - uses: actions/cache@v2
@@ -35,7 +36,7 @@ jobs:
             ${{ runner.os }}-vcpkg-download-
       - name: Install libraries with vcpkg
         run: |
-          vcpkg --triplet x64-windows install readline zlib ${{ !matrix.bundled_libffi && 'libffi' || '' }}
+          vcpkg --triplet x64-windows install readline zlib libffi
       - uses: actions/cache@v2
         with:
           path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
@@ -62,7 +63,7 @@ jobs:
       - name: Configure
         run: |
           call "%VCVARS%"
-          ../src/win32/configure.bat --disable-install-doc ${{ matrix.bundled_libffi && '--enable-bundled-libffi' || '' }} --with-opt-dir=C:/vcpkg/installed/x64-windows --with-openssl-dir="C:/Program Files/OpenSSL-Win64"
+          ../src/win32/configure.bat --disable-install-doc --enable-bundled-libffi --with-opt-dir=C:/vcpkg/installed/x64-windows --with-openssl-dir="C:/Program Files/OpenSSL-Win64"
       - name: nmake
         run: |
           call "%VCVARS%"
