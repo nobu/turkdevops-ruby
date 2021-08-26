@@ -5227,10 +5227,10 @@ dbl2big(double d)
     VALUE z;
     double u = (d < 0)?-d:d;
 
-    if (isinf(d)) {
+    switch (fpclassify(d)) {
+      case FP_INFINITE:
 	rb_raise(rb_eFloatDomainError, d < 0 ? "-Infinity" : "Infinity");
-    }
-    if (isnan(d)) {
+      case FP_NAN:
 	rb_raise(rb_eFloatDomainError, "NaN");
     }
 
@@ -5333,9 +5333,10 @@ rb_integer_float_cmp(VALUE x, VALUE y)
     double yi, yf;
     VALUE rel;
 
-    if (isnan(yd))
+    switch (fpclassify(yd)) {
+      case FP_NAN:
         return Qnil;
-    if (isinf(yd)) {
+      case FP_INFINITE:
         if (yd > 0.0) return INT2FIX(-1);
         else return INT2FIX(1);
     }

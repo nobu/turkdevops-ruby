@@ -2817,12 +2817,13 @@ rb_float_convert_to_BigDecimal(VALUE val, size_t digs, int raise_exception)
     assert(RB_FLOAT_TYPE_P(val));
 
     double d = RFLOAT_VALUE(val);
+    int c = fpclassify(d);
 
-    if (isnan(d)) {
+    if (c == FP_NAN) {
         VALUE obj = BigDecimal_nan();
         return check_exception(obj);
     }
-    else if (isinf(d)) {
+    else if (c == FP_INFINITE) {
         VALUE obj;
         if (d > 0) {
             obj = BigDecimal_positive_infinity();

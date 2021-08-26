@@ -984,13 +984,14 @@ flo_to_s(VALUE flt)
     char *p, *e;
     int sign, decpt, digs;
 
-    if (isinf(value)) {
+    switch (fpclassify(value)) {
+      case FP_INFINITE:;
 	static const char minf[] = "-Infinity";
 	const int pos = (value > 0); /* skip "-" */
 	return rb_usascii_str_new(minf+pos, strlen(minf)-pos);
-    }
-    else if (isnan(value))
+      case FP_NAN:
 	return rb_usascii_str_new2("NaN");
+    }
 
     p = ruby_dtoa(value, 0, 0, &decpt, &sign, &e);
     s = sign ? rb_usascii_str_new_cstr("-") : rb_usascii_str_new(0, 0);
