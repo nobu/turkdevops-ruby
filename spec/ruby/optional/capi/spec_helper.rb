@@ -31,21 +31,15 @@ def compile_extension(name)
   lib = "#{object_path}/#{ext}.#{RbConfig::CONFIG['DLEXT']}"
   ruby_header = "#{RbConfig::CONFIG['rubyhdrdir']}/ruby.h"
 
-  if RbConfig::CONFIG["ENABLE_SHARED"] == "yes"
-    libdirname = RbConfig::CONFIG['libdirname'] # defined since 2.1
-    libruby = "#{RbConfig::CONFIG[libdirname]}/#{RbConfig::CONFIG['LIBRUBY']}"
-  end
-
   begin
     mtime = File.mtime(lib)
   rescue Errno::ENOENT
     # not found, then compile
   else
-    case # if lib is older than headers, source or libruby, then recompile
+    case # if lib is older than headers or source, then recompile
     when mtime <= File.mtime("#{core_ext_dir}/rubyspec.h")
     when mtime <= File.mtime("#{spec_ext_dir}/#{ext}.c")
     when mtime <= File.mtime(ruby_header)
-    when libruby && mtime <= File.mtime(libruby)
     else
       return lib # up-to-date
     end
