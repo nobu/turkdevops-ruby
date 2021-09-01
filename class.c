@@ -1435,7 +1435,7 @@ method_entry_i(ID key, VALUE value, void *data)
 	}
 	else {
 	    type = METHOD_ENTRY_VISI(me);
-	    RUBY_ASSERT(type != METHOD_VISI_UNDEF);
+	    RUBY_ASSERT_ALWAYS(type != METHOD_VISI_UNDEF);
 	}
 	st_add_direct(arg->list, key, (st_data_t)type);
     }
