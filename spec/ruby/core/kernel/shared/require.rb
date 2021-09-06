@@ -309,6 +309,14 @@ describe :kernel_require, shared: true do
       @object.require(path).should be_false
       ScratchPad.recorded.should == []
     end
+
+    it "loads a .rb extension file containing a C-extension if the exact file does not exist" do
+      require File.expand_path("load_ext.bundle", CODE_LOADING_DIR)
+      require File.expand_path("load_ext.so", CODE_LOADING_DIR)
+      require File.expand_path("load_ext.dll", CODE_LOADING_DIR)
+      require File.expand_path("load_ext.o", CODE_LOADING_DIR)
+      ScratchPad.recorded.should == [:bundle_rb, :so_rb, :dll_rb, :o_rb]
+    end
   end
 
   describe "($LOADED_FEATURES)" do

@@ -839,6 +839,17 @@ class TestRequire < Test::Unit::TestCase
     }
   end
 
+  def test_with_dlext
+    Dir.mktmpdir do |tmp|
+      [RbConfig::CONFIG["DLEXT"], "so", "o"].compact do |ext|
+        path = File.join(tmp, "foo.#{ext}.rb")
+        File.write(path, "print __FILE__")
+        result = IO.popen([EnvUtil.rubybin, "-I#{tmp}", "-e", "require 'foo.so'"], &:read)
+        assert_equal(path, result)
+      end
+    end
+  end
+
   if defined?($LOAD_PATH.resolve_feature_path)
     def test_resolve_feature_path
       paths, loaded = $:.dup, $".dup
