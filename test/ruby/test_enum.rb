@@ -812,6 +812,12 @@ class TestEnumerable < Test::Unit::TestCase
     assert_equal([[3, 2], [1, 3], [2, 4]], @obj.each_with_index.drop_while(&cond))
   end
 
+  def test_drop_till
+    assert_equal([3,1,2], @obj.drop_till {|x| x == 2})
+    cond = ->(x, i) {x == 2}
+    assert_equal([[3, 2], [1, 3], [2, 4]], @obj.each_with_index.drop_till(&cond))
+  end
+
   def test_cycle
     assert_equal([1,2,3,1,2,1,2,3,1,2], @obj.cycle.take(10))
     a = []

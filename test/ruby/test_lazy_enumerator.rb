@@ -409,6 +409,15 @@ class TestLazyEnumerator < Test::Unit::TestCase
     assert_equal((5..10).to_a, a.lazy.drop_while {|i| i % 5 > 0}.to_a)
   end
 
+  def test_drop_till
+    a = Step.new(1..10)
+    assert_equal(6, a.drop_till {|i| i % 5 == 0}.first)
+    assert_equal(10, a.current)
+    assert_equal(6, a.lazy.drop_till {|i| i % 5 == 0}.first)
+    assert_equal(6, a.current)
+    assert_equal((6..10).to_a, a.lazy.drop_till {|i| i % 5 == 0}.to_a)
+  end
+
   def test_drop_and_take
     assert_equal([4, 5], (1..Float::INFINITY).lazy.drop(3).take(2).to_a)
   end

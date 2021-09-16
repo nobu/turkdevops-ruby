@@ -3139,6 +3139,50 @@ enum_drop_while(VALUE obj)
 }
 
 static VALUE
+drop_till_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
+{
+    struct MEMO *memo = MEMO_CAST(args);
+    ENUM_WANT_SVALUE();
+
+    if (!memo->u3.state) {
+	memo->u3.state = RTEST(enum_yield(argc, i));
+    }
+    else {
+	rb_ary_push(memo->v1, i);
+    }
+    return Qnil;
+}
+
+/*
+ *  call-seq:
+ *     enum.drop_till { |obj| block }  -> array
+ *     enum.drop_till                  -> an_enumerator
+ *
+ *  Drops elements up to, including, the first element for
+ *  which the block returns truthy value and returns an array
+ *  containing the remaining elements.
+ *
+ *  If no block is given, an enumerator is returned instead.
+ *
+ *     a = [1, 2, 3, 4, 5, 0]
+ *     a.drop_till { |i| i == 3 }   #=> [4, 5, 0]
+ *
+ */
+
+static VALUE
+enum_drop_till(VALUE obj)
+{
+    VALUE result;
+    struct MEMO *memo;
+
+    RETURN_ENUMERATOR(obj, 0, 0);
+    result = rb_ary_new();
+    memo = MEMO_NEW(result, 0, FALSE);
+    rb_block_call(obj, id_each, 0, 0, drop_till_i, (VALUE)memo);
+    return result;
+}
+
+static VALUE
 cycle_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, ary))
 {
     ENUM_WANT_SVALUE();
@@ -4504,6 +4548,7 @@ Init_Enumerable(void)
     rb_define_method(rb_mEnumerable, "take_till", enum_take_till, 0);
     rb_define_method(rb_mEnumerable, "drop", enum_drop, 1);
     rb_define_method(rb_mEnumerable, "drop_while", enum_drop_while, 0);
+    rb_define_method(rb_mEnumerable, "drop_till", enum_drop_till, 0);
     rb_define_method(rb_mEnumerable, "cycle", enum_cycle, -1);
     rb_define_method(rb_mEnumerable, "chunk", enum_chunk, 0);
     rb_define_method(rb_mEnumerable, "slice_before", enum_slice_before, -1);

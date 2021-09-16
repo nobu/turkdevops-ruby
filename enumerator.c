@@ -2629,6 +2629,45 @@ lazy_drop_while(VALUE obj)
     return lazy_add_method(obj, 0, 0, Qfalse, Qnil, &lazy_drop_while_funcs);
 }
 
+static struct MEMO *
+lazy_drop_till_proc(VALUE proc_entry, struct MEMO* result, VALUE memos, long memo_index)
+{
+    struct proc_entry *entry = proc_entry_ptr(proc_entry);
+    VALUE memo = rb_ary_entry(memos, memo_index);
+
+    if (NIL_P(memo)) {
+	memo = entry->memo;
+    }
+
+    if (!RTEST(memo)) {
+	VALUE take = lazyenum_yield_values(proc_entry, result);
+	if (RTEST(take)) rb_ary_store(memos, memo_index, Qtrue);
+        return 0;
+    }
+    return result;
+}
+
+static const lazyenum_funcs lazy_drop_till_funcs = {
+    lazy_drop_till_proc, 0,
+};
+
+/*
+ *  call-seq:
+ *     lazy.drop_till { |obj| block }  -> lazy_enumerator
+ *
+ *  Like Enumerable#drop_till, but chains operation to be lazy-evaluated.
+ */
+
+static VALUE
+lazy_drop_till(VALUE obj)
+{
+    if (!rb_block_given_p()) {
+	rb_raise(rb_eArgError, "tried to call lazy drop_till without a block");
+    }
+
+    return lazy_add_method(obj, 0, 0, Qfalse, Qnil, &lazy_drop_till_funcs);
+}
+
 static int
 lazy_uniq_check(VALUE chain, VALUE memos, long memo_index)
 {
@@ -4123,6 +4162,7 @@ InitVM_Enumerator(void)
     rb_define_alias(rb_cLazy, "_enumerable_take_till", "take_till");
     rb_define_alias(rb_cLazy, "_enumerable_drop", "drop");
     rb_define_alias(rb_cLazy, "_enumerable_drop_while", "drop_while");
+    rb_define_alias(rb_cLazy, "_enumerable_drop_till", "drop_till");
     rb_define_alias(rb_cLazy, "_enumerable_uniq", "uniq");
     rb_define_private_method(rb_cLazy, "_enumerable_with_index", enumerator_with_index, -1);
 
@@ -4143,6 +4183,7 @@ InitVM_Enumerator(void)
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_take_till"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_drop"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_drop_while"));
+    rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_drop_till"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_uniq"));
 
     rb_define_method(rb_cLazy, "initialize", lazy_initialize, -1);
@@ -4166,6 +4207,7 @@ InitVM_Enumerator(void)
     rb_define_method(rb_cLazy, "take_till", lazy_take_till, 0);
     rb_define_method(rb_cLazy, "drop", lazy_drop, 1);
     rb_define_method(rb_cLazy, "drop_while", lazy_drop_while, 0);
+    rb_define_method(rb_cLazy, "drop_till", lazy_drop_till, 0);
     rb_define_method(rb_cLazy, "lazy", lazy_lazy, 0);
     rb_define_method(rb_cLazy, "chunk", lazy_super, -1);
     rb_define_method(rb_cLazy, "slice_before", lazy_super, -1);
@@ -4194,6 +4236,7 @@ InitVM_Enumerator(void)
     rb_hash_aset(lazy_use_super_method, sym("take_till"), sym("_enumerable_take_till"));
     rb_hash_aset(lazy_use_super_method, sym("drop"), sym("_enumerable_drop"));
     rb_hash_aset(lazy_use_super_method, sym("drop_while"), sym("_enumerable_drop_while"));
+    rb_hash_aset(lazy_use_super_method, sym("drop_till"), sym("_enumerable_drop_till"));
     rb_hash_aset(lazy_use_super_method, sym("uniq"), sym("_enumerable_uniq"));
     rb_hash_aset(lazy_use_super_method, sym("with_index"), sym("_enumerable_with_index"));
     rb_obj_freeze(lazy_use_super_method);
