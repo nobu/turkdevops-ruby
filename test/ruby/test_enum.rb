@@ -796,6 +796,12 @@ class TestEnumerable < Test::Unit::TestCase
     assert_nothing_raised(bug5801) {100.times {block.call}}
   end
 
+  def test_take_till
+    assert_equal([1,2], @obj.take_till {|x| x == 2})
+    cond = ->(x, i) {x == 2}
+    assert_equal([[1, 0], [2, 1]], @obj.each_with_index.take_till(&cond))
+  end
+
   def test_drop
     assert_equal([3,1,2], @obj.drop(2))
   end

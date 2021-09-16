@@ -2500,6 +2500,37 @@ lazy_take_while(VALUE obj)
     return lazy_add_method(obj, 0, 0, Qnil, Qnil, &lazy_take_while_funcs);
 }
 
+static struct MEMO *
+lazy_take_till_proc(VALUE proc_entry, struct MEMO *result, VALUE memos, long memo_index)
+{
+    VALUE take = lazyenum_yield_values(proc_entry, result);
+    if (RTEST(take)) {
+        LAZY_MEMO_SET_BREAK(result);
+    }
+    return result;
+}
+
+static const lazyenum_funcs lazy_take_till_funcs = {
+    lazy_take_till_proc, 0,
+};
+
+/*
+ *  call-seq:
+ *     lazy.take_till { |obj| block } -> lazy_enumerator
+ *
+ *  Like Enumerable#take_till, but chains operation to be lazy-evaluated.
+ */
+
+static VALUE
+lazy_take_till(VALUE obj)
+{
+    if (!rb_block_given_p()) {
+	rb_raise(rb_eArgError, "tried to call lazy take_till without a block");
+    }
+
+    return lazy_add_method(obj, 0, 0, Qnil, Qnil, &lazy_take_till_funcs);
+}
+
 static VALUE
 lazy_drop_size(VALUE proc_entry, VALUE receiver)
 {
@@ -4089,6 +4120,7 @@ InitVM_Enumerator(void)
     rb_define_alias(rb_cLazy, "_enumerable_zip", "zip");
     rb_define_alias(rb_cLazy, "_enumerable_take", "take");
     rb_define_alias(rb_cLazy, "_enumerable_take_while", "take_while");
+    rb_define_alias(rb_cLazy, "_enumerable_take_till", "take_till");
     rb_define_alias(rb_cLazy, "_enumerable_drop", "drop");
     rb_define_alias(rb_cLazy, "_enumerable_drop_while", "drop_while");
     rb_define_alias(rb_cLazy, "_enumerable_uniq", "uniq");
@@ -4108,6 +4140,7 @@ InitVM_Enumerator(void)
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_zip"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_take"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_take_while"));
+    rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_take_till"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_drop"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_drop_while"));
     rb_funcall(rb_cLazy, id_private, 1, sym("_enumerable_uniq"));
@@ -4130,6 +4163,7 @@ InitVM_Enumerator(void)
     rb_define_method(rb_cLazy, "zip", lazy_zip, -1);
     rb_define_method(rb_cLazy, "take", lazy_take, 1);
     rb_define_method(rb_cLazy, "take_while", lazy_take_while, 0);
+    rb_define_method(rb_cLazy, "take_till", lazy_take_till, 0);
     rb_define_method(rb_cLazy, "drop", lazy_drop, 1);
     rb_define_method(rb_cLazy, "drop_while", lazy_drop_while, 0);
     rb_define_method(rb_cLazy, "lazy", lazy_lazy, 0);
@@ -4157,6 +4191,7 @@ InitVM_Enumerator(void)
     rb_hash_aset(lazy_use_super_method, sym("zip"), sym("_enumerable_zip"));
     rb_hash_aset(lazy_use_super_method, sym("take"), sym("_enumerable_take"));
     rb_hash_aset(lazy_use_super_method, sym("take_while"), sym("_enumerable_take_while"));
+    rb_hash_aset(lazy_use_super_method, sym("take_till"), sym("_enumerable_take_till"));
     rb_hash_aset(lazy_use_super_method, sym("drop"), sym("_enumerable_drop"));
     rb_hash_aset(lazy_use_super_method, sym("drop_while"), sym("_enumerable_drop_while"));
     rb_hash_aset(lazy_use_super_method, sym("uniq"), sym("_enumerable_uniq"));

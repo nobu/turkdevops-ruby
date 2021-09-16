@@ -3016,6 +3016,42 @@ enum_take_while(VALUE obj)
 }
 
 static VALUE
+take_till_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, ary))
+{
+    bool end = RTEST(rb_yield_values2(argc, argv));
+    rb_ary_push(ary, rb_enum_values_pack(argc, argv));
+    if (end) rb_iter_break();
+    return Qnil;
+}
+
+/*
+ *  call-seq:
+ *     enum.take_till { |obj| block } -> array
+ *     enum.take_till                 -> an_enumerator
+ *
+ *  Passes elements to the block until the block returns truthy value,
+ *  then stops iterating and returns an array of all iterated
+ *  elements.
+ *
+ *  If no block is given, an enumerator is returned instead.
+ *
+ *     a = [1, 2, 3, 4, 5, 0]
+ *     a.take_till { |i| i == 3 }   #=> [1, 2, 3]
+ *
+ */
+
+static VALUE
+enum_take_till(VALUE obj)
+{
+    VALUE ary;
+
+    RETURN_ENUMERATOR(obj, 0, 0);
+    ary = rb_ary_new();
+    rb_block_call(obj, id_each, 0, 0, take_till_i, ary);
+    return ary;
+}
+
+static VALUE
 drop_i(RB_BLOCK_CALL_FUNC_ARGLIST(i, args))
 {
     struct MEMO *memo = MEMO_CAST(args);
@@ -4465,6 +4501,7 @@ Init_Enumerable(void)
     rb_define_method(rb_mEnumerable, "zip", enum_zip, -1);
     rb_define_method(rb_mEnumerable, "take", enum_take, 1);
     rb_define_method(rb_mEnumerable, "take_while", enum_take_while, 0);
+    rb_define_method(rb_mEnumerable, "take_till", enum_take_till, 0);
     rb_define_method(rb_mEnumerable, "drop", enum_drop, 1);
     rb_define_method(rb_mEnumerable, "drop_while", enum_drop_while, 0);
     rb_define_method(rb_mEnumerable, "cycle", enum_cycle, -1);
