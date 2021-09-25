@@ -13,30 +13,42 @@ platform:
 environment:
   ruby_version: "24-%Platform%"
   zlib_version: "1.2.11"
+  ssl: OpenSSL-v111
+  GEMS_FOR_TEST: ""
   matrix:
-    - build: vs
+    - job_name: Visual Studio 2013
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       vs: 120
       ssl: OpenSSL
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      GEMS_FOR_TEST: ""
-    - build: vs
-      vs: 140
-      ssl: OpenSSL-v111
+    - job_name: Visual Studio 2015
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      GEMS_FOR_TEST: ""
+      vs: 140
+    - job_name: Visual Studio 2017
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    - job_name: Visual Studio 2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
   RELINE_TEST_ENCODING: "Windows-31J"
 for:
 -
-  matrix:
-    only:
-      - build: vs
   install:
     - ver
     - chcp
     - SET BITS=%Platform:x86=32%
     - SET BITS=%BITS:x=%
     - SET OPENSSL_DIR=C:\%ssl%-Win%BITS%
-    - CALL SET vcvars=%%^VS%VS%COMNTOOLS^%%..\..\VC\vcvarsall.bat
+    - if not "%vs%" == "" (
+        CALL SET vcvars=%%^VS%vs%COMNTOOLS^%%..\..\VC\vcvarsall.bat
+      ) else (
+        if "%vs%" == "" SET vs=%APPVEYOR_BUILD_WORKER_IMAGE:~-4% &
+        SET vs &
+        CALL SET vcvars="C:\Program Files (x86)\Microsoft Visual Studio\%%vs%%\Community\VC\Auxiliary\Build\vcvarsall.bat" &
+        SET vcvars &
+        if not exist "%vcvars%" (
+          for /f "usebackq delims=" %%I in (
+            `dir /s /b "C:\Program Files (x86)\Microsoft Visual Studio\%vs%\vcvarsall.bat"`
+          ) do SET vcvars=%%I
+        )
+      )
     - SET vcvars
     - '"%vcvars%" %Platform:x64=amd64%'
     - SET ruby_path=C:\Ruby%ruby_version:-x86=%
