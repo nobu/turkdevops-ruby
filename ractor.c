@@ -544,10 +544,10 @@ ractor_sleep_interrupt(void *ptr)
     RACTOR_UNLOCK(r);
 }
 
-#if USE_RUBY_DEBUG_LOG
 static const char *
 wait_status_str(enum ractor_wait_status wait_status)
 {
+#if USE_RUBY_DEBUG_LOG
     switch ((int)wait_status) {
       case wait_none: return "none";
       case wait_receiving: return "receiving";
@@ -558,12 +558,14 @@ wait_status_str(enum ractor_wait_status wait_status)
       case wait_taking|wait_yielding: return "taking|yielding";
       case wait_receiving|wait_taking|wait_yielding: return "receiving|taking|yielding";
     }
-    rb_bug("unreachable");
+#endif // USE_RUBY_DEBUG_LOG
+    UNREACHABLE_RETURN(NULL);
 }
 
 static const char *
 wakeup_status_str(enum ractor_wakeup_status wakeup_status)
 {
+#if USE_RUBY_DEBUG_LOG
     switch (wakeup_status) {
       case wakeup_none: return "none";
       case wakeup_by_send: return "by_send";
@@ -573,9 +575,9 @@ wakeup_status_str(enum ractor_wakeup_status wakeup_status)
       case wakeup_by_interrupt: return "by_interrupt";
       case wakeup_by_retry: return "by_retry";
     }
-    rb_bug("unreachable");
-}
 #endif // USE_RUBY_DEBUG_LOG
+    UNREACHABLE_RETURN(NULL);
+}
 
 static void
 ractor_sleep(rb_execution_context_t *ec, rb_ractor_t *cr)

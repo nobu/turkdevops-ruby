@@ -110,8 +110,15 @@ bool ruby_debug_log_filter(const char *func_name);
 
 #else
 // do nothing
-#define RUBY_DEBUG_LOG(...)
-#define RUBY_DEBUG_LOG2(file, line, ...)
+#define RUBY_DEBUG_LOG(...) do { \
+  if (false) \
+    ruby_debug_log(__FILE__, __LINE__, __func__, "" __VA_ARGS__); \
+} while (0)
+
+#define RUBY_DEBUG_LOG2(file, line, ...) do { \
+  if (false) \
+    ruby_debug_log(NULL, 0, __func__, "" __VA_ARGS__); \
+} while (0)
 #endif // USE_RUBY_DEBUG_LOG
 
 #endif /* RUBY_DEBUG_H */

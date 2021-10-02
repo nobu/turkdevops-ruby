@@ -746,18 +746,18 @@ transient_heap_block_evacuate(struct transient_heap* theap, struct transient_hea
     }
 }
 
-#if USE_RUBY_DEBUG_LOG
 static const char *
 transient_heap_status_cstr(enum transient_heap_status status)
 {
+#if USE_RUBY_DEBUG_LOG
     switch (status) {
       case transient_heap_none: return "none";
       case transient_heap_marking: return "marking";
       case transient_heap_escaping: return "escaping";
     }
+#endif
     UNREACHABLE_RETURN(NULL);
 }
-#endif
 
 static void
 transient_heap_update_status(struct transient_heap* theap, enum transient_heap_status status)
