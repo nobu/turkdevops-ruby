@@ -1,6 +1,17 @@
 require 'mspec/runner/formatters/base'
 
 class DottedFormatter < BaseFormatter
+  def initialize(out = nil)
+    super
+    @dot_width = nil
+    @dot_count = 0
+    if @out.tty?
+      require 'io/console'
+      @dot_width = @out.winsize[1] rescue 80
+      # Maybe decrement for the right margin on Windows?
+    end
+  end
+
   def register
     super
     MSpec.register :after, self
@@ -18,6 +29,10 @@ class DottedFormatter < BaseFormatter
       print failure? ? "F" : "E"
     else
       print "."
+    end
+    if @dot_width and (@dot_count += 1) >= @dot_width
+      print "\n"
+      @dot_count = 0
     end
   end
 end
