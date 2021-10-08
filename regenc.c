@@ -376,6 +376,16 @@ onigenc_set_default_caseconv_table(const UChar* table ARG_UNUSED)
 extern UChar*
 onigenc_get_left_adjust_char_head(OnigEncoding enc, const UChar* start, const UChar* s, const UChar* end)
 {
+  if (!(start < s && start < end)) return (UChar *)start;
+  if (!(s < end)) {
+    UChar *left = ONIGENC_LEFT_ADJUST_CHAR_HEAD(enc, start, end - 1, end);
+    int ret = ONIGENC_PRECISE_MBC_ENC_LEN(enc, left, end);
+    if (ONIGENC_MBCLEN_CHARFOUND_P(ret))
+      return left + ONIGENC_MBCLEN_CHARFOUND_LEN(ret);
+    else if (ONIGENC_MBCLEN_NEEDMORE_P(ret))
+      return left;
+    return (UChar *)end;
+  }
   return ONIGENC_LEFT_ADJUST_CHAR_HEAD(enc, start, s, end);
 }
 
