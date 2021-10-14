@@ -360,8 +360,13 @@ module Test
           @io.puts(*args)
         end
 
-        def run(task,type)
+        def run(task, type, base: nil)
           @file = File.basename(task, ".rb")
+          if base and task.start_with?(base = File.join(base, ""))
+            @task = task.delete_prefix(base).chomp(".rb")
+          else
+            @task = @file
+          end
           @real_file = task
           begin
             puts "loadpath #{[Marshal.dump($:-@loadpath)].pack("m0")}"
@@ -418,9 +423,9 @@ module Test
           call_hook(:dead,*additional)
         end
 
-        def to_s
+        def to_s(task = false)
           if @file and @status != :ready
-            "#{@pid}=#{@file}"
+            "#{@pid}=#{task ? @task : @file}"
           else
             "#{@pid}:#{@status.to_s.ljust(7)}"
           end
@@ -568,7 +573,7 @@ module Test
             worker.quit
             worker = launch_worker
           end
-          worker.run(task, type)
+          worker.run(task, type, base: @options[:base_directory])
           @test_count += 1
 
           jobs_status(worker)
@@ -867,7 +872,7 @@ module Test
         if @options[:job_status] == :replace
           status_line = @workers.map(&:to_s).join(" ")
         else
-          status_line = worker.to_s
+          status_line = worker.to_s(true)
         end
         update_status(status_line) or (puts; nil)
       end
@@ -1057,7 +1062,7 @@ module Test
       end
 
       def non_options(files, options)
-        paths = [options.delete(:base_directory), nil].uniq
+        paths = [options[:base_directory], nil].uniq
         if reject = options.delete(:reject)
           reject_pat = Regexp.union(reject.map {|r| %r"#{r}"})
         end
