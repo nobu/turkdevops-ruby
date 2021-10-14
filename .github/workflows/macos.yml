@@ -42,6 +42,7 @@ jobs:
         timeout-minutes: ${{ matrix.test_task == 'check' && 15 || 40 }}
         env:
           RUBY_TESTOPTS: "-q --tty=no"
+          TESTS: "--job-status"
           TEST_BUNDLED_GEMS_ALLOW_FAILURES: "rexml"
       - uses: k0kubun/action-slack@v2.0.0
         with:
