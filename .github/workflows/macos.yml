@@ -38,11 +38,10 @@ jobs:
         if: ${{ matrix.test_task == 'check' }}
       - run: make prepare-gems
         if: ${{ matrix.test_task == 'check' }}
-      - run: make $JOBS -s ${{ matrix.test_task }}
+      - run: make $JOBS -s ${{ matrix.test_task == 'check' && 'TESTS=--job-status' || '' }} ${{ matrix.test_task }}
         timeout-minutes: ${{ matrix.test_task == 'check' && 15 || 40 }}
         env:
           RUBY_TESTOPTS: "-q --tty=no"
-          TESTS: "--job-status"
           TEST_BUNDLED_GEMS_ALLOW_FAILURES: "rexml"
       - uses: k0kubun/action-slack@v2.0.0
         with:
