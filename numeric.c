@@ -484,7 +484,7 @@ rb_num_coerce_cmp(VALUE x, VALUE y, ID func)
 static VALUE
 ensure_cmp(VALUE c, VALUE x, VALUE y)
 {
-    if (NIL_P(c)) rb_cmperr_reason(x, y, "comparator returned nil");
+    if (NIL_P(c)) rb_cmperr_nil(x, y);
     return c;
 }
 

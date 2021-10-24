@@ -45,21 +45,33 @@ cmperr_message(VALUE x, VALUE y)
                       cmperr_subject(x), cmperr_subject(y));
 }
 
+#define for_cmperr_message(message, args) \
+    for (VALUE message = cmperr_message args; ; \
+         rb_exc_raise(rb_exc_new_str(rb_eArgError, message)))
+
 void
 rb_cmperr(VALUE x, VALUE y)
 {
-    rb_exc_raise(rb_exc_new_str(rb_eArgError, cmperr_message(x, y)));
+    for_cmperr_message(message, (x, y));
 }
 
 void
 rb_cmperr_reason(VALUE x, VALUE y, const char *reason)
 {
-    VALUE message = cmperr_message(x, y);
-    if (reason) {
-        rb_str_cat_cstr(message, ": ");
-        rb_str_cat_cstr(message, reason);
+    for_cmperr_message(message, (x, y)) {
+        if (reason) {
+            rb_str_cat_cstr(message, ": ");
+            rb_str_cat_cstr(message, reason);
+        }
     }
-    rb_exc_raise(rb_exc_new_str(rb_eArgError, message));
+}
+
+void
+rb_cmperr_nil(VALUE x, VALUE y)
+{
+    for_cmperr_message(message, (x, y)) {
+        rb_str_cat_cstr(message, ": comparator returned nil");
+    }
 }
 
 static VALUE

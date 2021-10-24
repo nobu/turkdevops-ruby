@@ -46,5 +46,6 @@ struct cmp_opt_data {
 /* compar.c */
 VALUE rb_invcmp(VALUE, VALUE);
 NORETURN(void rb_cmperr_reason(VALUE, VALUE, const char*));
+NORETURN(void rb_cmperr_nil(VALUE, VALUE));
 
 #endif /* INTERNAL_COMPAR_H */
