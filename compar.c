@@ -38,20 +38,28 @@ cmperr_subject(VALUE y)
     return classname;
 }
 
+static VALUE
+cmperr_message(VALUE x, VALUE y)
+{
+    return rb_sprintf("comparison of %"PRIsVALUE" with %"PRIsVALUE" failed",
+                      cmperr_subject(x), cmperr_subject(y));
+}
+
 void
 rb_cmperr(VALUE x, VALUE y)
 {
-    VALUE classname = cmperr_subject(y);
-    rb_raise(rb_eArgError, "comparison of %"PRIsVALUE" with %"PRIsVALUE" failed",
-	     rb_obj_class(x), classname);
+    rb_exc_raise(rb_exc_new_str(rb_eArgError, cmperr_message(x, y)));
 }
 
 void
 rb_cmperr_reason(VALUE x, VALUE y, const char *reason)
 {
-    VALUE classname = cmperr_subject(y);
-    rb_raise(rb_eArgError, "comparison of %"PRIsVALUE" with %"PRIsVALUE" failed: %s",
-	     rb_obj_class(x), classname, reason);
+    VALUE message = cmperr_message(x, y);
+    if (reason) {
+        rb_str_cat_cstr(message, ": ");
+        rb_str_cat_cstr(message, reason);
+    }
+    rb_exc_raise(rb_exc_new_str(rb_eArgError, message));
 }
 
 static VALUE
