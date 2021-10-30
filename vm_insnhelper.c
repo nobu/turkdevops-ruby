@@ -4546,6 +4546,14 @@ vm_define_method(const rb_execution_context_t *ec, VALUE obj, ID id, VALUE iseqv
     if (!is_singleton) {
         klass = CREF_CLASS(cref);
         visi = vm_scope_visibility_get(ec);
+        if (!SPECIAL_CONST_P(klass)) {
+            switch (BUILTIN_TYPE(klass)) {
+              case T_CLASS: case T_MODULE: case T_ICLASS:
+                break;
+              default:
+                klass = rb_singleton_class(klass);
+            }
+        }
     }
     else { /* singleton */
         klass = rb_singleton_class(obj); /* class and frozen checked in this API */

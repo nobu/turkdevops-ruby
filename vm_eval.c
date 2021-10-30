@@ -2023,6 +2023,8 @@ singleton_class_for_eval(VALUE self)
       case T_STRING:
 	if (FL_TEST_RAW(self, RSTRING_FSTR)) return Qnil;
       default:
+	return self;
+      case T_CLASS: case T_MODULE: case T_ICLASS:
 	return rb_singleton_class(self);
     }
 }
