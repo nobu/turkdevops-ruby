@@ -18,3 +18,23 @@ jobs:
             git grep -l -F -e $header -e HAVE_`echo $header | tr a-z./ A-Z__` -- . > /dev/null || echo $header
           done | grep -F .
         working-directory: include
+      - name: Check for Unicode other categories
+        run: |
+          result = true
+          Dir.glob("**/{*.{[chy],in,inc,rb,tmpl},.*}") do |f|
+            File.file?(f) or next
+            File.open(f) do |io|
+              io.each_with_index do |l, i|
+                if /[\u{200E 200F}\u{202A}-\u{202E}]/ =~ l
+                  puts "#{f}:#{i}:#{l.dump}"
+                  result = false
+                end
+              end
+            end
+          rescue ArgumentError, EncodingError
+          rescue
+            puts "#{f}:#{$!.class}:#{$!.message}"
+            result = false
+          end
+          exit result
+        shell: ruby {0}
