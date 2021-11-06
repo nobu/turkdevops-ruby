@@ -57,6 +57,13 @@ describe :kernel_public_methods_with_falsy, shared: true do
   end
 end
 
+describe :kernel_public_methods_with_invalid_argument, shared: true do
+  it "raises an ArgumentError" do
+    -> {ReflectSpecs::F.public_methods(@object)}.should raise_error ArgumentError
+    -> {ReflectSpecs::F.new.public_methods(@object)}.should raise_error ArgumentError
+  end
+end
+
 describe "Kernel#public_methods" do
   describe "when not passed an argument" do
     it_behaves_like :kernel_public_methods_supers, nil, []
@@ -70,7 +77,14 @@ describe "Kernel#public_methods" do
     it_behaves_like :kernel_public_methods_with_falsy, nil, false
   end
 
-  describe "when passed nil" do
-    it_behaves_like :kernel_public_methods_with_falsy, nil, nil
+
+  ruby_version_is "3.1" do
+    describe "when passed nil" do
+      it_behaves_like :kernel_public_methods_with_invalid_argument, nil, nil
+    end
+
+    describe "when passed an integer" do
+      it_behaves_like :kernel_public_methods_with_invalid_argument, nil, 1
+    end
   end
 end

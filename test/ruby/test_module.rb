@@ -748,6 +748,9 @@ class TestModule < Test::Unit::TestCase
     assert_equal([:aClass, :aClass2], AClass.instance_methods(false).sort)
     assert_equal([:aClass, :aClass2],
         (AClass.instance_methods(true) - Object.instance_methods(true)).sort)
+    assert_raise(ArgumentError) {User.instance_methods(nil)}
+    assert_raise(ArgumentError) {User.instance_methods(1)}
+    assert_raise(ArgumentError) {User.instance_methods("")}
   end
 
   def test_method_defined?

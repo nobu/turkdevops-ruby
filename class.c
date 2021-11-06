@@ -1464,14 +1464,20 @@ particular_class_p(VALUE mod)
     return false;
 }
 
+static int
+include_super_methods_p(int argc, const VALUE *argv, int default_value)
+{
+    if (!rb_check_arity(argc, 0, 1)) return default_value;
+    return rb_bool_expected(argv[0], "the optional flag to include super methods");
+}
+
 static VALUE
 class_instance_method_list(int argc, const VALUE *argv, VALUE mod, int obj, int (*func) (st_data_t, st_data_t, st_data_t))
 {
     VALUE ary;
-    int recur = TRUE, prepended = 0;
+    int prepended = 0;
+    int recur = include_super_methods_p(argc, argv, TRUE);
     struct method_entry_arg me_arg;
-
-    if (rb_check_arity(argc, 0, 1)) recur = RTEST(argv[0]);
 
     me_arg.list = st_init_numtable();
     me_arg.recur = recur;
@@ -1618,8 +1624,7 @@ rb_class_public_instance_methods(int argc, const VALUE *argv, VALUE mod)
 VALUE
 rb_obj_methods(int argc, const VALUE *argv, VALUE obj)
 {
-    rb_check_arity(argc, 0, 1);
-    if (argc > 0 && !RTEST(argv[0])) {
+    if (!include_super_methods_p(argc, argv, TRUE)) {
 	return rb_obj_singleton_methods(argc, argv, obj);
     }
     return class_instance_method_list(argc, argv, CLASS_OF(obj), 1, ins_methods_i);
@@ -1709,9 +1714,9 @@ rb_obj_singleton_methods(int argc, const VALUE *argv, VALUE obj)
     VALUE ary, klass, origin;
     struct method_entry_arg me_arg;
     struct rb_id_table *mtbl;
-    int recur = TRUE;
+    int recur = include_super_methods_p(argc, argv, TRUE);
 
-    if (rb_check_arity(argc, 0, 1)) recur = RTEST(argv[0]);
+    if (rb_check_arity(argc, 0, 1)) recur = rb_bool_expected(argv[0], "include super methods");
     if (RB_TYPE_P(obj, T_CLASS) && FL_TEST(obj, FL_SINGLETON)) {
         rb_singleton_class(obj);
     }
