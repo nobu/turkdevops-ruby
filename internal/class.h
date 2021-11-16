@@ -36,10 +36,13 @@ struct rb_cvar_class_tbl_entry {
     VALUE class_value;
 };
 
+#define RCLASS_EMBEDDING_CLASS_SERIAL \
+    (SIZEOF_SERIAL_T <= (2-!USE_RVARGC)*SIZEOF_VALUE)
+
 struct rb_classext_struct {
     struct st_table *iv_index_tbl; // ID -> struct rb_iv_index_tbl_entry
     struct st_table *iv_tbl;
-#if SIZEOF_SERIAL_T == SIZEOF_VALUE /* otherwise m_tbl is in struct RClass */
+#if RCLASS_EMBEDDING_CLASS_SERIAL /* otherwise m_tbl is in struct RClass */
     struct rb_id_table *m_tbl;
 #endif
     struct rb_id_table *const_tbl;
@@ -54,7 +57,7 @@ struct rb_classext_struct {
      * included. Hopefully that makes sense.
      */
     struct rb_subclass_entry **module_subclasses;
-#if SIZEOF_SERIAL_T != SIZEOF_VALUE /* otherwise class_serial is in struct RClass */
+#if !RCLASS_EMBEDDING_CLASS_SERIAL /* otherwise class_serial is in struct RClass */
     rb_serial_t class_serial;
 #endif
     const VALUE origin_;
@@ -69,7 +72,7 @@ struct RClass {
 #if !USE_RVARGC
     struct rb_classext_struct *ptr;
 #endif
-#if SIZEOF_SERIAL_T == SIZEOF_VALUE
+#if RCLASS_EMBEDDING_CLASS_SERIAL
     /* Class serial is as wide as VALUE.  Place it here. */
     rb_serial_t class_serial;
 #else
@@ -99,7 +102,7 @@ typedef struct rb_classext_struct rb_classext_t;
 #define RCLASS_IV_INDEX_TBL(c) (RCLASS_EXT(c)->iv_index_tbl)
 #define RCLASS_ORIGIN(c) (RCLASS_EXT(c)->origin_)
 #define RCLASS_REFINED_CLASS(c) (RCLASS_EXT(c)->refined_class)
-#if SIZEOF_SERIAL_T == SIZEOF_VALUE
+#if RCLASS_EMBEDDING_CLASS_SERIAL
 # define RCLASS_SERIAL(c) (RCLASS(c)->class_serial)
 #else
 # define RCLASS_SERIAL(c) (RCLASS_EXT(c)->class_serial)
