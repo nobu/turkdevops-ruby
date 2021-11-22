@@ -10861,10 +10861,11 @@ ibf_dump_object(struct ibf_dump *dump, VALUE obj)
 static VALUE
 ibf_dump_id(struct ibf_dump *dump, ID id)
 {
-    if (id == 0 || rb_id2name(id) == NULL) {
-        return 0;
+    VALUE sym;
+    if (id == 0 || !(sym = rb_id2sym(id))) {
+        sym = LONG2FIX(id);
     }
-    return ibf_dump_object(dump, rb_id2sym(id));
+    return ibf_dump_object(dump, sym);
 }
 
 static ID
@@ -10874,6 +10875,7 @@ ibf_load_id(const struct ibf_load *load, const ID id_index)
         return 0;
     }
     VALUE sym = ibf_load_object(load, id_index);
+    if (FIXNUM_P(sym)) return (ID)FIX2LONG(sym);
     return rb_sym2id(sym);
 }
 
@@ -11554,6 +11556,9 @@ ibf_load_outer_variables(const struct ibf_load * load, ibf_offset_t outer_variab
     for (size_t i = 0; i < table_size; i++) {
         ID key = ibf_load_id(load, (ID)ibf_load_small_value(load, &reading_pos));
         VALUE value = ibf_load_small_value(load, &reading_pos);
+        if (!key) {
+            rb_raise(rb_eRuntimeError, "outer variable ID == 0 at %u", reading_pos);
+        }
         rb_id_table_insert(tbl, key, value);
     }
 
@@ -12356,7 +12361,16 @@ ibf_load_object_complex_rational(const struct ibf_load *load, const struct ibf_o
 static void
 ibf_dump_object_symbol(struct ibf_dump *dump, VALUE obj)
 {
-    ibf_dump_object_string(dump, rb_sym2str(obj));
+    VALUE name = rb_sym2str(obj);
+    if (name) {
+        ibf_dump_object_string(dump, name);
+    }
+    else if (STATIC_SYM_P(obj)) {
+        ibf_dump_write_small_value(dump, SYM2ID(obj));
+    }
+    else {
+        rb_raise(rb_eRuntimeError, "can't dump anonymous dynamic symbol");
+    }
 }
 
 static VALUE
@@ -12450,10 +12464,19 @@ ibf_dump_object_object(struct ibf_dump *dump, VALUE obj)
     IBF_W_ALIGN(ibf_offset_t);
     current_offset = ibf_dump_pos(dump);
 
-    if (SPECIAL_CONST_P(obj) &&
-        ! (SYMBOL_P(obj) ||
-           RB_FLOAT_TYPE_P(obj))) {
-        obj_header.special_const = TRUE;
+    obj_header.special_const = SPECIAL_CONST_P(obj);
+    if (obj_header.special_const) {
+        if (SYMBOL_P(obj)) {
+            if (rb_sym2str(obj))
+                obj_header.special_const = FALSE;
+            else if (1 || STATIC_SYM_P(obj))
+                obj = FIX2LONG(SYM2ID(obj));
+        }
+        else if (RB_FLOAT_TYPE_P(obj)) {
+            obj_header.special_const = FALSE;
+        }
+    }
+    if (obj_header.special_const) {
         obj_header.frozen = TRUE;
         obj_header.internal = TRUE;
         ibf_dump_object_object_header(dump, obj_header);
@@ -12461,7 +12484,6 @@ ibf_dump_object_object(struct ibf_dump *dump, VALUE obj)
     }
     else {
         obj_header.internal = SPECIAL_CONST_P(obj) ? FALSE : (RBASIC_CLASS(obj) == 0) ? TRUE : FALSE;
-        obj_header.special_const = FALSE;
         obj_header.frozen = FL_TEST(obj, FL_FREEZE) ? TRUE : FALSE;
         ibf_dump_object_object_header(dump, obj_header);
         (*dump_object_functions[obj_header.type])(dump, obj);
