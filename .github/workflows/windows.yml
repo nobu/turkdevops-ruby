@@ -102,6 +102,11 @@ jobs:
           YACC: win_bison
       - run: nmake test
         timeout-minutes: 5
+      - name: nmake test-jit
+        run: nmake test-all
+        env:
+          RUBY_TESTOPTS: -j${{env.TEST_JOBS}} --job-status=normal --repeat-count=20 ruby/test_jit*
+        timeout-minutes: 60
       - run: nmake test-all
         env:
           RUBY_TESTOPTS: -j${{env.TEST_JOBS}} --job-status=normal
