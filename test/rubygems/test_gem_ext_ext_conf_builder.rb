@@ -68,8 +68,6 @@ class TestGemExtExtConfBuilder < Gem::TestCase
 
   def test_class_build_env_MAKE
     env_make = ENV.delete 'make'
-    ENV['make'] = nil
-
     env_MAKE = ENV.delete 'MAKE'
     ENV['MAKE'] = 'anothermake'
 
@@ -92,6 +90,7 @@ class TestGemExtExtConfBuilder < Gem::TestCase
       assert_contains_make_command 'clean', output[4]
     end
   ensure
+    ENV.delete 'MAKE' # for case-insensitive but preserving systems
     ENV['MAKE'] = env_MAKE
     ENV['make'] = env_make
   end
