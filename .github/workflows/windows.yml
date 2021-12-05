@@ -33,6 +33,7 @@ jobs:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
       VCVARS: ${{ matrix.vcvars }}
       PATCH: C:\msys64\usr\bin\patch.exe
+      YACC: C:/msys64/usr/bin/bison.exe
     steps:
       - run: md build
         working-directory:
@@ -42,10 +43,13 @@ jobs:
           update: true
           install: >-
             patch
+            bison
         if: ${{ matrix.os != 'windows-2019' }}
-      - name: patch path
+      - name: command paths
         shell: msys2 {0}
-        run: echo PATCH=$(cygpath -wa $(command -v patch)) >> $GITHUB_ENV
+        run: |
+          echo PATCH=$(cygpath -wa $(command -v patch)) >> $GITHUB_ENV
+          echo YACC=$(cygpath -wa $(command -v bison)) >> $GITHUB_ENV
         if: ${{ steps.setup-msys2.outcome == 'success' }}
       - uses: actions/cache@v2
         with:
@@ -69,7 +73,6 @@ jobs:
           # Using Choco-Install for retries, but it doesn't detect failures properly
           # if you pass multiple package names in a single command.
           Choco-Install -PackageName openssl
-          Choco-Install -PackageName winflexbison3
         shell: pwsh
       - name: git config
         run: |
@@ -102,8 +105,6 @@ jobs:
       - run: nmake incs
       - run: nmake extract-extlibs
       - run: nmake
-        env:
-          YACC: win_bison
       - run: nmake test
         timeout-minutes: 5
       - run: nmake test-all
