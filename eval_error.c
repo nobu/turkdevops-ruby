@@ -82,41 +82,36 @@ error_print(rb_execution_context_t *ec)
 static void
 write_warnq(VALUE out, VALUE str, const char *ptr, long len)
 {
-    if (NIL_P(out)) {
-        const char *beg = ptr;
-        const long olen = len;
-        for (; len > 0; --len, ++ptr) {
-            unsigned char c = *ptr;
-            switch (c) {
-              case '\n': case '\t': continue;
+    const char *beg = ptr;
+    const long olen = len;
+    for (; len > 0; --len, ++ptr) {
+        unsigned char c = *ptr;
+        switch (c) {
+          case '\n': case '\t': continue;
+        }
+        if (rb_iscntrl(c)) {
+            char buf[5];
+            const char *cc = 0;
+            if (ptr > beg) write_warn2(out, beg, ptr - beg);
+            beg = ptr + 1;
+            cc = ruby_escaped_char(c);
+            if (cc) {
+                write_warn2(out, cc, strlen(cc));
             }
-            if (rb_iscntrl(c)) {
-                char buf[5];
-                const char *cc = 0;
-                if (ptr > beg) rb_write_error2(beg, ptr - beg);
-                beg = ptr + 1;
-                cc = ruby_escaped_char(c);
-                if (cc) {
-                    rb_write_error2(cc, strlen(cc));
-                }
-                else {
-                    rb_write_error2(buf, snprintf(buf, sizeof(buf), "\\x%02X", c));
-                }
-            }
-            else if (c == '\\') {
-                rb_write_error2(beg, ptr - beg + 1);
-                beg = ptr;
+            else {
+                write_warn2(out, buf, snprintf(buf, sizeof(buf), "\\x%02X", c));
             }
         }
-        if (ptr > beg) {
-            if (beg == RSTRING_PTR(str) && olen == RSTRING_LEN(str))
-                rb_write_error_str(str);
-            else
-                rb_write_error2(beg, ptr - beg);
+        else if (c == '\\') {
+            write_warn2(out, beg, ptr - beg + 1);
+            beg = ptr;
         }
     }
-    else {
-        rb_str_cat(out, ptr, len);
+    if (ptr > beg) {
+        if (beg == RSTRING_PTR(str) && olen == RSTRING_LEN(str))
+            write_warn_str(out, str);
+        else
+            write_warn2(out, beg, ptr - beg);
     }
 }
 
