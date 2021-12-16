@@ -491,6 +491,16 @@ class TestIntegerComb < Test::Unit::TestCase
     }
   end
 
+  def test_inspect
+    2.upto(36) {|radix|
+      VS.each {|a|
+        s = a.inspect(radix)
+        b = s.to_i(radix)
+        assert_equal(a, b, "(#{a}).to_s(#{radix}).to_i(#{radix})")
+      }
+    }
+  end
+
   def test_printf_x
     VS.reverse_each {|a|
       s = sprintf("%x", a)

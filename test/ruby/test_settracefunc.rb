@@ -1480,7 +1480,7 @@ CODE
       }.enable{
         p 1
       }
-    }, %w[:p :to_s 1], [], '[Bug #9940]')
+    }, %w[:p :inspect 1], [], '[Bug #9940]')
   end
 
   def method_prefix event

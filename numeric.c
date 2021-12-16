@@ -3924,8 +3924,6 @@ rb_fix_to_s(VALUE x)
  *
  *  Raises an exception if +base+ is out of range.
  *
- *  Integer#inspect is an alias for Integer#to_s.
- *
  */
 
 MJIT_FUNC_EXPORTED VALUE
@@ -3938,6 +3936,63 @@ rb_int_to_s(int argc, VALUE *argv, VALUE x)
     else
 	base = 10;
     return rb_int2str(x, base);
+}
+
+/*
+ *  call-seq:
+ *    inspect(base = 10)  ->  string
+ *
+ *  Returns a string similar to Integer#to_s, with delimiting with
+ *  underscores (+_+) when the string contains many "digits".
+ *
+ *    12345.inspect               # => "12345"
+ *    12345.inspect(2)            # => "110000_00111001"
+ *    12345.inspect(8)            # => "30071"
+ *    12345.inspect(10)           # => "12345"
+ *    1234567.inspect(10)         # => "1_234_567"
+ *    -123456.inspect(10)         # => "-123456"
+ *    0xdeadbeafcafe.inspect(16)  # => "dead_beaf_cafe"
+ *    78546939656932.inspect(36)  # => "rubyrules"
+ *
+ *  The delimitation will be done if two or more underscores will be
+ *  inserted, and +base+ is 2, 16 or 10.
+ *
+ *  See also Integer#to_s.
+ *
+ */
+
+static VALUE
+rb_int_inspect(int argc, VALUE *argv, VALUE x)
+{
+    int base;
+
+    if (rb_check_arity(argc, 0, 1))
+	base = NUM2INT(argv[0]);
+    else
+	base = 10;
+
+    VALUE str = rb_int2str(x, base);
+    const int figures =
+        (base == 2) ? 8 :
+        (base == 16) ? 4 :
+        (base == 10) ? 3 :
+        (base == 8) ? 0 : // maybe 3 or 4?
+        0;
+    if (figures) {
+        long len = RSTRING_LEN(str);
+        long w = (len - (RSTRING_PTR(str)[0] == '-') - 1) / figures;
+        if (w > 1) {
+            rb_str_modify_expand(str, w);
+            char *src = RSTRING_END(str);
+            char *dest = src + w;
+            rb_str_set_len(str, len + w);
+            do {
+                memmove(dest -= figures, src -= figures, figures);
+                *--dest = '_';
+            } while (--w > 0);
+        }
+    }
+    return str;
 }
 
 VALUE
@@ -6227,7 +6282,7 @@ Init_Numeric(void)
     rb_define_singleton_method(rb_cInteger, "try_convert", int_s_try_convert, 1);
 
     rb_define_method(rb_cInteger, "to_s", rb_int_to_s, -1);
-    rb_define_alias(rb_cInteger, "inspect", "to_s");
+    rb_define_method(rb_cInteger, "inspect", rb_int_inspect, -1);
     rb_define_method(rb_cInteger, "allbits?", int_allbits_p, 1);
     rb_define_method(rb_cInteger, "anybits?", int_anybits_p, 1);
     rb_define_method(rb_cInteger, "nobits?", int_nobits_p, 1);
