@@ -8,7 +8,7 @@ describe "Range#inspect" do
     (0..21).inspect.should == "0..21"
     (-8..0).inspect.should ==  "-8..0"
     (-411..959).inspect.should == "-411..959"
-    (0xfff..0xfffff).inspect.should == "4095..1048575"
+    (0xfff..0xfffff).inspect.should == "#{0xfff.inspect}..#{0xfffff.inspect}"
     (0.5..2.4).inspect.should == "0.5..2.4"
   end
 

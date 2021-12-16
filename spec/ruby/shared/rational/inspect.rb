@@ -8,7 +8,7 @@ describe :rational_inspect, shared: true do
 
     # Guard against the Mathn library
     guard -> { !defined?(Math.rsqrt) } do
-      Rational(bignum_value, 1).inspect.should == "(#{bignum_value}/1)"
+      Rational(bignum_value, 1).inspect.should == "(#{bignum_value.inspect}/1)"
     end
   end
 end

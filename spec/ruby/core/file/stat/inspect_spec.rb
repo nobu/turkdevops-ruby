@@ -13,8 +13,8 @@ describe "File::Stat#inspect" do
 
   it "produces a nicely formatted description of a File::Stat object" do
     st = File.stat(@file)
-    expected = "#<File::Stat dev=0x#{st.dev.to_s(16)}, ino=#{st.ino}, mode=#{sprintf("%07o", st.mode)}, nlink=#{st.nlink}"
-    expected << ", uid=#{st.uid}, gid=#{st.gid}, rdev=0x#{st.rdev.to_s(16)}, size=#{st.size}, blksize=#{st.blksize.inspect}"
+    expected = "#<File::Stat dev=0x#{st.dev.to_s(16)}, ino=#{st.ino.inspect}, mode=#{sprintf("%07o", st.mode)}, nlink=#{st.nlink.inspect}"
+    expected << ", uid=#{st.uid.inspect}, gid=#{st.gid.inspect}, rdev=0x#{st.rdev.to_s(16)}, size=#{st.size.inspect}, blksize=#{st.blksize.inspect}"
     expected << ", blocks=#{st.blocks.inspect}, atime=#{st.atime.inspect}, mtime=#{st.mtime.inspect}, ctime=#{st.ctime.inspect}"
     platform_is :netbsd, :freebsd, :darwin do
       # Windows has File.birthtime but it's not here since already shown by ctime.
