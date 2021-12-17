@@ -21,14 +21,90 @@ jobs:
 
       - uses: actions/checkout@v2
 
+      - uses: actions/cache@v2
+        with:
+          path: .downloaded-cache
+          key: downloaded-cache
+
+      - name: Download previous gems list
+        run: |
+          base = URI('https://stdgems.org/')
+          %w[default_gems.json bundled_gems.json].each do |file|
+            Downloader.download base + file, file
+          end
+        shell: ruby -w --disable=gems -I./tool -rdownloader {0}
+
+      - name: Make default gems list
+        run: |
+          require 'rubygems'
+          $:.unshift "lib"
+          rgver = File.foreach("lib/rubygems.rb") do |line|
+            break $1 if /^\s*VERSION\s*=\s*"([^"]+)"/ =~ line
+          end
+          gems = Dir.glob("{ext,lib}/**/*.gemspec").map do |f|
+            spec = Gem::Specification.load(f)
+            "#{spec.name} #{spec.version}"
+          end.sort
+          File.open("gems/default_gems", "w") do |f|
+            f.puts "RubyGems #{rgver}"
+            f.puts gems
+          end
+        shell: ruby --disable=gems {0}
+
       - name: Update ${{ github.workflow }}
         run: |
           ruby -i~ tool/update-bundled_gems.rb gems/${{ github.workflow }}
 
-      - name: Check diffs
-        id: diff
+      - name: Maintain updated gems list in NEWS
         run: |
-          git diff --no-ext-diff --ignore-submodules --exit-code
+          require 'json'
+          news = File.read("NEWS.md")
+          prev = news[/since the \*+(\d+\.\d+\.\d+)\*+/, 1]
+          prevs = [prev, prev.sub(/\.\d+\z/, '')]
+          %W[default bundled].each do |type|
+            last = JSON.parse(File.read("#{type}_gems.json"))['gems'].filter_map do |g|
+              v = g['versions'].values_at(*prevs).compact.first
+              g = g['gem']
+              g == 'RubyGems' if g == 'rubygems'
+              "#{g} #{v}" if v
+            end
+            new = File.readlines("gems/#{type}_gems", chomp: true).grep_v(/^#/)
+            new.each {|line| line.sub!(/^\S+\s+\S+\K.*/, '')}
+            gems = new - last
+            news.sub!(/^\*\s+The following #{type} gems? are updated\.\K(\n\s+\*\s+).*(?:\1.*)*/) do
+              ["", gems].join($1)
+            end or exit
+            File.write("#{type}.NEWS.md", news)
+          end
+        shell: ruby {0}
+
+      - name: Commit default gems list
+        id: news
+        run: |
+          mv default.NEWS.md NEWS.md
+          rm -f default_gems.json gems/default_gems
+          git commit --message="Update stdlib versions at ${GITHUB_SHA:0:30} [ci skip]" NEWS.md || :
+        env:
+          EMAIL: svn-admin@ruby-lang.org
+          GIT_AUTHOR_NAME: git
+          GIT_COMMITTER_NAME: git
+
+      - name: Commit bundled_gems
+        id: gems
+        run: |
+          mv bundled.NEWS.md NEWS.md
+          rm -f bundled_gems.json
+          today=$(date +%F)
+          if git diff --no-ext-diff --ignore-submodules --quiet gems/bundled_gems; then
+            git commit --message="Update bundled gems versions in NEWS.md at ${today} [ci skip]" NEWS.md || :
+          else
+            git commit --message="Update bundled_gems at ${today}" NEWS.md gems/bundled_gems
+            false
+          fi
+        env:
+          EMAIL: svn-admin@ruby-lang.org
+          GIT_AUTHOR_NAME: git
+          GIT_COMMITTER_NAME: git
         continue-on-error: true
 
       - name: Install libraries
@@ -36,36 +112,35 @@ jobs:
           set -x
           sudo apt-get update -q || :
           sudo apt-get install --no-install-recommends -q -y build-essential libssl-dev libyaml-dev libreadline6-dev zlib1g-dev libncurses5-dev libffi-dev bison autoconf ruby
-        if: ${{ steps.diff.outcome == 'failure' }}
-
-      - uses: actions/cache@v2
-        with:
-          path: .downloaded-cache
-          key: downloaded-cache
+        if: ${{ steps.gems.outcome == 'failure' }}
 
       - name: Build
         run: |
           ./autogen.sh
           ./configure -C --disable-install-doc
           make
-        if: ${{ steps.diff.outcome == 'failure' }}
+        if: ${{ steps.gems.outcome == 'failure' }}
 
       - name: Test bundled gems
+        id: test-bundled-gems
         run: |
           make -s test-bundled-gems
         timeout-minutes: 30
         env:
           RUBY_TESTOPTS: "-q --tty=no"
           TEST_BUNDLED_GEMS_ALLOW_FAILURES: ""
-        if: ${{ steps.diff.outcome == 'failure' }}
+        if: ${{ steps.gems.outcome == 'failure' }}
+        continue-on-error: true
 
       - name: Commit
         run: |
-          git pull --ff-only origin ${GITHUB_REF#refs/heads/}
-          git commit --message="Update ${{ github.workflow }} at $(date +%F)" gems/$file
-          git push origin ${GITHUB_REF#refs/heads/}
+          git log --color --reverse --patch ${GITHUB_SHA}..HEAD
+          [ ${{ steps.test-bundled-gems.outcome }} != 'failure' ] ||
+          git reset --hard HEAD^ --
+          ref=${GITHUB_REF#refs/heads/}
+          git pull --ff-only origin $ref
+          git push origin $ref
         env:
           EMAIL: svn-admin@ruby-lang.org
           GIT_AUTHOR_NAME: git
           GIT_COMMITTER_NAME: git
-        if: ${{ steps.diff.outcome == 'failure' }}
