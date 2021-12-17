@@ -65,15 +65,25 @@ jobs:
             last = JSON.parse(File.read("#{type}_gems.json"))['gems'].filter_map do |g|
               v = g['versions'].values_at(*prevs).compact.first
               g = g['gem']
-              g == 'RubyGems' if g == 'rubygems'
-              "#{g} #{v}" if v
+              g = 'RubyGems' if g == 'rubygems'
+              [g, v] if v
+            end.to_h
+            new = File.foreach("gems/#{type}_gems").filter_map do |l|
+              l.split(" ", 3)[0,2] unless l.start_with?("#")
+            end.to_h
+            added = new.select {|g, _| !last[g]}
+            changed = new.select {|g, v| last[g] and last[g] != v}
+            if type == 'default'
+              changed.merge!(added)
+              changed = changed.sort
+              added = nil
             end
-            new = File.readlines("gems/#{type}_gems", chomp: true).grep_v(/^#/)
-            new.each {|line| line.sub!(/^\S+\s+\S+\K.*/, '')}
-            gems = new - last
             news.sub!(/^\*\s+The following #{type} gems? are updated\.\K(\n\s+\*\s+).*(?:\1.*)*/) do
-              ["", gems].join($1)
+              ["", changed.map {|g, v|"#{g} #{v}"}].join($1)
             end or exit
+            news.sub!(/^\*\s+The following default gems are now bundled.*\K(\n\s+\*\s+).*(?:\1.*)*/) do
+              ["", added.map {|g, v|"#{g} #{v}"}].join($1)
+            end if added
             File.write("#{type}.NEWS.md", news)
           end
         shell: ruby {0}
