@@ -1,12 +1,13 @@
 name: gems_updates
 
 on:
+  push:
   schedule:
     - cron: '45 6 * * *'
 
 jobs:
   update:
-    if: ${{ github.repository == 'ruby/ruby' }}
+    # if: ${{ github.repository == 'ruby/ruby' }}
     name: update gems list
     runs-on: ubuntu-latest
     steps:
