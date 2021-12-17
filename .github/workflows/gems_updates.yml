@@ -1,4 +1,4 @@
-name: bundled_gems
+name: gems_updates
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
 jobs:
   update:
     if: ${{ github.repository == 'ruby/ruby' }}
-    name: update ${{ github.workflow }}
+    name: update gems list
     runs-on: ubuntu-latest
     steps:
       - name: git config
@@ -51,9 +51,9 @@ jobs:
           end
         shell: ruby --disable=gems {0}
 
-      - name: Update ${{ github.workflow }}
+      - name: Update bundled gems list
         run: |
-          ruby -i~ tool/update-bundled_gems.rb gems/${{ github.workflow }}
+          ruby -i~ tool/update-bundled_gems.rb gems/bundled_gems
 
       - name: Maintain updated gems list in NEWS
         run: |
