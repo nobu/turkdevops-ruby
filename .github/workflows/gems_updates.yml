@@ -27,6 +27,10 @@ jobs:
           path: .downloaded-cache
           key: downloaded-cache
 
+      - name: List cache
+        run: |
+          ls -lR .downloaded-cache
+
       - name: Download previous gems list
         run: |
           base = URI('https://stdgems.org/')
