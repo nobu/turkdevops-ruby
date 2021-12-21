@@ -1065,6 +1065,8 @@ install?(:ext, :comm, :gem, :'bundled-gems') do
     package = RbInstall::DirPackage.new spec
     ins = RbInstall::UnpackedInstaller.new(package, options)
     puts "#{INDENT}#{spec.name} #{spec.version}"
+    p rubyhdrdir: [RbConfig::MAKEFILE_CONFIG["rubyhdrdir"], RbConfig::CONFIG["rubyhdrdir"]]
+    p rubyarchhdrdir: RbConfig::CONFIG["rubyarchhdrdir"]
     ins.install
     unless $dryrun
       File.chmod($data_mode, File.join(install_dir, "specifications", "#{spec.full_name}.gemspec"))
