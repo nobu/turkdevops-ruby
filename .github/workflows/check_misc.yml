@@ -26,7 +26,8 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: .downloaded-cache
-          key: downloaded-cache
+          key: downloaded-cache-misc
+          restore-keys:
 
       - name: Download previous gems list
         run: |
