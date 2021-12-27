@@ -137,7 +137,7 @@ class TestRubyOptions < Test::Unit::TestCase
   VERSION_PATTERN_WITH_JIT =
     case RUBY_ENGINE
     when 'ruby'
-      /^ruby #{q[RUBY_VERSION]}(?:[p ]|dev|rc).*? \+MJIT \[#{q[RUBY_PLATFORM]}\]$/
+      /^ruby #{q[RUBY_VERSION]}(?:[p ]|dev|rc).*? \+([MY]JIT) \[#{q[RUBY_PLATFORM]}\]$/
     else
       VERSION_PATTERN
     end
@@ -225,42 +225,40 @@ class TestRubyOptions < Test::Unit::TestCase
     return if RbConfig::CONFIG["MJIT_SUPPORT"] == 'no'
     return if yjit_force_enabled?
 
-    [
-      %w(--version --mjit --disable=mjit),
-      %w(--version --enable=mjit --disable=mjit),
-      %w(--version --enable-mjit --disable-mjit),
-      *([
-        %w(--version --jit --disable=jit),
-        %w(--version --enable=jit --disable=jit),
-        %w(--version --enable-jit --disable-jit),
-      ] unless /^x86_64|mswin64/ =~ RUBY_PLATFORM),
-    ].each do |args|
-      assert_in_out_err([env] + args) do |r, e|
-        assert_match(VERSION_PATTERN, r[0])
-        assert_match(NO_JIT_DESCRIPTION, r[0])
-        assert_equal([], e)
+    %w[mjit yjit jit].each do |jit|
+      [
+        %W(--#{jit} --disable=#{jit}),
+        %W(--enable=#{jit} --disable=#{jit}),
+        %W(--enable-#{jit} --disable-#{jit}),
+      ].each do |args|
+        assert_in_out_err([env, '--version', *args]) do |r, e|
+          assert_match(VERSION_PATTERN, r[0], ->{args.inspect})
+          assert_match(NO_JIT_DESCRIPTION, r[0], ->{args.inspect})
+          assert_equal([], e, ->{args.inspect})
+        end
       end
     end
 
-    if JITSupport.supported?
-      [
-        %w(--version --mjit),
-        %w(--version --enable=mjit),
-        %w(--version --enable-mjit),
-        *([
-          %w(--version --jit),
-          %w(--version --enable=jit),
-          %w(--version --enable-jit),
-        ] unless /^x86_64|mswin64/ =~ RUBY_PLATFORM),
-      ].each do |args|
-        assert_in_out_err([env] + args) do |r, e|
-          assert_match(VERSION_PATTERN_WITH_JIT, r[0])
-          if defined?(RubyVM::MJIT) && RubyVM::MJIT.enabled? # checking -DMJIT_FORCE_ENABLE
-            assert_equal(RUBY_DESCRIPTION, r[0])
-          else
-            assert_equal(EnvUtil.invoke_ruby([env, '--mjit', '-e', 'print RUBY_DESCRIPTION'], '', true).first, r[0])
+    if yjit = JITSupport.yjit_supported? or JITSupport.supported?
+      %w[mjit yjit jit].each do |jit|
+        [
+          %W(--#{jit}),
+          %W(--enable=#{jit}),
+          %W(--enable-#{jit}),
+        ].each do |args|
+          assert_in_out_err([env, '--version', *args]) do |r, e|
+            assert_match(VERSION_PATTERN_WITH_JIT, r[0])
+            if j = r[0][VERSION_PATTERN_WITH_JIT, 1]
+              if jit != "jit"
+                assert_equal(jit.upcase, j, ->{args.inspect})
+              elsif yjit
+                assert_equal("YJIT", j, ->{args.inspect})
+              else
+                assert_equal("MJIT", j, ->{args.inspect})
+              end
+            end
+            assert_equal([], e, ->{args.inspect})
           end
-          assert_equal([], e)
         end
       end
     end
