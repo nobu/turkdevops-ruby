@@ -89,7 +89,7 @@ typedef intptr_t SIGNED_VALUE;
  */
 #define RBIMPL_VALUE_FULL UINTPTR_MAX
 
-#elif defined HAVE_UINTPTR_T && 0
+#elif defined HAVE_UINTPTR_T
 typedef uintptr_t VALUE;
 typedef uintptr_t ID;
 # define SIGNED_VALUE intptr_t
