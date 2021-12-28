@@ -34,13 +34,12 @@ jobs:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
     strategy:
       matrix:
+        test_task: [ "check" ] # to make job names consistent
+        msystem: [ "MINGW64" ]
+        base_ruby: [ "2.6" ]
         include:
-          - msystem: "MINGW64"
-            base_ruby: 2.6
-            test_task: [ "check" ] # to make job names consistent
           - msystem: "UCRT64"
             base_ruby: head
-            test_task: [ "check" ] # to make job names consistent
       fail-fast: false
     if: ${{ !startsWith(github.event.head_commit.message, '[DOC]') && !contains(github.event.pull_request.labels.*.name, 'Documentation') }}
     steps:
