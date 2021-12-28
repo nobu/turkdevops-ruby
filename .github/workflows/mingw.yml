@@ -35,9 +35,9 @@ jobs:
     strategy:
       matrix:
         test_task: [ "check" ] # to make job names consistent
-        msystem: [ "MINGW64" ]
-        base_ruby: [ "2.6" ]
         include:
+          - msystem: "MINGW64"
+            base_ruby: "2.6"
           - msystem: "UCRT64"
             base_ruby: head
       fail-fast: false
@@ -78,54 +78,9 @@ jobs:
           done
           $result
 
-      - name: autogen
-        run: |
-          ./autogen.sh
-        working-directory: src
-
-      - name: configure
-        run: >
-          ../src/configure --disable-install-doc --prefix=/.
-          --build=$CHOST --host=$CHOST --target=$CHOST
-
-      - name: update
-        run: |
-          make incs
-
-      - name: download gems
-        run: |
-          make update-gems
-
-      - name: make all
-        timeout-minutes: 20
-        run: |
-          make
-
-      - run: make leaked-globals
-
-      - name: make install
-        run: |
-          make DESTDIR=../install install-nodoc
-
       - name: test
-        timeout-minutes: 5
         run: |
-          make test
-
-      - name: test-all
-        timeout-minutes: 45
-        run: |
-          # Actions uses UTF8, causes test failures, similar to normal OS setup
-          chcp.com 437
-          make test-all
-        env:
-          RUBY_TESTOPTS: -j${{env.TEST_JOBS}} --retry --job-status=normal --show-skip --timeout-scale=1.5
-          BUNDLER_VERSION:
-
-      - name: test-spec
-        timeout-minutes: 10
-        run: |
-          make test-spec
+          echo "${{ github.workflow }} ${{ matrix.msystem }} / ${{ matrix.test_task }}"
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
