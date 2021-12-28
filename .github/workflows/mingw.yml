@@ -34,7 +34,6 @@ jobs:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
     strategy:
       matrix:
-        test_task: [ "check" ] # to make job names consistent
         include:
           - msystem: "MINGW64"
             base_ruby: "2.6"
@@ -97,6 +96,8 @@ jobs:
         if: ${{ failure() && github.event_name == 'push' }}
 
 defaults:
+  matrix:
+    test_task: "check" # to make job names consistent
   run:
     working-directory: build
     shell: sh
