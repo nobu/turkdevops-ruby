@@ -42,7 +42,10 @@ class String
   #
   #   String.new('hello', encoding: 'UTF-8', capacity: 25)
   #
-  def initialize(orig = (init = false), encoding: nil, capacity: nil)
-    Primitive.rb_str_init(orig, init, encoding, capacity)
+  def initialize(orig = nil, encoding: nil, capacity: nil)
+    if Primitive.mandatory_only?
+    else
+      Primitive.rb_str_init(orig, encoding, capacity)
+    end
   end
 end

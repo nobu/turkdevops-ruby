@@ -1812,12 +1812,12 @@ rb_ec_str_resurrect(struct rb_execution_context_struct *ec, VALUE str)
 }
 
 static VALUE
-rb_str_init(rb_execution_context_t *ec, VALUE str, VALUE orig, VALUE init, VALUE venc, VALUE vcapa)
+rb_str_init(rb_execution_context_t *ec, VALUE str, VALUE orig, VALUE venc, VALUE vcapa)
 {
     rb_encoding *enc = 0;
     int n;
 
-    n = init != Qfalse;
+    n = !NIL_P(orig);
     {
 	if (venc != Qundef && !NIL_P(venc)) {
 	    enc = rb_to_encoding(venc);

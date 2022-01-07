@@ -1,0 +1,5 @@
+benchmark:
+  empty: String.new
+  copy: 'String.new("foo")'
+  capa100: 'String.new(capacity: 100)'
+  capa1000: 'String.new(capacity: 1000)'
