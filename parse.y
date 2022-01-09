@@ -324,6 +324,7 @@ struct parser_params {
     unsigned int has_shebang: 1;
     unsigned int token_seen: 1;
     unsigned int token_info_enabled: 1;
+    unsigned int unused_variable: 1;
 # if WARN_PAST_SCOPE
     unsigned int past_scope_enabled: 1;
 # endif
@@ -8205,6 +8206,13 @@ parser_set_token_info(struct parser_params *p, const char *name, const char *val
 }
 
 static void
+parser_set_unused_variable(struct parser_params *p, const char *name, const char *val)
+{
+    int b = parser_get_bool(p, name, val);
+    if (b >= 0) p->unused_variable = b;
+}
+
+static void
 parser_set_compile_option_flag(struct parser_params *p, const char *name, const char *val)
 {
     int b;
@@ -8281,6 +8289,7 @@ static const struct magic_comment magic_comments[] = {
     {"frozen_string_literal", parser_set_compile_option_flag},
     {"shareable_constant_value", parser_set_shareable_constant_value},
     {"warn_indent", parser_set_token_info},
+    {"warn_unused_variable", parser_set_unused_variable},
 # if WARN_PAST_SCOPE
     {"warn_past_scope", parser_set_past_scope},
 # endif
@@ -8471,7 +8480,9 @@ static void
 parser_prepare(struct parser_params *p)
 {
     int c = nextc(p);
-    p->token_info_enabled = !compile_for_eval && RTEST(ruby_verbose);
+    int verbose = !compile_for_eval && RTEST(ruby_verbose);
+    p->token_info_enabled = verbose;
+    p->unused_variable = verbose;
     switch (c) {
       case '#':
 	if (peek(p, '!')) p->has_shebang = 1;
@@ -12586,7 +12597,7 @@ local_push(struct parser_params *p, int toplevel_scope)
 {
     struct local_vars *local;
     int inherits_dvars = toplevel_scope && compile_for_eval;
-    int warn_unused_vars = RTEST(ruby_verbose);
+    int warn_unused_vars = p->unused_variable;
 
     local = ALLOC(struct local_vars);
     local->prev = p->lvtbl;
