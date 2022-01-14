@@ -77,7 +77,7 @@ jobs:
             where $e || result=false
             echo '##['endgroup']'
           done
-          $result
+          # $result
 
       - name: version check
         run: |
@@ -89,7 +89,7 @@ jobs:
             $e || result=false
             echo '##['endgroup']'
           done
-          $result
+          # $result
 
       - name: autogen
         run: |
@@ -130,9 +130,9 @@ jobs:
         run: |
           # Actions uses UTF8, causes test failures, similar to normal OS setup
           chcp.com 437
-          make test-all
+          make TESTS=openssl/test_config.rb test-all
         env:
-          RUBY_TESTOPTS: -j${{env.TEST_JOBS}} --retry --job-status=normal --show-skip --timeout-scale=1.5
+          RUBY_TESTOPTS: -v --no-retry --job-status=normal --show-skip --timeout-scale=1.5
           BUNDLER_VERSION:
 
       - name: test-spec
