@@ -19,17 +19,13 @@ jobs:
   make:
     strategy:
       matrix:
-        test_task: ["check", "test-bundler-parallel", "test-bundled-gems"]
+        test_task: ["check"]
         os:
           - ubuntu-20.04
 #         - ubuntu-18.04
-        configure: ["", "cppflags=-DRUBY_DEBUG"]
         include:
           - test_task: "check"
-            configure: "--host=i686-$OSTYPE"
-          - test_task: "check"
             configure: "--enable-shared --enable-load-relative"
-          - test_task: "test-all TESTS=--repeat-count=2"
       fail-fast: false
     env:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
@@ -97,6 +93,7 @@ jobs:
         run: |
           $SETARCH make -s ${{ matrix.test_task }} ${TESTS:+TESTS=`echo "$TESTS" | sed 's| |$/ -n!/|g;s|^|-n!/|;s|$|$$/|'`}
         timeout-minutes: 40
+        if: false
         env:
           RUBY_TESTOPTS: "-q --tty=no"
           TESTS: ${{ matrix.test_task == 'check' && matrix.skipped_tests || '' }}
