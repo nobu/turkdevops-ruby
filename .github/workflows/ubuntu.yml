@@ -26,6 +26,8 @@ jobs:
         include:
           - test_task: "check"
             configure: "--enable-shared --enable-load-relative"
+            skipped_tests: "TestGem#test_.*_from_binstubs.*"
+            continue-on-skipped_tests: true
       fail-fast: false
     env:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
