@@ -79,17 +79,15 @@ jobs:
       - run: ./autogen.sh
         working-directory: src
       - name: Run configure
-        run: |
-          ../src/configure \
-            --host wasm32-unknown-wasi \
-            --with-static-linked-ext \
-            LDFLAGS=" \
-              -Xlinker --stack-first \
-              -Xlinker -z -Xlinker stack-size=16777216 \
-            " \
-            optflags="${{ matrix.entry.optflags }}" \
-            debugflags="${{ matrix.entry.debugflags }}" \
-            wasmoptflags="${{ matrix.entry.wasmoptflags }} ${{ matrix.entry.debugflags }}"
+        run: >-
+          ../src/configure
+          --host wasm32-unknown-wasi
+          --with-static-linked-ext
+          optflags="${{ matrix.entry.optflags }}"
+          debugflags="${{ matrix.entry.debugflags }}"
+          wasmoptflags="${{ matrix.entry.wasmoptflags }} ${{ matrix.entry.debugflags }}"
+        env:
+          LDFLAGS: '-Xlinker --stack-first -Xlinker -z -Xlinker stack-size=16777216'
 
       - run: make ruby
       - name: Run basictest
