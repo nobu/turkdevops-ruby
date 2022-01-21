@@ -229,6 +229,14 @@ end
   print "  CONFIG[#{v.dump}] = #{(versions[v]||vars[v]).dump}\n"
 end
 
+require 'digest/sha2'
+digest = Digest::SHA256.new
+Dir["#{srcdir}/include/**/*.h"].sort_by {|f| f.split("/")}.each do |f|
+  digest << digest.class.file(f).digest
+end
+# digest.file(File.join(vars['EXTOUT'], 'include', arch, 'ruby/config.h'))
+print "  CONFIG[\"RUBY_ABI_CHECKSUM\"] = #{digest.hexdigest.dump}\n"
+
 dest = drive ? %r'= "(?!\$[\(\{])(?i:[a-z]:)' : %r'= "(?!\$[\(\{])'
 v_disabled = {}
 v_others.collect! do |x|
