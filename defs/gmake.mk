@@ -53,6 +53,8 @@ ifeq ($(if $(filter all main exts enc trans libencs libenc libtrans \
 -include $(SHOWFLAGS)
 endif
 
+-include abi.mk
+
 ifneq ($(filter universal-%,$(arch)),)
 define archcmd
 %.$(1).S: %.c

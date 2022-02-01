@@ -1018,6 +1018,11 @@ verconf.h: $(srcdir)/template/verconf.h.tmpl $(tooldir)/generic_erb.rb $(RBCONFI
 	$(ECHO) creating $@
 	$(Q) $(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ $(srcdir)/template/verconf.h.tmpl
 
+abi.mk: $(tooldir)/abi.rb
+	$(Q) $(BASERUBY) $(tooldir)/abi.rb --srcdir="$(srcdir)" --arch_hdrdir="$(arch_hdrdir)" --output=$@
+
+version.$(OBJEXT): abi.mk
+
 ruby-glommed.$(OBJEXT): $(OBJS)
 
 $(OBJS):  {$(VPATH)}config.h {$(VPATH)}missing.h

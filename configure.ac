@@ -4240,9 +4240,9 @@ AS_IF([test x"$enable_rubygems" = xno], [
 ])
 AC_SUBST(USE_RUBYGEMS)
 
-arch_hdrdir="${EXTOUT}/include/${arch}/ruby"
-AS_MKDIR_P("${arch_hdrdir}")
-config_h="${arch_hdrdir}/config.h"
+arch_hdrdir="${EXTOUT}/include/${arch}"
+AS_MKDIR_P("${arch_hdrdir}/ruby")
+config_h="${arch_hdrdir}/ruby/config.h"
 guard=INCLUDE_RUBY_CONFIG_H
 {
   echo "#ifndef $guard"
@@ -4256,6 +4256,17 @@ guard=INCLUDE_RUBY_CONFIG_H
 ) >&AS_MESSAGE_FD || AC_MSG_ERROR([failed to create ${config_h}])
 tr -d '\015' < largefile.h > confdefs.h
 rm largefile.h
+AS_IF([test "$HAVE_BASERUBY" = yes], [
+    $BASERUBY ${tooldir}/abi.rb --srcdir="${srcdir}" --arch-hdrdir="${arch_hdrdir}" --output=abi.mk
+    AS_IF([${linker_flag:+:} false], [
+        abi_opt="${linker_flag}-u,"
+    ], [
+        abi_opt='-u '
+    ])
+    DLDFLAGS="${DLDFLAGS:+${DLDFLAGS} }${abi_opt}${SYMBOL_PREFIX}ruby_abi_checksum_"'$(RUBY_ABI_CHECKSUM)'
+], [
+   : > abi.mk
+])
 
 BUILTIN_ENCS=["`sed -n -e '/^BUILTIN_ENCS[ 	]*=/{' \
 	-e s/// -e :l -e '/\\\\$/N' -e 's/\\\\\\n/ /' -e 't l' -e p \

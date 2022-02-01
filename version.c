@@ -14,6 +14,7 @@
 #include "vm_core.h"
 #include "mjit.h"
 #include "yjit.h"
+#include "abi.mk"
 #include <stdio.h>
 
 #ifndef EXIT_SUCCESS
@@ -46,6 +47,20 @@ static const char ruby_description_with_mjit[] = RUBY_DESCRIPTION_WITH(" +MJIT")
 static const char ruby_description_with_yjit[] = RUBY_DESCRIPTION_WITH(" +YJIT");
 const char ruby_copyright[] = RUBY_COPYRIGHT;
 const char ruby_engine[] = "ruby";
+
+#if defined(RUBY_DEVEL) && defined(RUBY_ABI_CHECKSUM)
+# define ABI_CHECKSUM(x) TOKEN_PASTE(ruby_abi_checksum_,x)
+
+RUBY_SYMBOL_EXPORT_BEGIN
+# if RBIMPL_HAS_FEATURE(alias)
+#  define abi_checksum_size sizeof(ruby_version)
+__attribute__((alias("ruby_version")))
+# else
+#  define abi_checksum_size 1
+# endif
+const char ABI_CHECKSUM(RUBY_ABI_CHECKSUM)[abi_checksum_size];
+RUBY_SYMBOL_EXPORT_END
+#endif
 
 /*! Defines platform-depended Ruby-level constants */
 void

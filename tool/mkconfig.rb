@@ -18,6 +18,11 @@ $:.unshift(".")
 
 mkconfig = File.basename($0)
 
+begin
+  abi = File.read("abi.mk")[/^RUBY_ABI_CHECKSUM\s*=\s*\K\h+/]
+rescue
+end
+
 fast = {'prefix'=>true, 'ruby_install_name'=>true, 'INSTALL'=>true, 'EXEEXT'=>true}
 
 win32 = /mswin/ =~ arch
@@ -33,6 +38,9 @@ platform = nil
 File.foreach "config.status" do |line|
   next if /^#/ =~ line
   name = nil
+  if abi
+    line.sub!(/\$\(RUBY_ABI_CHECKSUM\)/, abi)
+  end
   case line
   when /^s([%,])@(\w+)@\1(?:\|\#_!!_\#\|)?(.*)\1/
     name = $2
