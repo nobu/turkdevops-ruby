@@ -18,7 +18,7 @@
 #define RUBY_RELEASE_DAY 2
 
 #include "ruby/version.h"
-#include "ruby/internal/abi.h"
+#include "internal/abi.h"
 
 #ifndef TOKEN_PASTE
 #define TOKEN_PASTE(x,y) x##y

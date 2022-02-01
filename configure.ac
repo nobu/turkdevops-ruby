@@ -1583,7 +1583,8 @@ RUBY_FUNC_ATTRIBUTE(__error__ mesg, ERRORFUNC(mesg,x), rb_cv_func___error__)
 RUBY_FUNC_ATTRIBUTE(__warning__ mesg, WARNINGFUNC(mesg,x), rb_cv_func___warning__)
 RUBY_FUNC_ATTRIBUTE(__weak__, WEAK, rb_cv_func_weak)
 AS_IF([test "$rb_cv_func_weak" != x], [
-   AC_DEFINE(HAVE_FUNC_WEAK)
+    AC_DEFINE(HAVE_FUNC_WEAK)
+    AS_CASE([$target_os], [mswin|mingw], [], [AC_SUBST(ABI_OBJ, ['abi.$(OBJEXT)'])])
 ])
 
 AC_CACHE_CHECK([for __attribute__((__depreacted__(msg))) in C++],

@@ -29,6 +29,8 @@ else
   ''
 end %> <%=CONFIG['LIBS']%> $(EXTLIBS)
 
+ABI_OBJ =<%if (abi_obj = CONFIG["ABI_OBJ"]) and abi_obj != "" %> $(topdir)/<%=abi_obj%><%end%>
+
 ENCOBJS =<%ENCS.map {|e|%> enc/<%=e%>.$(OBJEXT) \
          <%}%> #
 ENCSOS =<%ENCS.map {|e|%> $(ENCSODIR)/<%=e%>.$(DLEXT) \
@@ -130,9 +132,9 @@ enc/<%=e%>.$(OBJEXT): <%=deps.map {|n| rule_subst % n}.join(' ')%>
 %     target = "$(ENCSODIR)/#{e}"
 %     mesg = "encoding"
 %   end
-<%=target%>.$(DLEXT): <%=obj%>
+<%=target%>.$(DLEXT): <%=obj%> $(ABI_OBJ)
 	$(ECHO) linking <%=mesg%> $(@F)
-%   cmd = link_so.sub(/\$\(OBJS\)/) {obj}
+%   cmd = link_so.sub(/\$\(OBJS\)/) {obj + " $(ABI_OBJ)"}
 %   base = File.basename(e)
 %   if df
 	$(Q)echo> <%=df%> EXPORTS

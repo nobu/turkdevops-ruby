@@ -11,6 +11,7 @@
 
 #ifdef RUBY_EXPORT
 #include "ruby/ruby.h"
+#include "internal/abi.h"
 #define dln_notimplement rb_notimplement
 #define dln_memerror rb_memerror
 #define dln_exit rb_exit

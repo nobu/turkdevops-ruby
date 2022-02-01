@@ -407,6 +407,9 @@ install?(:local, :arch, :lib, :'lib-arch') do
       install file, archlibdir, :mode => $data_mode
     end
   end
+  if abi_obj = CONFIG["ABI_OBJ"] and File.exist?(abi_obj)
+    install abi_obj, archlibdir, :mode => $data_mode
+  end
 end
 
 install?(:local, :arch, :data) do

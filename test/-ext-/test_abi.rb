@@ -38,6 +38,6 @@ class TestABI < Test::Unit::TestCase
   private
 
   def abi_checking_supported?
-    !(RUBY_PLATFORM =~ /mswin|mingw/)
+    /mswin|mingw/ !~ RUBY_PLATFORM
   end
 end

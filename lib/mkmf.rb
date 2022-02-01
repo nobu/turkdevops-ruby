@@ -142,6 +142,7 @@ module MakeMakefile
   $solaris = /solaris/ =~ RUBY_PLATFORM
   $universal = /universal/ =~ RUBY_PLATFORM
   $dest_prefix_pattern = (File::PATH_SEPARATOR == ';' ? /\A([[:alpha:]]:)?/ : /\A/)
+  @@abi_obj = nil
 
   # :stopdoc:
 
@@ -2367,6 +2368,7 @@ DLLIB = #{dllib}
 EXTSTATIC = #{$static || ""}
 STATIC_LIB = #{staticlib unless $static.nil?}
 #{!$extout && defined?($installed_list) ? "INSTALLED_LIST = #{$installed_list}\n" : ""}
+ABI_OBJ = #{@@abi_obj}
 TIMESTAMP_DIR = #{$extout && $extmk ? '$(extout)/.timestamp' : '.'}
 " #"
     # TODO: fixme
@@ -2523,7 +2525,7 @@ site-install-rb: install-rb
 
     mfile.print "$(TARGET_SO): "
     mfile.print "$(DEFFILE) " if makedef
-    mfile.print "$(OBJS) Makefile"
+    mfile.print "$(OBJS) Makefile $(ABI_OBJ)"
     mfile.print " #{timestamp_file(sodir, target_prefix)}" if $extout
     mfile.print "\n"
     mfile.print "\t$(ECHO) linking shared-object #{target_prefix.sub(/\A\/(.*)/, '\1/')}$(DLLIB)\n"
@@ -2532,6 +2534,7 @@ site-install-rb: install-rb
     if srcs.any?(&%r"\.(?:#{CXX_EXT.join('|')})\z".method(:===))
       link_so = link_so.sub(/\bLDSHARED\b/, '\&XX')
     end
+    link_so['$(OBJS)'] = "$(OBJS) $(ABI_OBJ)"
     mfile.print link_so, "\n\n"
     unless $static.nil?
       mfile.print "$(STATIC_LIB): $(OBJS)\n\t-$(Q)$(RM) $(@#{sep})\n\t"
@@ -2626,6 +2629,14 @@ site-install-rb: install-rb
 
     $extout ||= nil
     $extout_prefix ||= nil
+
+    config_string("ABI_OBJ", RbConfig::CONFIG) do |abi_obj|
+      # RbConfig::CONFIG so $(OBJEXT) is expanded
+      conf = $extmk ? "topdir" : RbConfig::CONFIG["buildlibdir"] ? "buildlibdir" : "rubyarchdir"
+      if File.exist?(File.join(RbConfig::CONFIG[conf], abi_obj))
+        @@abi_obj = "$(#{conf})/#{abi_obj}".freeze
+      end
+    end
 
     $arg_config.clear
     $config_dirs.clear
