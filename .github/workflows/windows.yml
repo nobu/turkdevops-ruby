@@ -104,7 +104,9 @@ jobs:
           set | C:\msys64\usr\bin\sort > new.env
           C:\msys64\usr\bin\comm -13 old.env new.env >> %GITHUB_ENV%
           del *.env
-          for %%I in (libffi libyaml) do mklink %%I.dll C:\vcpkg\installed\x64-windows\bin\%%I.dll
+          for %%I in (C:\vcpkg\installed\x64-windows\bin\*.dll) do (
+            if not %%~nI == readline mklink %%~nxI %%I
+          )
       - name: Configure
         run: >-
           ../src/win32/configure.bat --disable-install-doc
