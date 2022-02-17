@@ -293,6 +293,10 @@ dln_incompatible_library_p(void *handle, const char **libname)
     if (dln_incompatible_func(handle, EXTERNAL_PREFIX #func, (void *)&func, libname)) \
 	return true
     check_func(ruby_xmalloc);
+    check_func(rb_str_new);
+    check_func(rb_ary_new);
+    check_func(rb_ary_new_capa);
+    check_func(rb_cObject);
     return false;
 }
 COMPILER_WARNING_POP
