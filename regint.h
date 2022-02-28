@@ -870,6 +870,7 @@ typedef struct {
   void* state_check_buff;
   int   state_check_buff_size;
 #endif
+  uint64_t backtrack_count;
 } OnigMatchArg;
 
 

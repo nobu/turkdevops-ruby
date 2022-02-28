@@ -423,6 +423,7 @@ onig_region_copy(OnigRegion* to, const OnigRegion* from)
   (msa).start    = (arg_start);\
   (msa).gpos     = (arg_gpos);\
   (msa).best_len = ONIG_MISMATCH;\
+  (msa).backtrack_count = 0;\
 } while(0)
 #else
 # define MATCH_ARG_INIT(msa, arg_option, arg_region, arg_start, arg_gpos) do {\
@@ -431,6 +432,7 @@ onig_region_copy(OnigRegion* to, const OnigRegion* from)
   (msa).region   = (arg_region);\
   (msa).start    = (arg_start);\
   (msa).gpos     = (arg_gpos);\
+  (msa).backtrack_count = 0;\
 } while(0)
 #endif
 
@@ -1458,7 +1460,6 @@ match_at(regex_t* reg, const UChar* str, const UChar* end,
   int num_comb_exp_check = reg->num_comb_exp_check;
 #endif
   const uint64_t backtrack_limit = reg->backtrack_limit;
-  uint64_t backtrack_count = 0;
 
 #if USE_TOKEN_THREADED_VM
 # define OP_OFFSET  1
@@ -1794,7 +1795,7 @@ match_at(regex_t* reg, const UChar* str, const UChar* end,
 	    }
 	  }
 #endif /* USE_CAPTURE_HISTORY */
-          region->backtrack_count = backtrack_count;
+          region->backtrack_count = msa->backtrack_count;
 	} /* if (region) */
       } /* n > best_len */
 
@@ -3178,7 +3179,7 @@ match_at(regex_t* reg, const UChar* str, const UChar* end,
 	stk++;
       }
 #endif
-      if (backtrack_count++ > backtrack_limit) {
+      if (msa->backtrack_count++ > backtrack_limit) {
           best_len = ONIGERR_BACKTRACK_OVER;
           goto finish;
       }
