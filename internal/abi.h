@@ -24,28 +24,4 @@
  */
 #define RUBY_ABI_VERSION 0
 
-/* Windows does not support weak symbols so ruby_abi_version will not exist
- * in the shared library. */
-#if defined(HAVE_FUNC_WEAK) && !defined(_WIN32) && !defined(__MINGW32__)
-# define RUBY_DLN_CHECK_ABI
-#endif
-
-#ifdef RUBY_DLN_CHECK_ABI
-
-# ifdef __cplusplus
-extern "C" {
-# endif
-
-RUBY_FUNC_EXPORTED unsigned long long __attribute__((weak))
-ruby_abi_version(void)
-{
-    return RUBY_ABI_VERSION;
-}
-
-# ifdef __cplusplus
-}
-# endif
-
-#endif
-
 #endif
