@@ -5,7 +5,7 @@ require 'fileutils'
 
 # :stopdoc:
 
-dir_config 'libyaml'
+pkg_config 'yaml-0.1'
 
 if enable_config("bundled-libyaml", false) || !(find_header('yaml.h') && find_library('yaml', 'yaml_get_version'))
   # Embed libyaml since we could not find it.
