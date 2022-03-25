@@ -37,6 +37,7 @@ if yaml_source
   Dir.mkdir(yaml) unless File.directory?(yaml)
   unless system(yaml_configure, "-q",
                 "--enable-#{$enable_shared || !$static ? 'shared' : 'static'}",
+                *%w[host target build].map {|t| "--#{t}=#{RbConfig::CONFIG[t]}"},
                 chdir: yaml)
     raise "failed to configure libyaml"
   end
