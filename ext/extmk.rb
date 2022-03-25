@@ -759,6 +759,15 @@ begin
             mf.puts %Q<\t@echo "\t#{ee.gsub(/["`$^]/, '\\\\\\&')}">
           end
           mf.puts %Q<\t@echo "\tCheck #{ext_prefix}/#{ext}/mkmf.log for more details.">
+          if ENV["GITHUB_ACTIONS"] == "true"
+            mf.puts %Q<\t@echo "\t##[group]#{ext_prefix}/#{ext}/mkmf.log">
+            if $nmake
+              mf.puts %Q<\t@type #{ext_prefix}\\#{ext}\\mkmf.log>
+            else
+              mf.puts %Q<\t@cat #{ext_prefix}/#{ext}/mkmf.log>
+            end
+            mf.puts %Q<\t@echo "\t##[endgroup]">
+          end
         else
           mf.puts %Q<\t@echo "\tSkipped because its parent was not configured.">
         end
