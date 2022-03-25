@@ -7,6 +7,12 @@ if $mswin or $mingw or $cygwin
 end
 
 yaml_source = with_config("libyaml-source-dir") || enable_config("bundled-libyaml", false)
+unless yaml_source
+  dir_config 'libyaml'
+  unless find_header('yaml.h') && find_library('yaml', 'yaml_get_version')
+    yaml_source = true
+  end
+end
 if yaml_source == true
   yaml_source = Dir.glob("#{$srcdir}/yaml{,-*}/").max_by {|n| File.basename(n).scan(/\d+/).map(&:to_i)}
   unless yaml_source
@@ -40,11 +46,6 @@ if yaml_source
   Logging.message("INCLFAG=#$INCLFAG\n")
   libyaml = "#{yaml}/src/.libs/libyaml.#$LIBEXT"
   $LOCAL_LIBS.prepend("$(LIBYAML) ")
-else
-  dir_config 'libyaml'
-  unless find_header('yaml.h') && find_library('yaml', 'yaml_get_version')
-    raise "libyaml not found"
-  end
 end
 
 create_makefile 'psych' do |mk|
