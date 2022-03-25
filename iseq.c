@@ -118,32 +118,32 @@ iseq_clear_ic_references_i(VALUE *code, VALUE insn, size_t index, void *data)
     struct iseq_clear_ic_references_data *ic_data = (struct iseq_clear_ic_references_data *) data;
 
     switch (insn) {
-        case BIN(opt_getinlinecache): {
-            ic_data->ic = (IC) code[index + 2];
-            return true;
-        }
-        case BIN(getconstant): {
-            ID id = (ID) code[index + 1];
-            rb_vm_t *vm = GET_VM();
-            st_table *ics;
+      case BIN(opt_getinlinecache): {
+        ic_data->ic = (IC) code[index + 2];
+        return true;
+      }
+      case BIN(getconstant): {
+        ID id = (ID) code[index + 1];
+        rb_vm_t *vm = GET_VM();
+        st_table *ics;
 
-            if (rb_id_table_lookup(vm->constant_cache, id, (VALUE *) &ics)) {
-                st_delete(ics, (st_data_t *) &ic_data->ic, (st_data_t *) NULL);
+        if (rb_id_table_lookup(vm->constant_cache, id, (VALUE *) &ics)) {
+            st_delete(ics, (st_data_t *) &ic_data->ic, (st_data_t *) NULL);
 
-                if (ics->num_entries == 0) {
-                    rb_id_table_delete(vm->constant_cache, id);
-                    st_free_table(ics);
-                }
+            if (ics->num_entries == 0) {
+                rb_id_table_delete(vm->constant_cache, id);
+                st_free_table(ics);
             }
+        }
 
-            return true;
-        }
-        case BIN(opt_setinlinecache): {
-            ic_data->ic = NULL;
-            return true;
-        }
-        default:
-            return true;
+        return true;
+      }
+      case BIN(opt_setinlinecache): {
+        ic_data->ic = NULL;
+        return true;
+      }
+      default:
+        return true;
     }
 }
 
