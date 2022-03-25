@@ -128,7 +128,8 @@ iseq_clear_ic_references_i(VALUE *code, VALUE insn, size_t index, void *data)
         st_table *ics;
 
         if (rb_id_table_lookup(vm->constant_cache, id, (VALUE *) &ics)) {
-            st_delete(ics, (st_data_t *) &ic_data->ic, (st_data_t *) NULL);
+            st_data_t ic_key = (st_data_t)ic_data->ic;
+            st_delete(ics, &ic_key, NULL);
 
             if (ics->num_entries == 0) {
                 rb_id_table_delete(vm->constant_cache, id);
