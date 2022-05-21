@@ -1239,6 +1239,19 @@ rb_get_message(VALUE exc)
 }
 
 VALUE
+rb_make_highlight_keyword(VALUE opt, VALUE *highlight)
+{
+    VALUE h = Qfalse;
+    if (NIL_P(opt)) opt = rb_hash_new();
+    if (!highlight || NIL_P(h = *highlight)) {
+	h = RBOOL(rb_stderr_tty_p());
+	if (highlight) *highlight = h;
+    }
+    rb_hash_aset(opt, sym_highlight, h);
+    return opt;
+}
+
+VALUE
 rb_get_detailed_message(VALUE exc, VALUE opt)
 {
     VALUE e;
@@ -1281,8 +1294,8 @@ check_highlight_keyword(VALUE opt, int auto_tty_detect)
         }
     }
 
-    if (NIL_P(highlight)) {
-        highlight = RBOOL(auto_tty_detect && rb_stderr_tty_p());
+    if (NIL_P(highlight) && !auto_tty_detect) {
+        highlight = Qfalse;
     }
 
     return highlight;
@@ -1343,11 +1356,7 @@ exc_full_message(int argc, VALUE *argv, VALUE exc)
 
     highlight = check_highlight_keyword(opt, 1);
     order = check_order_keyword(opt);
-
-    {
-        if (NIL_P(opt)) opt = rb_hash_new();
-        rb_hash_aset(opt, sym_highlight, highlight);
-    }
+    opt = rb_make_highlight_keyword(opt, &highlight);
 
     str = rb_str_new2("");
     errat = rb_get_backtrace(exc);

@@ -346,9 +346,8 @@ rb_ec_error_print(rb_execution_context_t * volatile ec, volatile VALUE errinfo)
     volatile VALUE emesg = Qundef;
     volatile bool written = false;
 
-    VALUE opt = rb_hash_new();
-    VALUE highlight = rb_stderr_tty_p() ? Qtrue : Qfalse;
-    rb_hash_aset(opt, ID2SYM(rb_intern_const("highlight")), highlight);
+    VALUE highlight = Qnil;
+    VALUE opt = rb_make_highlight_keyword(Qnil, &highlight);
 
     if (NIL_P(errinfo))
 	return;
