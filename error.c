@@ -148,7 +148,7 @@ rb_syntax_error_append(VALUE exc, VALUE file, int line, int column,
 	    if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg)-1) != '\n')
 		rb_str_cat_cstr(mesg, "\n");
 	}
-	err_vcatf(mesg, NULL, fn, line, fmt, args);
+	if (fmt) err_vcatf(mesg, NULL, fn, line, fmt, args);
     }
 
     return exc;

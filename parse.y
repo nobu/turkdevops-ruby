@@ -6374,7 +6374,9 @@ yycompile0(VALUE arg)
     if (n || p->error_p) {
 	VALUE mesg = p->error_buffer;
 	if (!mesg) {
-	    mesg = rb_class_new_instance(0, 0, rb_eSyntaxError);
+	    VALUE file = p->ruby_sourcefile_string;
+	    mesg = rb_syntax_error_append(Qnil, file, 0, 0, p->enc, 0, 0);
+	    p->error_buffer = mesg;
 	}
 	rb_set_errinfo(mesg);
 	return FALSE;
@@ -13291,6 +13293,15 @@ rb_parser_keep_script_lines(VALUE vparser)
 
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, p);
     p->keep_script_lines = 1;
+}
+
+VALUE
+rb_parser_get_error_buffer(VALUE vparser)
+{
+    struct parser_params *p;
+
+    TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, p);
+    return p->error_buffer;
 }
 #endif
 
