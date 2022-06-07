@@ -2044,6 +2044,14 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
     rb_stdio_set_default_encoding();
 
     if (!ast->body.root) {
+	VALUE exc = rb_parser_get_error_buffer(parser);
+	if (RTEST(exc)) {
+	    VALUE opt = rb_make_highlight_keyword(Qnil, NULL);
+	    VALUE emesg = rb_get_detailed_message(exc, opt);
+	    if (!NIL_P(emesg)) {
+		rb_write_error_str(emesg);
+	    }
+	}
 	rb_ast_dispose(ast);
 	return Qfalse;
     }

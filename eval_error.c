@@ -260,8 +260,6 @@ print_backtrace(const VALUE eclass, const VALUE errat, const VALUE str, int reve
     }
 }
 
-VALUE rb_get_detailed_message(VALUE exc, VALUE opt);
-
 static int
 shown_cause_p(VALUE cause, VALUE *shown_causes)
 {
