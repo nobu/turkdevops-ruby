@@ -1950,4 +1950,23 @@ eom
   def caller_lineno(*)
     caller_locations(1, 1)[0].lineno
   end
+
+  class TestSyntaxError < Test::Unit::TestCase
+    def test_path
+      require 'tempfile'
+      Tempfile.create(%w"syntax_error_ .rb") do |f|
+        f.write "def\n"
+        f.close
+        e = assert_raise(SyntaxError) do
+          load(f.path)
+        end
+        assert_equal(f.path, e.path)
+      end
+
+      e = assert_raise(SyntaxError) do
+        eval("def", nil, "test_syntax_error.rb")
+      end
+      assert_equal("test_syntax_error.rb", e.path)
+    end
+  end
 end

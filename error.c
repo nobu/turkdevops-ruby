@@ -124,6 +124,8 @@ err_vcatf(VALUE str, const char *pre, const char *file, int line,
     return str;
 }
 
+static VALUE error_with_path(VALUE klass, VALUE mesg, VALUE path);
+
 VALUE
 rb_syntax_error_append(VALUE exc, VALUE file, int line, int column,
 		       rb_encoding *enc, const char *fmt, va_list args)
@@ -139,7 +141,7 @@ rb_syntax_error_append(VALUE exc, VALUE file, int line, int column,
 	VALUE mesg;
 	if (NIL_P(exc)) {
 	    mesg = rb_enc_str_new(0, 0, enc);
-	    exc = rb_class_new_instance(1, &mesg, rb_eSyntaxError);
+	    exc = error_with_path(rb_eSyntaxError, mesg, file);
 	}
 	else {
 	    mesg = rb_attr_get(exc, idMesg);
@@ -2985,12 +2987,15 @@ Init_Exception(void)
     rb_eRangeError    = rb_define_class("RangeError", rb_eStandardError);
 
     rb_eScriptError = rb_define_class("ScriptError", rb_eException);
+
+    ID id_path = rb_intern_const("path");
     rb_eSyntaxError = rb_define_class("SyntaxError", rb_eScriptError);
     rb_define_method(rb_eSyntaxError, "initialize", syntax_error_initialize, -1);
+    rb_attr(rb_eSyntaxError, id_path, TRUE, FALSE, FALSE);
 
     rb_eLoadError   = rb_define_class("LoadError", rb_eScriptError);
     /* the path failed to load */
-    rb_attr(rb_eLoadError, rb_intern_const("path"), TRUE, FALSE, FALSE);
+    rb_attr(rb_eLoadError, id_path, TRUE, FALSE, FALSE);
 
     rb_eNotImpError = rb_define_class("NotImplementedError", rb_eScriptError);
 
@@ -3106,14 +3111,20 @@ rb_raise(VALUE exc, const char *fmt, ...)
     va_end(args);
 }
 
+static VALUE
+error_with_path(VALUE klass, VALUE mesg, VALUE path)
+{
+    VALUE err = rb_exc_new3(klass, mesg);
+    rb_ivar_set(err, id_i_path, path);
+    return err;
+}
+
 NORETURN(static void raise_loaderror(VALUE path, VALUE mesg));
 
 static void
 raise_loaderror(VALUE path, VALUE mesg)
 {
-    VALUE err = rb_exc_new3(rb_eLoadError, mesg);
-    rb_ivar_set(err, id_i_path, path);
-    rb_exc_raise(err);
+    rb_exc_raise(error_with_path(rb_eLoadError, mesg, path));
 }
 
 void
