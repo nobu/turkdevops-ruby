@@ -127,7 +127,7 @@ err_vcatf(VALUE str, const char *pre, const char *file, int line,
 static VALUE error_with_path(VALUE klass, VALUE mesg, VALUE path);
 
 VALUE
-rb_syntax_error_append(VALUE exc, VALUE file, int line, int column,
+rb_syntax_error_append(VALUE exc, VALUE file, int line, int column, VALUE src,
 		       rb_encoding *enc, const char *fmt, va_list args)
 {
     const char *fn = NIL_P(file) ? NULL : RSTRING_PTR(file);
