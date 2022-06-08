@@ -6013,8 +6013,6 @@ parser_precise_mbclen(struct parser_params *p, const char *ptr)
 }
 
 #ifndef RIPPER
-static void ruby_show_error_line(VALUE errbuf, const YYLTYPE *yylloc, int lineno, VALUE str);
-
 static int
 parser_yyerror(struct parser_params *p, const YYLTYPE *yylloc, const char *msg)
 {
@@ -6040,30 +6038,28 @@ parser_yyerror0(struct parser_params *p, const char *msg)
     return parser_yyerror(p, RUBY_SET_YYLLOC(current), msg);
 }
 
-static void
-ruby_show_error_line(VALUE errbuf, const YYLTYPE *yylloc, int lineno, VALUE str)
+void
+ruby_show_error_line(VALUE mesg, int lineno, int beg_pos, int end_pos, VALUE str, int highlight)
 {
-    VALUE mesg;
     const int max_line_margin = 30;
     const char *ptr, *ptr_end, *pt, *pb;
     const char *pre = "", *post = "", *pend;
     const char *code = "", *caret = "";
     const char *lim;
-    const char *const pbeg = RSTRING_PTR(str);
     char *buf;
     long len;
     int i;
 
-    if (!yylloc) return;
+    if (lineno <= 0 || NIL_P(str)) return;
+    const char *const pbeg = StringValuePtr(str);
     pend = RSTRING_END(str);
     if (pend > pbeg && pend[-1] == '\n') {
 	if (--pend > pbeg && pend[-1] == '\r') --pend;
     }
 
     pt = pend;
-    if (lineno == yylloc->end_pos.lineno &&
-	(pend - pbeg) > yylloc->end_pos.column) {
-	pt = pbeg + yylloc->end_pos.column;
+    if (end_pos > 0 && (pend - pbeg) > end_pos) {
+	pt = pbeg + end_pos;
     }
 
     ptr = ptr_end = pt;
@@ -6085,23 +6081,15 @@ ruby_show_error_line(VALUE errbuf, const YYLTYPE *yylloc, int lineno, VALUE str)
 	}
     }
     pb = pbeg;
-    if (lineno == yylloc->beg_pos.lineno) {
-	pb += yylloc->beg_pos.column;
+    if (beg_pos > 0) {
+	pb += beg_pos;
 	if (pb > pt) pb = pt;
     }
     if (pb < ptr) pb = ptr;
-    if (len <= 4 && yylloc->beg_pos.lineno == yylloc->end_pos.lineno) {
+    if (len <= 4) {
 	return;
     }
-    if (RTEST(errbuf)) {
-	mesg = rb_attr_get(errbuf, idMesg);
-	if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg)-1) != '\n')
-	    rb_str_cat_cstr(mesg, "\n");
-    }
-    else {
-	mesg = rb_enc_str_new(0, 0, rb_enc_get(str));
-    }
-    if (!errbuf && rb_stderr_tty_p()) {
+    if (RTEST(highlight) && (pt > pb)) {
 #define CSI_BEGIN "\033["
 #define CSI_SGR "m"
 	rb_str_catf(mesg,
@@ -6142,7 +6130,6 @@ ruby_show_error_line(VALUE errbuf, const YYLTYPE *yylloc, int lineno, VALUE str)
 		    pre, (int)len, code, post,
 		    pre, caret);
     }
-    if (!errbuf) rb_write_error_str(mesg);
 }
 #else
 static int
@@ -6350,8 +6337,7 @@ yycompile0(VALUE arg)
     if (n || p->error_p) {
 	VALUE mesg = p->error_buffer;
 	if (!mesg) {
-	    VALUE file = p->ruby_sourcefile_string;
-	    mesg = rb_syntax_error_append(Qnil, file, 0, 0, Qnil, p->enc, 0, 0);
+	    mesg = rb_class_new_instance(0, 0, rb_eSyntaxError);
 	    p->error_buffer = mesg;
 	}
 	rb_set_errinfo(mesg);
@@ -13482,7 +13468,8 @@ parser_compile_error(struct parser_params *p, const YYLTYPE *yylloc, const char 
     va_list ap;
     VALUE file = p->ruby_sourcefile_string;
     int lineno = p->ruby_sourceline;
-    int pos = rb_long2int(p->lex.pcur - p->lex.pbeg);
+    int beg_pos = rb_long2int(p->lex.ptok - p->lex.pbeg);
+    int end_pos = rb_long2int(p->lex.pcur - p->lex.pbeg);
     VALUE str = (yylloc && (yylloc->beg_pos.lineno == lineno)) ?
 	p->lex.lastline : Qnil;
 
@@ -13491,7 +13478,7 @@ parser_compile_error(struct parser_params *p, const YYLTYPE *yylloc, const char 
     va_start(ap, fmt);
     p->error_buffer =
 	rb_syntax_error_append(p->error_buffer,
-			       file, lineno, pos, str,
+			       file, lineno, beg_pos, end_pos, str,
 			       p->enc, fmt, ap);
     va_end(ap);
 }

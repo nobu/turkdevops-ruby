@@ -365,7 +365,7 @@ append_compile_error(const rb_iseq_t *iseq, int line, const char *fmt, ...)
     va_list args;
 
     va_start(args, fmt);
-    err = rb_syntax_error_append(err, file, line, -1, Qnil, NULL, fmt, args);
+    err = rb_syntax_error_append(err, file, line, -1, -1, Qnil, NULL, fmt, args);
     va_end(args);
     if (NIL_P(err_info)) {
 	RB_OBJ_WRITE(iseq, &ISEQ_COMPILE_DATA(iseq)->err_info, err);

@@ -116,8 +116,9 @@ void rb_deprecated_method_to_be_removed(const char *);
 #endif
 #define RBIMPL_TODO(message) RBIMPL_TODO0("TODO: " message)
 VALUE rb_get_detailed_message(VALUE exc, VALUE opt);
-RBIMPL_ATTR_FORMAT(RBIMPL_PRINTF_FORMAT, 7, 0)
-VALUE rb_syntax_error_append(VALUE, VALUE, int, int, VALUE, rb_encoding*, const char*, va_list);
+RBIMPL_ATTR_FORMAT(RBIMPL_PRINTF_FORMAT, 8, 0)
+VALUE rb_syntax_error_append(VALUE exc, VALUE file, int line, int beg_pos, int end_pos,
+                             VALUE src, rb_encoding *enc, const char *fmt, va_list args);
 VALUE rb_make_highlight_keyword(VALUE hash, VALUE *highlight);
 PRINTF_ARGS(void rb_enc_warn(rb_encoding *enc, const char *fmt, ...), 2, 3);
 PRINTF_ARGS(void rb_sys_enc_warning(rb_encoding *enc, const char *fmt, ...), 2, 3);

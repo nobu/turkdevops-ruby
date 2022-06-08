@@ -126,29 +126,57 @@ err_vcatf(VALUE str, const char *pre, const char *file, int line,
 
 static VALUE error_with_path(VALUE klass, VALUE mesg, VALUE path);
 
+static const int SYNTAX_ERROR_INFOS = 5;
+
+static ID id_i_errors;
+
+static VALUE
+syntax_error_errors(VALUE exc)
+{
+    return rb_attr_get(exc, id_i_errors);
+}
+
+static void
+syntax_error_set_errors(VALUE exc, VALUE errors)
+{
+    rb_ivar_set(exc, id_i_errors, errors);
+}
+
 VALUE
-rb_syntax_error_append(VALUE exc, VALUE file, int line, int column, VALUE src,
-		       rb_encoding *enc, const char *fmt, va_list args)
+rb_syntax_error_append(VALUE exc, VALUE file, int line, int beg_pos, int end_pos,
+		       VALUE src, rb_encoding *enc, const char *fmt, va_list args)
 {
     const char *fn = NIL_P(file) ? NULL : RSTRING_PTR(file);
-    if (!exc) {
-	VALUE mesg = rb_enc_str_new(0, 0, enc);
-	err_vcatf(mesg, NULL, fn, line, fmt, args);
-	rb_str_cat2(mesg, "\n");
-	rb_write_error_str(mesg);
+    bool direct = !exc;
+    VALUE mesg, errors;
+
+    if (!RTEST(exc)) {
+	mesg = rb_enc_str_new(0, 0, enc);
+	exc = error_with_path(rb_eSyntaxError, mesg, file);
+	errors = rb_ary_new();
+	if (!direct) {
+	    syntax_error_set_errors(exc, errors);
+	}
     }
     else {
-	VALUE mesg;
-	if (NIL_P(exc)) {
-	    mesg = rb_enc_str_new(0, 0, enc);
-	    exc = error_with_path(rb_eSyntaxError, mesg, file);
-	}
-	else {
-	    mesg = rb_attr_get(exc, idMesg);
-	    if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg)-1) != '\n')
-		rb_str_cat_cstr(mesg, "\n");
-	}
-	if (fmt) err_vcatf(mesg, NULL, fn, line, fmt, args);
+	mesg = rb_attr_get(exc, idMesg);
+	if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg)-1) != '\n')
+	    rb_str_cat_cstr(mesg, "\n");
+	errors = syntax_error_errors(exc);
+    }
+    err_vcatf(mesg, NULL, fn, line, fmt, args);
+    mesg = rb_ary_new_from_args(SYNTAX_ERROR_INFOS, mesg,
+				INT2FIX(line), INT2FIX(beg_pos), INT2FIX(end_pos),
+				src);
+    rb_ary_push(errors, mesg);
+
+    if (direct) {
+	VALUE hl = Qtrue;
+	VALUE opts = rb_make_highlight_keyword(Qnil, &hl);
+	mesg = rb_get_detailed_message(exc, opts);
+	rb_write_error_str(mesg);
+	rb_write_error("\n");
+	exc = Qfalse;
     }
 
     return exc;
@@ -1380,6 +1408,8 @@ exc_message(VALUE exc)
     return rb_funcallv(exc, idTo_s, 0, 0);
 }
 
+extern VALUE rb_decorate_message(const VALUE eclass, const VALUE emesg, int highlight);
+
 /*
  * call-seq:
  *   exception.detailed_message(highlight: bool, **opt)   ->  string
@@ -1406,8 +1436,6 @@ exc_detailed_message(int argc, VALUE *argv, VALUE exc)
     rb_scan_args(argc, argv, "0:", &opt);
 
     VALUE highlight = check_highlight_keyword(opt, 0);
-
-    extern VALUE rb_decorate_message(const VALUE eclass, const VALUE emesg, int highlight);
 
     return rb_decorate_message(CLASS_OF(exc), rb_get_message(exc), RTEST(highlight));
 }
@@ -2339,6 +2367,40 @@ syntax_error_initialize(int argc, VALUE *argv, VALUE self)
 }
 
 /*
+ * SyntaxError#detailed_message(highlight: nil)
+ */
+/* :nodoc: */
+static VALUE
+syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
+{
+    void ruby_show_error_line(VALUE mesg, int lineno, int beg_pos, int end_pos, VALUE str, int highlight);
+
+    VALUE opt;
+    rb_scan_args(argc, argv, "0:", &opt);
+
+    int highlight = RTEST(check_highlight_keyword(opt, 0));
+    VALUE str = rb_str_new(0, 0);
+    VALUE errors = syntax_error_errors(exc);
+    if (RB_TYPE_P(errors, T_ARRAY)) {
+	for (long i = 0; i < RARRAY_LEN(errors); ++i) {
+	    VALUE e = RARRAY_AREF(errors, i);
+	    if (RB_TYPE_P(e, T_ARRAY) && RARRAY_LEN(e) == SYNTAX_ERROR_INFOS) {
+		VALUE mesg = RARRAY_AREF(e, 0);
+		int lineno = NUM2INT(RARRAY_AREF(e, 1));
+		int beg_pos = NUM2INT(RARRAY_AREF(e, 2));
+		int end_pos = NUM2INT(RARRAY_AREF(e, 3));
+		VALUE src = RARRAY_AREF(e, 4);
+		rb_str_append(str, mesg);
+		if (RSTRING_LEN(str) > 0 && *(RSTRING_END(str) - 1) != '\n')
+		    rb_str_cat_cstr(str, "\n");
+		ruby_show_error_line(str, lineno, beg_pos, end_pos, src, highlight);
+	    }
+	}
+    }
+    return str;
+}
+
+/*
  *  Document-module: Errno
  *
  *  Ruby exception objects are subclasses of Exception.  However,
@@ -3001,6 +3063,8 @@ Init_Exception(void)
     rb_eSyntaxError = rb_define_class("SyntaxError", rb_eScriptError);
     rb_define_method(rb_eSyntaxError, "initialize", syntax_error_initialize, -1);
     rb_attr(rb_eSyntaxError, id_path, TRUE, FALSE, FALSE);
+    rb_attr(rb_eSyntaxError, rb_intern_const("errors"), TRUE, FALSE, FALSE);
+    rb_define_method(rb_eSyntaxError, "detailed_message", syntax_error_detailed_message, -1);
 
     rb_eLoadError   = rb_define_class("LoadError", rb_eScriptError);
     /* the path failed to load */
@@ -3078,6 +3142,7 @@ Init_Exception(void)
     id_bottom = rb_intern_const("bottom");
     id_iseq = rb_make_internal_id();
     id_recv = rb_make_internal_id();
+    id_i_errors = rb_intern("@errors");
 
     sym_category = ID2SYM(id_category);
     sym_highlight = ID2SYM(rb_intern_const("highlight"));
