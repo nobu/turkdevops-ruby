@@ -160,8 +160,8 @@ rb_syntax_error_append(VALUE exc, VALUE file, int line, int beg_pos, int end_pos
     }
     else {
 	mesg = rb_attr_get(exc, idMesg);
-	if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg)-1) != '\n')
-	    rb_str_cat_cstr(mesg, "\n");
+	if (RSTRING_LEN(mesg) > 0)
+	    mesg = rb_enc_str_new(0, 0, enc);
 	errors = syntax_error_errors(exc);
     }
     err_vcatf(mesg, NULL, fn, line, fmt, args);
@@ -2379,7 +2379,7 @@ syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
     rb_scan_args(argc, argv, "0:", &opt);
 
     int highlight = RTEST(check_highlight_keyword(opt, 0));
-    VALUE str = rb_str_new(0, 0);
+    VALUE str = Qfalse;
     VALUE errors = syntax_error_errors(exc);
     if (RB_TYPE_P(errors, T_ARRAY)) {
 	for (long i = 0; i < RARRAY_LEN(errors); ++i) {
@@ -2390,9 +2390,14 @@ syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
 		int beg_pos = NUM2INT(RARRAY_AREF(e, 2));
 		int end_pos = NUM2INT(RARRAY_AREF(e, 3));
 		VALUE src = RARRAY_AREF(e, 4);
-		rb_str_append(str, mesg);
-		if (RSTRING_LEN(str) > 0 && *(RSTRING_END(str) - 1) != '\n')
-		    rb_str_cat_cstr(str, "\n");
+		if (!str) {
+		    str = rb_decorate_message(CLASS_OF(exc), mesg, highlight);
+		}
+		else {
+		    if (RSTRING_LEN(str) > 0 && *(RSTRING_END(str) - 1) != '\n')
+			rb_str_cat_cstr(str, "\n");
+		    rb_str_append(str, mesg);
+		}
 		ruby_show_error_line(str, lineno, beg_pos, end_pos, src, highlight);
 	    }
 	}

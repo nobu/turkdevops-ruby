@@ -6089,6 +6089,8 @@ ruby_show_error_line(VALUE mesg, int lineno, int beg_pos, int end_pos, VALUE str
     if (len <= 4) {
 	return;
     }
+    if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg) - 1) != '\n')
+	rb_str_cat_cstr(mesg, "\n");
     if (RTEST(highlight) && (pt > pb)) {
 #define CSI_BEGIN "\033["
 #define CSI_SGR "m"
