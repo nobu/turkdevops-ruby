@@ -3069,6 +3069,7 @@ Init_Exception(void)
     rb_define_method(rb_eSyntaxError, "initialize", syntax_error_initialize, -1);
     rb_attr(rb_eSyntaxError, id_path, TRUE, FALSE, FALSE);
     rb_attr(rb_eSyntaxError, rb_intern_const("errors"), TRUE, FALSE, FALSE);
+    rb_attr(rb_eSyntaxError, rb_intern_const("script_lines"), TRUE, FALSE, FALSE);
     rb_define_method(rb_eSyntaxError, "detailed_message", syntax_error_detailed_message, -1);
 
     rb_eLoadError   = rb_define_class("LoadError", rb_eScriptError);

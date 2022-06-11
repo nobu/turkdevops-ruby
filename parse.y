@@ -6342,6 +6342,9 @@ yycompile0(VALUE arg)
 	    mesg = rb_class_new_instance(0, 0, rb_eSyntaxError);
 	    p->error_buffer = mesg;
 	}
+	if (p->ast->body.script_lines) {
+	    rb_ivar_set(mesg, rb_intern("@script_lines"), p->ast->body.script_lines);
+	}
 	rb_set_errinfo(mesg);
 	return FALSE;
     }
