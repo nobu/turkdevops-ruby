@@ -13248,6 +13248,7 @@ rb_parser_set_context(VALUE vparser, const struct rb_iseq_struct *base, int main
     TypedData_Get_Struct(vparser, struct parser_params, &parser_data_type, p);
     p->error_buffer = Qnil;
     p->parent_iseq = base;
+    p->keep_script_lines = main != 0;
     return vparser;
 }
 
