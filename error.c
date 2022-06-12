@@ -2373,6 +2373,7 @@ syntax_error_initialize(int argc, VALUE *argv, VALUE self)
 static VALUE
 syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
 {
+    void rb_str_line_break(VALUE mesg);
     void ruby_show_error_line(VALUE mesg, int lineno, int beg_pos, int end_pos, VALUE str, int highlight);
 
     VALUE opt;
@@ -2394,8 +2395,7 @@ syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
 		    str = rb_decorate_message(CLASS_OF(exc), mesg, highlight);
 		}
 		else {
-		    if (RSTRING_LEN(str) > 0 && *(RSTRING_END(str) - 1) != '\n')
-			rb_str_cat_cstr(str, "\n");
+		    rb_str_line_break(str);
 		    rb_str_append(str, mesg);
 		}
 		ruby_show_error_line(str, lineno, beg_pos, end_pos, src, highlight);

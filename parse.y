@@ -6039,6 +6039,13 @@ parser_yyerror0(struct parser_params *p, const char *msg)
 }
 
 void
+rb_str_line_break(VALUE mesg)
+{
+    if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg) - 1) != '\n')
+	rb_str_cat_cstr(mesg, "\n");
+}
+
+void
 ruby_show_error_line(VALUE mesg, int lineno, int beg_pos, int end_pos, VALUE str, int highlight)
 {
     const int max_line_margin = 30;
@@ -6089,8 +6096,7 @@ ruby_show_error_line(VALUE mesg, int lineno, int beg_pos, int end_pos, VALUE str
     if (len <= 4) {
 	return;
     }
-    if (RSTRING_LEN(mesg) > 0 && *(RSTRING_END(mesg) - 1) != '\n')
-	rb_str_cat_cstr(mesg, "\n");
+    rb_str_line_break(mesg);
     if (RTEST(highlight) && (pt > pb)) {
 #define CSI_BEGIN "\033["
 #define CSI_SGR "m"
