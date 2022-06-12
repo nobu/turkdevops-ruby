@@ -2392,6 +2392,12 @@ syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
 		int end_pos = NUM2INT(RARRAY_AREF(e, 3));
 		VALUE src = RARRAY_AREF(e, 4);
 		if (!str) {
+		    if (!NIL_P(opt) &&
+			!RTEST(rb_hash_lookup2(opt, ID2SYM(rb_intern("decorate")), Qtrue))) {
+			str = rb_str_new(0, 0);
+		    }
+		}
+		if (!str) {
 		    str = rb_decorate_message(CLASS_OF(exc), mesg, highlight);
 		}
 		else {
