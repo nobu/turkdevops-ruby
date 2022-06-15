@@ -3866,12 +3866,7 @@ do_block	: k_do_block do_body k_end
 block_call	: command do_block
 		    {
 		    /*%%%*/
-			if (nd_type_p($1, NODE_YIELD)) {
-			    compile_error(p, "block given to yield");
-			}
-			else {
-			    block_dup_check(p, $1->nd_args, $2);
-			}
+			block_dup_check(p, $1->nd_args, $2);
 			$$ = method_add_block(p, $1, $2, &@$);
 			fixpos($$, $1);
 		    /*% %*/
@@ -11955,8 +11950,6 @@ ret_args(struct parser_params *p, NODE *node)
 static NODE *
 new_yield(struct parser_params *p, NODE *node, const YYLTYPE *loc)
 {
-    if (node) no_blockarg(p, node);
-
     return NEW_YIELD(node, loc);
 }
 

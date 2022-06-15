@@ -85,6 +85,14 @@ class TestRubyYield < Test::Unit::TestCase
     }
     assert_equal([1,2,[3],4,5], r, "[ruby-core:19485]")
   end
+
+  def test_yield_with_blockarg
+    assert_valid_syntax("def f; yield(&:+); end")
+  end
+
+  def test_yield_command_do_block
+    assert_valid_syntax("def f; yield 99 do end; end")
+  end
 end
 
 require_relative 'sentence'

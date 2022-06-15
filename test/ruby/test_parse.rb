@@ -908,10 +908,6 @@ x = __ENCODING__
     end
   end
 
-  def test_no_blockarg
-    assert_syntax_error("yield(&:+)", /block argument should not be given/)
-  end
-
   def test_method_block_location
     bug5614 = '[ruby-core:40936]'
     expected = nil
