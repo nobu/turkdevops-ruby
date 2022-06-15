@@ -3547,6 +3547,17 @@ iseq_specialized_instruction(rb_iseq_t *iseq, INSN *iobj)
 	    iobj->operand_size = insn_len(iobj->insn_id) - 1;
 	}
     }
+
+    if (IS_INSN_ID(iobj, invokeblock)) {
+        const struct rb_callinfo *ci = (struct rb_callinfo *)OPERAND_AT(iobj, 0);
+        const rb_iseq_t *blockiseq = (rb_iseq_t *)OPERAND_AT(iobj, 1);
+
+	if ((vm_ci_flag(ci) & VM_CALL_ARGS_BLOCKARG) == 0 && blockiseq == NULL) {
+	    iobj->insn_id = BIN(opt_invokeblock_without_block);
+	    iobj->operand_size = insn_len(iobj->insn_id) - 1;
+	}
+    }
+
 #undef SP_INSN
 
     return COMPILE_OK;
