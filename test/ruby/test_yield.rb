@@ -88,22 +88,50 @@ class TestRubyYield < Test::Unit::TestCase
 
   def test_yield_with_blockarg
     assert_valid_syntax("def f; yield(&:+); end")
+    obj = Object.new
+    obj.instance_eval("def self.plus; yield(&:+); end")
+    assert_equal(3, obj.plus {|&b| b.call(1, 2)})
   end
 
   def test_yield_command_do_block
     assert_valid_syntax("def f; yield 99 do end; end")
+    obj = Object.new
+    obj.instance_eval("def self.f; yield 99 do |*a| a; end; end")
+    assert_equal([99, 42], obj.f {|x, &b| b.call(x, 42)})
   end
 
   def test_yield_do_block
     assert_valid_syntax("def f; yield(99) do end; end")
+    obj = Object.new
+    obj.instance_eval("def self.f; yield(99) do |*a| a; end; end")
+    assert_equal([99, 42], obj.f {|x, &b| b.call(x, 42)})
+
     assert_valid_syntax("def f; yield() do end; end")
+    obj = Object.new
+    obj.instance_eval("def f; yield() do |*a| a; end; end")
+    assert_equal([nil, 42], obj.f {|x, &b| b.call(x, 42)})
+
     assert_valid_syntax("def f; yield do end; end")
+    obj = Object.new
+    obj.instance_eval("def f; yield do |*a| a; end; end")
+    assert_equal([nil, 42], obj.f {|x, &b| b.call(x, 42)})
   end
 
   def test_yield_brace_block
     assert_valid_syntax("def f; yield(99) { }; end")
+    obj = Object.new
+    obj.instance_eval("def self.f; yield(99) {|*a| a}; end")
+    assert_equal([99, 42], obj.f {|x, &b| b.call(x, 42)})
+
     assert_valid_syntax("def f; yield() { }; end")
+    obj = Object.new
+    obj.instance_eval("def f; yield() {|*a| a}; end")
+    assert_equal([nil, 42], obj.f {|x, &b| b.call(x, 42)})
+
     assert_valid_syntax("def f; yield { }; end")
+    obj = Object.new
+    obj.instance_eval("def f; yield {|*a| a}; end")
+    assert_equal([nil, 42], obj.f {|x, &b| b.call(x, 42)})
   end
 end
 

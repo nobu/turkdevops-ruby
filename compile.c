@@ -8773,6 +8773,9 @@ compile_yield(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, i
       default: /* valid */;
     }
 
+    const rb_iseq_t *parent_block = ISEQ_COMPILE_DATA(iseq)->current_block;
+    ISEQ_COMPILE_DATA(iseq)->current_block = NULL;
+
     if (node->nd_head) {
 	argc = setup_args(iseq, args, node->nd_head, &flag, &keywords);
 	CHECK(!NIL_P(argc));
@@ -8782,7 +8785,9 @@ compile_yield(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *const node, i
     }
 
     ADD_SEQ(ret, args);
-    ADD_INSN1(ret, node, invokeblock, new_callinfo(iseq, 0, FIX2INT(argc), flag, keywords, FALSE));
+    ADD_INSN2(ret, node, invokeblock,
+	      new_callinfo(iseq, 0, FIX2INT(argc), flag, keywords, parent_block != NULL),
+	      parent_block);
 
     if (popped) {
 	ADD_INSN(ret, node, pop);
