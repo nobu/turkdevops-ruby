@@ -93,6 +93,18 @@ class TestRubyYield < Test::Unit::TestCase
   def test_yield_command_do_block
     assert_valid_syntax("def f; yield 99 do end; end")
   end
+
+  def test_yield_do_block
+    assert_valid_syntax("def f; yield(99) do end; end")
+    assert_valid_syntax("def f; yield() do end; end")
+    assert_valid_syntax("def f; yield do end; end")
+  end
+
+  def test_yield_brace_block
+    assert_valid_syntax("def f; yield(99) { }; end")
+    assert_valid_syntax("def f; yield() { }; end")
+    assert_valid_syntax("def f; yield { }; end")
+  end
 end
 
 require_relative 'sentence'

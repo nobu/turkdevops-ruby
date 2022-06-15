@@ -3068,6 +3068,28 @@ primary		: literal
 		    /*% %*/
 		    /*% ripper: yield0! %*/
 		    }
+		| keyword_yield '(' call_args rparen brace_block
+		    {
+		    /*%%%*/
+			block_dup_check(p, $3, $5);
+			$$ = method_add_block(p, new_yield(p, $3, &@$), $5, &@$);
+		    /*% %*/
+		    /*% ripper: method_add_block!(yield!(paren!($3)), $5) %*/
+		    }
+		| keyword_yield '(' rparen brace_block
+		    {
+		    /*%%%*/
+			$$ = method_add_block(p, NEW_YIELD(0, &@$), $4, &@$);
+		    /*% %*/
+		    /*% ripper: method_add_block!(yield!(paren!(args_new!)), $4) %*/
+		    }
+		| keyword_yield brace_block
+		    {
+		    /*%%%*/
+			$$ = method_add_block(p, NEW_YIELD(0, &@$), $2, &@$);
+		    /*% %*/
+		    /*% ripper: method_add_block!(yield0!, $2) %*/
+		    }
 		| keyword_defined opt_nl '(' {p->ctxt.in_defined = 1;} expr rparen
 		    {
 			p->ctxt.in_defined = 0;
