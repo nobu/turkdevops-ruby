@@ -63,12 +63,12 @@ jobs:
           - {}
         entry:
           - { name: gcc-11,    env: { default_cc: gcc-11 } }
-          - { name: gcc-10,    env: { default_cc: gcc-10 } }
-          - { name: gcc-9,     env: { default_cc: gcc-9 } }
-          - { name: gcc-8,     env: { default_cc: gcc-8 } }
-          - { name: gcc-7,     env: { default_cc: gcc-7 } }
-          - { name: gcc-6,     env: { default_cc: gcc-6 } }
-          - { name: gcc-5,     env: { default_cc: gcc-5 } }
+#         - { name: gcc-10,    env: { default_cc: gcc-10 } }
+#         - { name: gcc-9,     env: { default_cc: gcc-9 } }
+#         - { name: gcc-8,     env: { default_cc: gcc-8 } }
+#         - { name: gcc-7,     env: { default_cc: gcc-7 } }
+#         - { name: gcc-6,     env: { default_cc: gcc-6 } }
+#         - { name: gcc-5,     env: { default_cc: gcc-5 } }
           - { name: gcc-4.8,   env: { default_cc: gcc-4.8 } }
           - name: 'gcc-11 LTO'
             container: gcc-11
@@ -90,17 +90,17 @@ jobs:
               TEST_ANNOCHECK_OPTS: "--skip-pie --skip-notes"
             check: true
           - { name: clang-15,  env: { default_cc: clang-15 } }
-          - { name: clang-14,  env: { default_cc: clang-14 } }
-          - { name: clang-13,  env: { default_cc: clang-13 } }
-          - { name: clang-12,  env: { default_cc: clang-12 } }
-          - { name: clang-11,  env: { default_cc: clang-11 } }
-          - { name: clang-10,  env: { default_cc: clang-10 } }
-          - { name: clang-9,   env: { default_cc: clang-9 } }
-          - { name: clang-8,   env: { default_cc: clang-8 } }
-          - { name: clang-7,   env: { default_cc: clang-7 } }
-          - { name: clang-6.0, env: { default_cc: clang-6.0 } }
-          - { name: clang-5.0, env: { default_cc: clang-5.0 } }
-          - { name: clang-4.0, env: { default_cc: clang-4.0 } }
+#         - { name: clang-14,  env: { default_cc: clang-14 } }
+#         - { name: clang-13,  env: { default_cc: clang-13 } }
+#         - { name: clang-12,  env: { default_cc: clang-12 } }
+#         - { name: clang-11,  env: { default_cc: clang-11 } }
+#         - { name: clang-10,  env: { default_cc: clang-10 } }
+#         - { name: clang-9,   env: { default_cc: clang-9 } }
+#         - { name: clang-8,   env: { default_cc: clang-8 } }
+#         - { name: clang-7,   env: { default_cc: clang-7 } }
+#         - { name: clang-6.0, env: { default_cc: clang-6.0 } }
+#         - { name: clang-5.0, env: { default_cc: clang-5.0 } }
+#         - { name: clang-4.0, env: { default_cc: clang-4.0 } }
           - { name: clang-3.9, env: { default_cc: clang-3.9 } }
           - name: 'clang-14 LTO'
             container: clang-14
@@ -139,14 +139,14 @@ jobs:
 #         - { name: '-O3', env: { optflags: '-O3 -march=x86-64 -mtune=generic' }, check: true }
 
           - { name: gmp,                  env: { append_configure: '--with-gmp' } }
-          - { name: jemalloc,             env: { append_configure: '--with-jemalloc' } }
-          - { name: valgrind,             env: { append_configure: '--with-valgrind' } }
-          - { name: 'coroutine=ucontext', env: { append_configure: '--with-coroutine=ucontext' } }
-          - { name: 'coroutine=pthread',  env: { append_configure: '--with-coroutine=pthread' } }
-          - { name: disable-jit-support,  env: { append_configure: '--disable-jit-support' } }
-          - { name: disable-dln,          env: { append_configure: '--disable-dln' } }
-          - { name: enable-mkmf-verbose,  env: { append_configure: '--enable-mkmf-verbose' } }
-          - { name: disable-rubygems,     env: { append_configure: '--disable-rubygems' } }
+#         - { name: jemalloc,             env: { append_configure: '--with-jemalloc' } }
+#         - { name: valgrind,             env: { append_configure: '--with-valgrind' } }
+#         - { name: 'coroutine=ucontext', env: { append_configure: '--with-coroutine=ucontext' } }
+#         - { name: 'coroutine=pthread',  env: { append_configure: '--with-coroutine=pthread' } }
+#         - { name: disable-jit-support,  env: { append_configure: '--disable-jit-support' } }
+#         - { name: disable-dln,          env: { append_configure: '--disable-dln' } }
+#         - { name: enable-mkmf-verbose,  env: { append_configure: '--enable-mkmf-verbose' } }
+#         - { name: disable-rubygems,     env: { append_configure: '--disable-rubygems' } }
 
           - { name: OPT_THREADED_CODE=1,            env: { cppflags: '-DOPT_THREADED_CODE=1' } }
           - { name: OPT_THREADED_CODE=2,            env: { cppflags: '-DOPT_THREADED_CODE=2' } }
@@ -169,23 +169,23 @@ jobs:
 #         - { name: TRANSIENT_HEAP_CHECK_MODE,      env: { cppflags: '-DTRANSIENT_HEAP_CHECK_MODE' } }
 #         - { name: VM_CHECK_MODE,                  env: { cppflags: '-DVM_CHECK_MODE' } }
 
-          - { name: USE_EMBED_CI=0,                 env: { cppflags: '-DUSE_EMBED_CI=0' } }
-          - { name: USE_FLONUM=0,                   env: { cppflags: '-DUSE_FLONUM=0' } }
+#         - { name: USE_EMBED_CI=0,                 env: { cppflags: '-DUSE_EMBED_CI=0' } }
+#         - { name: USE_FLONUM=0,                   env: { cppflags: '-DUSE_FLONUM=0' } }
 #         - { name: USE_GC_MALLOC_OBJ_INFO_DETAILS, env: { cppflags: '-DUSE_GC_MALLOC_OBJ_INFO_DETAILS' } }
-          - { name: USE_LAZY_LOAD,                  env: { cppflags: '-DUSE_LAZY_LOAD' } }
+#         - { name: USE_LAZY_LOAD,                  env: { cppflags: '-DUSE_LAZY_LOAD' } }
 #         - { name: USE_RINCGC=0,                   env: { cppflags: '-DUSE_RINCGC=0' } }
 #         - { name: USE_SYMBOL_GC=0,                env: { cppflags: '-DUSE_SYMBOL_GC=0' } }
 #         - { name: USE_THREAD_CACHE=0,             env: { cppflags: '-DUSE_THREAD_CACHE=0' } }
 #         - { name: USE_TRANSIENT_HEAP=0,           env: { cppflags: '-DUSE_TRANSIENT_HEAP=0' } }
 #         - { name: USE_RUBY_DEBUG_LOG=1,           env: { cppflags: '-DUSE_RUBY_DEBUG_LOG=1' } }
-          - { name: USE_RVARGC=0,                   env: { cppflags: '-DUSE_RVARGC=0' } }
+#         - { name: USE_RVARGC=0,                   env: { cppflags: '-DUSE_RVARGC=0' } }
 #         - { name: USE_RVARGC=1,                   env: { cppflags: '-DUSE_RVARGC=1' } }
 
-          - { name: DEBUG_FIND_TIME_NUMGUESS,       env: { cppflags: '-DDEBUG_FIND_TIME_NUMGUESS' } }
-          - { name: DEBUG_INTEGER_PACK,             env: { cppflags: '-DDEBUG_INTEGER_PACK' } }
+#         - { name: DEBUG_FIND_TIME_NUMGUESS,       env: { cppflags: '-DDEBUG_FIND_TIME_NUMGUESS' } }
+#         - { name: DEBUG_INTEGER_PACK,             env: { cppflags: '-DDEBUG_INTEGER_PACK' } }
 #         - { name: ENABLE_PATH_CHECK,              env: { cppflags: '-DENABLE_PATH_CHECK' } }
 
-          - { name: GC_DEBUG_STRESS_TO_CLASS,       env: { cppflags: '-DGC_DEBUG_STRESS_TO_CLASS' } }
+#         - { name: GC_DEBUG_STRESS_TO_CLASS,       env: { cppflags: '-DGC_DEBUG_STRESS_TO_CLASS' } }
 #         - { name: GC_ENABLE_LAZY_SWEEP=0,         env: { cppflags: '-DGC_ENABLE_LAZY_SWEEP=0' } }
 #         - { name: GC_PROFILE_DETAIL_MEMOTY,       env: { cppflags: '-DGC_PROFILE_DETAIL_MEMOTY' } }
 #         - { name: GC_PROFILE_MORE_DETAIL,         env: { cppflags: '-DGC_PROFILE_MORE_DETAIL' } }
@@ -204,8 +204,8 @@ jobs:
 #         - { name: VM_DEBUG_BP_CHECK,              env: { cppflags: '-DVM_DEBUG_BP_CHECK' } }
 #         - { name: VM_DEBUG_VERIFY_METHOD_CACHE,   env: { cppflags: '-DVM_DEBUG_VERIFY_METHOD_CACHE' } }
 
-          - { name: MJIT_FORCE_ENABLE,              env: { cppflags: '-DMJIT_FORCE_ENABLE' } }
-          - { name: YJIT_FORCE_ENABLE,              env: { cppflags: '-DYJIT_FORCE_ENABLE' } }
+#         - { name: MJIT_FORCE_ENABLE,              env: { cppflags: '-DMJIT_FORCE_ENABLE' } }
+#         - { name: YJIT_FORCE_ENABLE,              env: { cppflags: '-DYJIT_FORCE_ENABLE' } }
 
     name: ${{ matrix.entry.name }}
     runs-on: ubuntu-latest
