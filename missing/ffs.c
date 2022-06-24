@@ -16,46 +16,30 @@
         (r) += FFS_N(x, w); \
     }
 
+#define FFS_BODY(arg_type, arg) do { \
+    typedef arg_type ffs_arg_t; \
+    ffs_arg_t x = (ffs_arg_t)(arg); \
+    int r; \
+    \
+    if (x == 0) return 0; \
+    FFS_LOOP(x, r); \
+    \
+    return r; \
+} while (0)
+
 int ffs(int arg)
 {
-    typedef unsigned int ffs_arg_t;
-    ffs_arg_t x = (ffs_arg_t)arg;
-    int r;
-
-    if (x == 0)
-        return 0;
-
-    FFS_LOOP(x, r);
-
-    return r;
+    FFS_BODY(unsigned int, arg);
 }
 
 int ffsl(long arg)
 {
-    typedef unsigned long ffs_arg_t;
-    ffs_arg_t x = (ffs_arg_t)arg;
-    int r;
-
-    if (x == 0)
-        return 0;
-
-    FFS_LOOP(x, r);
-
-    return r;
+    FFS_BODY(unsigned long, arg);
 }
 
 int ffsll(long long arg)
 {
-    typedef unsigned long long ffs_arg_t;
-    ffs_arg_t x = (ffs_arg_t)arg;
-    int r;
-
-    if (x == 0)
-        return 0;
-
-    FFS_LOOP(x, r);
-
-    return r;
+    FFS_BODY(unsigned long long, arg);
 }
 
 #ifdef TEST_FFS
