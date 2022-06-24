@@ -9,6 +9,13 @@
 #define FFS_N(x, n) \
     ((((x) & FFS_MASK(n)) == 0) ? ((x) >>= FFS_BITS(n), FFS_BITS(n)) : 0)
 
+/* may be unrolled */
+#define FFS_LOOP(x, r) \
+    for (unsigned int w = ((r) = 1, sizeof(ffs_arg_t) * CHAR_BIT); \
+         (w >>= 1) > 0; ) { \
+        (r) += FFS_N(x, w); \
+    }
+
 int ffs(int arg)
 {
     typedef unsigned int ffs_arg_t;
@@ -18,16 +25,7 @@ int ffs(int arg)
     if (x == 0)
         return 0;
 
-    r = 1;
-    r += FFS_N(x, 1<<8);
-    r += FFS_N(x, 1<<7);
-    r += FFS_N(x, 1<<6);
-    r += FFS_N(x, 1<<5);
-    r += FFS_N(x, 1<<4);
-    r += FFS_N(x, 1<<3);
-    r += FFS_N(x, 1<<2);
-    r += FFS_N(x, 1<<1);
-    r += FFS_N(x, 1<<0);
+    FFS_LOOP(x, r);
 
     return r;
 }
@@ -41,16 +39,7 @@ int ffsl(long arg)
     if (x == 0)
         return 0;
 
-    r = 1;
-    r += FFS_N(x, 1<<8);
-    r += FFS_N(x, 1<<7);
-    r += FFS_N(x, 1<<6);
-    r += FFS_N(x, 1<<5);
-    r += FFS_N(x, 1<<4);
-    r += FFS_N(x, 1<<3);
-    r += FFS_N(x, 1<<2);
-    r += FFS_N(x, 1<<1);
-    r += FFS_N(x, 1<<0);
+    FFS_LOOP(x, r);
 
     return r;
 }
