@@ -42,6 +42,13 @@ int ffsll(long long arg)
     FFS_BODY(unsigned long long, arg);
 }
 
+#ifdef HAVE_INT128_T
+int ffs128(int128_t arg)
+{
+    FFS_BODY(uint128_t, arg);
+}
+#endif
+
 #ifdef TEST_FFS
 #define test_ffs(func, argtype) do { \
     printf(#func "(0) = %d\n", func(0)); \
@@ -59,6 +66,9 @@ int main(void)
     test_ffs(ffs, int);
     test_ffs(ffsl, long);
     test_ffs(ffsll, long long);
+#ifdef HAVE_INT128_T
+    test_ffs(ffs128, int128_t);
+#endif
 
     return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
