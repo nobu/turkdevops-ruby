@@ -44,6 +44,20 @@ int ffsl(long arg)
     return r;
 }
 
+int ffsll(long long arg)
+{
+    typedef unsigned long long ffs_arg_t;
+    ffs_arg_t x = (ffs_arg_t)arg;
+    int r;
+
+    if (x == 0)
+        return 0;
+
+    FFS_LOOP(x, r);
+
+    return r;
+}
+
 #ifdef TEST_FFS
 #define test_ffs(func, argtype) do { \
     printf(#func "(0) = %d\n", func(0)); \
@@ -60,6 +74,7 @@ int main(void)
 
     test_ffs(ffs, int);
     test_ffs(ffsl, long);
+    test_ffs(ffsll, long long);
 
     return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
