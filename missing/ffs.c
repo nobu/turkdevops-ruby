@@ -32,6 +32,29 @@ int ffs(int arg)
     return r;
 }
 
+int ffsl(long arg)
+{
+    typedef unsigned long ffs_arg_t;
+    ffs_arg_t x = (ffs_arg_t)arg;
+    int r;
+
+    if (x == 0)
+        return 0;
+
+    r = 1;
+    r += FFS_N(x, 1<<8);
+    r += FFS_N(x, 1<<7);
+    r += FFS_N(x, 1<<6);
+    r += FFS_N(x, 1<<5);
+    r += FFS_N(x, 1<<4);
+    r += FFS_N(x, 1<<3);
+    r += FFS_N(x, 1<<2);
+    r += FFS_N(x, 1<<1);
+    r += FFS_N(x, 1<<0);
+
+    return r;
+}
+
 #ifdef TEST_FFS
 #define test_ffs(func, argtype) do { \
     printf(#func "(0) = %d\n", func(0)); \
@@ -47,6 +70,7 @@ int main(void)
     bool ok = true;
 
     test_ffs(ffs, int);
+    test_ffs(ffsl, long);
 
     return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
