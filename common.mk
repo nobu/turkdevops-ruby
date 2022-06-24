@@ -970,7 +970,10 @@ close.$(OBJEXT): {$(VPATH)}close.c
 crypt.$(OBJEXT): {$(VPATH)}crypt.c {$(VPATH)}crypt.h {$(VPATH)}missing/des_tables.c
 erf.$(OBJEXT): {$(VPATH)}erf.c
 explicit_bzero.$(OBJEXT): {$(VPATH)}explicit_bzero.c
-ffs.$(OBJEXT): {$(VPATH)}ffs.c
+ffs.$(OBJEXT): {$(VPATH)}ffs.c {$(VPATH)}ffs.h
+ffsl.$(OBJEXT): {$(VPATH)}ffsl.c {$(VPATH)}ffs.h
+ffsll.$(OBJEXT): {$(VPATH)}ffsll.c {$(VPATH)}ffs.h
+ffs128.$(OBJEXT): {$(VPATH)}ffs128.c {$(VPATH)}ffs.h
 flock.$(OBJEXT): {$(VPATH)}flock.c
 hypot.$(OBJEXT): {$(VPATH)}hypot.c
 langinfo.$(OBJEXT): {$(VPATH)}langinfo.c
