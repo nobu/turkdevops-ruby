@@ -1,4 +1,11 @@
-assert_equal 'true', %q{
+require 'test/unit'
+require_relative '../lib/jit_support'
+
+class TestYJIT < Test::Unit::TestCase
+  include JITSupport
+
+  def test_bootstrap
+    assert_run_output 'true', %q{
   # regression test for tracking type of locals for too long
   def local_setting_cmp(five)
     victim = 5
@@ -18,7 +25,7 @@ assert_equal 'true', %q{
   local_setting_cmp(Object.new)
 }
 
-assert_equal '18374962167983112447', %q{
+    assert_run_output '18374962167983112447', %q{
   # regression test for incorrectly discarding 32 bits of a pointer when it
   # comes to default values.
   def large_literal_default(n: 0xff00_fabcafe0_00ff)
@@ -33,7 +40,7 @@ assert_equal '18374962167983112447', %q{
   call_graph_root
 }
 
-assert_normal_exit %q{
+    assert_normal_exit %q{
   # regression test for a leak caught by an asert on --yjit-call-threshold=2
   Foo = 1
 
@@ -45,7 +52,7 @@ assert_normal_exit %q{
   Object.send(:remove_const, :Foo)
 }
 
-assert_equal '[nil, nil, nil, nil, nil, nil]', %q{
+    assert_run_output '[nil, nil, nil, nil, nil, nil]', %q{
   [NilClass, TrueClass, FalseClass, Integer, Float, Symbol].each do |klass|
     klass.class_eval("def foo = @foo")
   end
@@ -56,7 +63,7 @@ assert_equal '[nil, nil, nil, nil, nil, nil]', %q{
   end
 }
 
-assert_equal '0', %q{
+    assert_run_output '0', %q{
   # This is a regression test for incomplete invalidation from
   # opt_setinlinecache. This test might be brittle, so
   # feel free to remove it in the future if it's too annoying.
@@ -141,8 +148,8 @@ assert_equal '0', %q{
   end
 }
 
-# Check that frozen objects are respected
-assert_equal 'great', %q{
+    # Check that frozen objects are respected
+    assert_run_output 'great', %q{
   class Foo
     attr_accessor :bar
     def initialize
@@ -163,8 +170,8 @@ assert_equal 'great', %q{
   foo.bar == 1 ? "great" : "NG"
 }
 
-# Check that global variable set works
-assert_equal 'string', %q{
+    # Check that global variable set works
+    assert_run_output 'string', %q{
   def foo
     $foo = "string"
   end
@@ -172,8 +179,8 @@ assert_equal 'string', %q{
   foo
 }
 
-# Check that exceptions work when setting global variables
-assert_equal 'rescued', %q{
+    # Check that exceptions work when setting global variables
+    assert_run_output 'rescued', %q{
   def set_var
     $var = 100
   rescue
@@ -185,8 +192,8 @@ assert_equal 'rescued', %q{
   set_var
 }
 
-# Check that global variables work
-assert_equal 'string', %q{
+    # Check that global variables work
+    assert_run_output 'string', %q{
   $foo = "string"
 
   def foo
@@ -196,8 +203,8 @@ assert_equal 'string', %q{
   foo
 }
 
-# Check that exceptions work when getting global variable
-assert_equal 'rescued', %q{
+    # Check that exceptions work when getting global variable
+    assert_run_output 'rescued', %q{
   module Warning
     def warn(message)
       raise
@@ -215,8 +222,8 @@ assert_equal 'rescued', %q{
   get_var
 }
 
-# Check that global tracepoints work
-assert_equal 'true', %q{
+    # Check that global tracepoints work
+    assert_run_output 'true', %q{
   def foo
     1
   end
@@ -238,8 +245,8 @@ assert_equal 'true', %q{
   called
 }
 
-# Check that local tracepoints work
-assert_equal 'true', %q{
+    # Check that local tracepoints work
+    assert_run_output 'true', %q{
   def foo
     1
   end
@@ -257,8 +264,8 @@ assert_equal 'true', %q{
   called
 }
 
-# Make sure that optional param methods return the correct value
-assert_equal '1', %q{
+    # Make sure that optional param methods return the correct value
+    assert_run_output '1', %q{
   def m(ary = [])
     yield(ary)
   end
@@ -268,8 +275,8 @@ assert_equal '1', %q{
   m(1) { |v| v }
 }
 
-# Test for topn
-assert_equal 'array', %q{
+    # Test for topn
+    assert_run_output 'array', %q{
   def threequals(a)
     case a
     when Array
@@ -286,8 +293,8 @@ assert_equal 'array', %q{
   threequals([])
 }
 
-# Test for opt_mod
-assert_equal '2', %q{
+    # Test for opt_mod
+    assert_run_output '2', %q{
   def mod(a, b)
     a % b
   end
@@ -296,8 +303,8 @@ assert_equal '2', %q{
   mod(7, 5)
 }
 
-# Test for opt_mult
-assert_equal '12', %q{
+    # Test for opt_mult
+    assert_run_output '12', %q{
   def mult(a, b)
     a * b
   end
@@ -306,8 +313,8 @@ assert_equal '12', %q{
   mult(6, 2)
 }
 
-# Test for opt_div
-assert_equal '3', %q{
+    # Test for opt_div
+    assert_run_output '3', %q{
   def div(a, b)
     a / b
   end
@@ -316,8 +323,8 @@ assert_equal '3', %q{
   div(6, 2)
 }
 
-# BOP redefined methods work when JIT compiled
-assert_equal 'false', %q{
+    # BOP redefined methods work when JIT compiled
+    assert_run_output 'false', %q{
   def less_than x
     x < 10
   end
@@ -333,8 +340,8 @@ assert_equal 'false', %q{
   less_than 2
 }
 
-# BOP redefinition works on Integer#<
-assert_equal 'false', %q{
+    # BOP redefinition works on Integer#<
+    assert_run_output 'false', %q{
   def less_than x
     x < 10
   end
@@ -351,8 +358,8 @@ assert_equal 'false', %q{
   less_than 2
 }
 
-# Putobject, less-than operator, fixnums
-assert_equal '2', %q{
+    # Putobject, less-than operator, fixnums
+    assert_run_output '2', %q{
     def check_index(index)
         if 0x40000000 < index
             raise "wat? #{index}"
@@ -363,8 +370,8 @@ assert_equal '2', %q{
     check_index 2
 }
 
-# foo leaves a temp on the stack before the call
-assert_equal '6', %q{
+    # foo leaves a temp on the stack before the call
+    assert_run_output '6', %q{
     def bar
         return 5
     end
@@ -377,9 +384,9 @@ assert_equal '6', %q{
     retval = foo()
 }
 
-# Method with one arguments
-# foo leaves a temp on the stack before the call
-assert_equal '7', %q{
+    # Method with one arguments
+    # foo leaves a temp on the stack before the call
+    assert_run_output '7', %q{
     def bar(a)
         return a + 1
     end
@@ -392,9 +399,9 @@ assert_equal '7', %q{
     retval = foo()
 }
 
-# Method with two arguments
-# foo leaves a temp on the stack before the call
-assert_equal '0', %q{
+    # Method with two arguments
+    # foo leaves a temp on the stack before the call
+    assert_run_output '0', %q{
     def bar(a, b)
         return a - b
     end
@@ -407,8 +414,8 @@ assert_equal '0', %q{
     retval = foo()
 }
 
-# Passing argument types to callees
-assert_equal '8.5', %q{
+    # Passing argument types to callees
+    assert_run_output '8.5', %q{
     def foo(x, y)
         x + y
     end
@@ -421,8 +428,8 @@ assert_equal '8.5', %q{
     bar
 }
 
-# Recursive Ruby-to-Ruby calls
-assert_equal '21', %q{
+    # Recursive Ruby-to-Ruby calls
+    assert_run_output '21', %q{
     def fib(n)
         if n < 2
             return n
@@ -434,8 +441,8 @@ assert_equal '21', %q{
     r = fib(8)
 }
 
-# Ruby-to-Ruby call and C call
-assert_normal_exit %q{
+    # Ruby-to-Ruby call and C call
+    assert_normal_exit %q{
   def bar
     puts('hi!')
   end
@@ -448,8 +455,8 @@ assert_normal_exit %q{
   foo()
 }
 
-# Method aliasing
-assert_equal '42', %q{
+    # Method aliasing
+    assert_run_output '42', %q{
   class Foo
     def method_a
       42
@@ -472,8 +479,8 @@ assert_equal '42', %q{
   test
 }
 
-# Method aliasing with method from parent class
-assert_equal '777', %q{
+    # Method aliasing with method from parent class
+    assert_run_output '777', %q{
   class A
     def method_a
       777
@@ -494,8 +501,8 @@ assert_equal '777', %q{
   test
 }
 
-# The hash method is a C function and uses the self argument
-assert_equal 'true', %q{
+    # The hash method is a C function and uses the self argument
+    assert_run_output 'true', %q{
     def lehashself
         hash
     end
@@ -505,8 +512,8 @@ assert_equal 'true', %q{
     a == b
 }
 
-# Method redefinition (code invalidation) test
-assert_equal '1', %q{
+    # Method redefinition (code invalidation) test
+    assert_run_output '1', %q{
     def ret1
         return 1
     end
@@ -536,8 +543,8 @@ assert_equal '1', %q{
     retval
 }
 
-# Code invalidation and opt_getinlinecache
-assert_normal_exit %q{
+    # Code invalidation and opt_getinlinecache
+    assert_normal_exit %q{
   class Foo; end
 
   # Uses the class constant Foo
@@ -558,8 +565,8 @@ assert_normal_exit %q{
   use_constant(3)
 }
 
-# Method redefinition (code invalidation) and GC
-assert_equal '7', %q{
+    # Method redefinition (code invalidation) and GC
+    assert_run_output '7', %q{
     def bar()
         return 5
     end
@@ -581,8 +588,8 @@ assert_equal '7', %q{
     foo()
 }
 
-# Method redefinition with two block versions
-assert_equal '7', %q{
+    # Method redefinition with two block versions
+    assert_run_output '7', %q{
     def bar()
         return 5
     end
@@ -606,8 +613,8 @@ assert_equal '7', %q{
     foo(4)[1]
 }
 
-# Method redefinition while the method is on the stack
-assert_equal '[777, 1]', %q{
+    # Method redefinition while the method is on the stack
+    assert_run_output '[777, 1]', %q{
     def foo
         redef()
         777
@@ -629,8 +636,8 @@ assert_equal '[777, 1]', %q{
     [foo, foo]
 }
 
-# Test for GC safety. Don't invalidate dead iseqs.
-assert_normal_exit %q{
+    # Test for GC safety. Don't invalidate dead iseqs.
+    assert_normal_exit %q{
   Class.new do
     def foo
       itself
@@ -648,8 +655,8 @@ assert_normal_exit %q{
   end
 }
 
-# test setinstancevariable on extended objects
-assert_equal '1', %q{
+    # test setinstancevariable on extended objects
+    assert_run_output '1', %q{
   class Extended
     attr_reader :one
 
@@ -668,8 +675,8 @@ assert_equal '1', %q{
   foo.write_many
 }
 
-# test setinstancevariable on embedded objects
-assert_equal '1', %q{
+    # test setinstancevariable on embedded objects
+    assert_run_output '1', %q{
   class Embedded
     attr_reader :one
 
@@ -684,8 +691,8 @@ assert_equal '1', %q{
   foo.write_one
 }
 
-# test setinstancevariable after extension
-assert_equal '[10, 11, 12, 13, 1]', %q{
+    # test setinstancevariable after extension
+    assert_run_output '[10, 11, 12, 13, 1]', %q{
   class WillExtend
     attr_reader :one
 
@@ -713,8 +720,8 @@ assert_equal '[10, 11, 12, 13, 1]', %q{
   foo.read_all
 }
 
-# test setinstancevariable on frozen object
-assert_equal 'object was not modified', %q{
+    # test setinstancevariable on frozen object
+    assert_run_output 'object was not modified', %q{
   class WillFreeze
     def write
       @ivar = 1
@@ -733,8 +740,8 @@ assert_equal 'object was not modified', %q{
   end
 }
 
-# Test getinstancevariable and inline caches
-assert_equal '6', %q{
+    # Test getinstancevariable and inline caches
+    assert_run_output '6', %q{
   class Foo
     def initialize
       @x1 = 1
@@ -755,8 +762,8 @@ assert_equal '6', %q{
   f.bar
 }
 
-# Test that getinstancevariable codegen checks for extended table size
-assert_equal "nil\n", %q{
+    # Test that getinstancevariable codegen checks for extended table size
+    assert_run_output "nil", %q{
   class A
     def read
       @ins1000
@@ -775,8 +782,8 @@ assert_equal "nil\n", %q{
   p other.read
 }
 
-# Test that opt_aref checks the class of the receiver
-assert_equal 'special', %q{
+    # Test that opt_aref checks the class of the receiver
+    assert_run_output 'special', %q{
   def foo(array)
     array[30]
   end
@@ -792,8 +799,8 @@ assert_equal 'special', %q{
   foo(special)
 }
 
-# Test that object references in generated code get marked and moved
-assert_equal "good", %q{
+    # Test that object references in generated code get marked and moved
+    assert_run_output "good", %q{
   def bar
     "good"
   end
@@ -814,8 +821,8 @@ assert_equal "good", %q{
   foo
 }
 
-# Test polymorphic getinstancevariable. T_OBJECT -> T_STRING
-assert_equal 'ok', %q{
+    # Test polymorphic getinstancevariable. T_OBJECT -> T_STRING
+    assert_run_output 'ok', %q{
   @hello = @h1 = @h2 = @h3 = @h4 = 'ok'
   str = ""
   str.instance_variable_set(:@hello, 'ok')
@@ -830,8 +837,8 @@ assert_equal 'ok', %q{
   str.get
 }
 
-# Test polymorphic getinstancevariable, two different classes
-assert_equal 'ok', %q{
+    # Test polymorphic getinstancevariable, two different classes
+    assert_run_output 'ok', %q{
   class Embedded
     def initialize
       @ivar = 0
@@ -857,8 +864,8 @@ assert_equal 'ok', %q{
   extend.get
 }
 
-# Test megamorphic getinstancevariable
-assert_equal 'ok', %q{
+    # Test megamorphic getinstancevariable
+    assert_run_output 'ok', %q{
   parent = Class.new do
     def initialize
       @hello = @h1 = @h2 = @h3 = @h4 = 'ok'
@@ -874,8 +881,8 @@ assert_equal 'ok', %q{
   parent.new.get
 }
 
-# Test polymorphic opt_aref. array -> hash
-assert_equal '[42, :key]', %q{
+    # Test polymorphic opt_aref. array -> hash
+    assert_run_output '[42, :key]', %q{
   def index(obj, idx)
     obj[idx]
   end
@@ -888,8 +895,8 @@ assert_equal '[42, :key]', %q{
   ]
 }
 
-# Test polymorphic opt_aref. hash -> array -> custom class
-assert_equal '[nil, nil, :custom]', %q{
+    # Test polymorphic opt_aref. hash -> array -> custom class
+    assert_run_output '[nil, nil, :custom]', %q{
   def index(obj, idx)
     obj[idx]
   end
@@ -908,8 +915,8 @@ assert_equal '[nil, nil, :custom]', %q{
   ]
 }
 
-# Test polymorphic opt_aref. array -> custom class
-assert_equal '[42, :custom]', %q{
+    # Test polymorphic opt_aref. array -> custom class
+    assert_run_output '[42, :custom]', %q{
   def index(obj, idx)
     obj[idx]
   end
@@ -927,8 +934,8 @@ assert_equal '[42, :custom]', %q{
   ]
 }
 
-# Test custom hash method with opt_aref
-assert_equal '[nil, :ok]', %q{
+    # Test custom hash method with opt_aref
+    assert_run_output '[nil, :ok]', %q{
   def index(obj, idx)
     obj[idx]
   end
@@ -946,8 +953,8 @@ assert_equal '[nil, :ok]', %q{
   ]
 }
 
-# Test default value block for Hash with opt_aref
-assert_equal '[42, :default]', %q{
+    # Test default value block for Hash with opt_aref
+    assert_run_output '[42, :default]', %q{
   def index(obj, idx)
     obj[idx]
   end
@@ -961,9 +968,9 @@ assert_equal '[42, :default]', %q{
   ]
 }
 
-# A regression test for making sure cfp->sp is proper when
-# hitting stubs. See :stub-sp-flush:
-assert_equal 'ok', %q{
+    # A regression test for making sure cfp->sp is proper when
+    # hitting stubs. See :stub-sp-flush:
+    assert_run_output 'ok', %q{
   class D
     def foo
       Object.new
@@ -980,8 +987,8 @@ assert_equal 'ok', %q{
   :ok
 }
 
-# Test polymorphic callsite, cfunc -> iseq
-assert_equal '[Cfunc, Iseq]', %q{
+    # Test polymorphic callsite, cfunc -> iseq
+    assert_run_output '[Cfunc, Iseq]', %q{
   public def call_itself
     itself # the polymorphic callsite
   end
@@ -999,8 +1006,8 @@ assert_equal '[Cfunc, Iseq]', %q{
   [Cfunc.call_itself, Iseq.call_itself]
 }
 
-# Test polymorphic callsite, iseq -> cfunc
-assert_equal '[Iseq, Cfunc]', %q{
+    # Test polymorphic callsite, iseq -> cfunc
+    assert_run_output '[Iseq, Cfunc]', %q{
   public def call_itself
     itself # the polymorphic callsite
   end
@@ -1018,8 +1025,8 @@ assert_equal '[Iseq, Cfunc]', %q{
   [Iseq.call_itself, Cfunc.call_itself]
 }
 
-# attr_reader method
-assert_equal '[100, 299]', %q{
+    # attr_reader method
+    assert_run_output '[100, 299]', %q{
   class A
     attr_reader :foo
 
@@ -1047,8 +1054,8 @@ assert_equal '[100, 299]', %q{
   [bar(ins), bar(oth)]
 }
 
-# get ivar on object, then on hash
-assert_equal '[42, 100]', %q{
+    # get ivar on object, then on hash
+    assert_run_output '[42, 100]', %q{
   class Hash
     attr_accessor :foo
   end
@@ -1074,8 +1081,8 @@ assert_equal '[42, 100]', %q{
   [use(obj), use(h)]
 }
 
-# get ivar on String
-assert_equal '[nil, nil, 42, 42]', %q{
+    # get ivar on String
+    assert_run_output '[nil, nil, 42, 42]', %q{
   # @foo to exercise the getinstancevariable instruction
   public def get_foo
     @foo
@@ -1103,8 +1110,8 @@ assert_equal '[nil, nil, 42, 42]', %q{
   run
 }
 
-# splatting an empty array on a getter
-assert_equal '42', %q{
+    # splatting an empty array on a getter
+    assert_run_output '42', %q{
   @foo = 42
   module Kernel
     attr_reader :foo
@@ -1118,8 +1125,8 @@ assert_equal '42', %q{
   run
 }
 
-# getinstancevariable on Symbol
-assert_equal '[nil, nil]', %q{
+    # getinstancevariable on Symbol
+    assert_run_output '[nil, nil]', %q{
   # @foo to exercise the getinstancevariable instruction
   public def get_foo
     @foo
@@ -1135,8 +1142,8 @@ assert_equal '[nil, nil]', %q{
   [dyn_sym.get_foo, sym.get_foo]
 }
 
-# attr_reader on Symbol
-assert_equal '[nil, nil]', %q{
+    # attr_reader on Symbol
+    assert_run_output '[nil, nil]', %q{
   class Symbol
     attr_reader :foo
   end
@@ -1155,8 +1162,8 @@ assert_equal '[nil, nil]', %q{
   [dyn_sym.get_foo, sym.get_foo]
 }
 
-# passing too few arguments to method with optional parameters
-assert_equal 'raised', %q{
+    # passing too few arguments to method with optional parameters
+    assert_run_output 'raised', %q{
   def opt(a, b = 0)
   end
 
@@ -1173,8 +1180,8 @@ assert_equal 'raised', %q{
   end
 }
 
-# passing too many arguments to method with optional parameters
-assert_equal 'raised', %q{
+    # passing too many arguments to method with optional parameters
+    assert_run_output 'raised', %q{
   def opt(a, b = 0)
   end
 
@@ -1191,8 +1198,8 @@ assert_equal 'raised', %q{
   end
 }
 
-# test calling Ruby method with a block
-assert_equal '[1, 2, 42]', %q{
+    # test calling Ruby method with a block
+    assert_run_output '[1, 2, 42]', %q{
   def thing(a, b)
     [a, b, yield]
   end
@@ -1205,8 +1212,8 @@ assert_equal '[1, 2, 42]', %q{
   use
 }
 
-# test calling C method with a block
-assert_equal '[42, 42]', %q{
+    # test calling C method with a block
+    assert_run_output '[42, 42]', %q{
   def use(array, initial)
     array.reduce(initial) { |a, b| a + b }
   end
@@ -1215,8 +1222,8 @@ assert_equal '[42, 42]', %q{
   [use([2, 2], 38), use([14, 14, 14], 0)]
 }
 
-# test calling block param
-assert_equal '[1, 2, 42]', %q{
+    # test calling block param
+    assert_run_output '[1, 2, 42]', %q{
   def foo(&block)
     block.call
   end
@@ -1224,8 +1231,8 @@ assert_equal '[1, 2, 42]', %q{
   [foo {1}, foo {2}, foo {42}]
 }
 
-# test calling block param failing
-assert_equal '42', %q{
+    # test calling block param failing
+    assert_run_output '42', %q{
   def foo(&block)
     block.call
   end
@@ -1239,8 +1246,8 @@ assert_equal '42', %q{
   end
 }
 
-# test calling method taking block param
-assert_equal '[Proc, 1, 2, 3, Proc]', %q{
+    # test calling method taking block param
+    assert_run_output '[Proc, 1, 2, 3, Proc]', %q{
   def three(a, b, c, &block)
     [a, b, c, block.class]
   end
@@ -1263,8 +1270,8 @@ assert_equal '[Proc, 1, 2, 3, Proc]', %q{
   [use_zero] + use_three
 }
 
-# test building empty array
-assert_equal '[]', %q{
+    # test building empty array
+    assert_run_output '[]', %q{
   def build_arr
     []
   end
@@ -1273,8 +1280,8 @@ assert_equal '[]', %q{
   build_arr
 }
 
-# test building array of one element
-assert_equal '[5]', %q{
+    # test building array of one element
+    assert_run_output '[5]', %q{
   def build_arr(val)
     [val]
   end
@@ -1283,8 +1290,8 @@ assert_equal '[5]', %q{
   build_arr(5)
 }
 
-# test building array of several element
-assert_equal '[5, 5, 5, 5, 5]', %q{
+    # test building array of several element
+    assert_run_output '[5, 5, 5, 5, 5]', %q{
   def build_arr(val)
     [val, val, val, val, val]
   end
@@ -1293,8 +1300,8 @@ assert_equal '[5, 5, 5, 5, 5]', %q{
   build_arr(5)
 }
 
-# test building empty hash
-assert_equal '{}', %q{
+    # test building empty hash
+    assert_run_output '{}', %q{
   def build_hash
     {}
   end
@@ -1303,8 +1310,8 @@ assert_equal '{}', %q{
   build_hash
 }
 
-# test building hash with values
-assert_equal '{:foo=>:bar}', %q{
+    # test building hash with values
+    assert_run_output '{:foo=>:bar}', %q{
   def build_hash(val)
     { foo: val }
   end
@@ -1313,8 +1320,8 @@ assert_equal '{:foo=>:bar}', %q{
   build_hash(:bar)
 }
 
-# test string interpolation with known types
-assert_equal 'foobar', %q{
+    # test string interpolation with known types
+    assert_run_output 'foobar', %q{
   def make_str
     foo = -"foo"
     bar = -"bar"
@@ -1325,8 +1332,8 @@ assert_equal 'foobar', %q{
   make_str
 }
 
-# test string interpolation with unknown types
-assert_equal 'foobar', %q{
+    # test string interpolation with unknown types
+    assert_run_output 'foobar', %q{
   def make_str(foo, bar)
     "#{foo}#{bar}"
   end
@@ -1335,8 +1342,8 @@ assert_equal 'foobar', %q{
   make_str("foo", "bar")
 }
 
-# test string interpolation with known non-strings
-assert_equal 'foo123', %q{
+    # test string interpolation with known non-strings
+    assert_run_output 'foo123', %q{
   def make_str
     foo = -"foo"
     bar = 123
@@ -1347,8 +1354,8 @@ assert_equal 'foo123', %q{
   make_str
 }
 
-# test string interpolation with unknown non-strings
-assert_equal 'foo123', %q{
+    # test string interpolation with unknown non-strings
+    assert_run_output 'foo123', %q{
   def make_str(foo, bar)
     "#{foo}#{bar}"
   end
@@ -1357,8 +1364,8 @@ assert_equal 'foo123', %q{
   make_str("foo", 123)
 }
 
-# test that invalidation of String#to_s doesn't crash
-assert_equal 'meh', %q{
+    # test that invalidation of String#to_s doesn't crash
+    assert_run_output 'meh', %q{
   def inval_method
     "".to_s
   end
@@ -1374,8 +1381,8 @@ assert_equal 'meh', %q{
   inval_method
 }
 
-# test that overriding to_s on a String subclass works consistently
-assert_equal 'meh', %q{
+    # test that overriding to_s on a String subclass works consistently
+    assert_run_output 'meh', %q{
   class MyString < String
     def to_s
       "meh"
@@ -1397,8 +1404,8 @@ assert_equal 'meh', %q{
   test_to_s(OBJ)
 }
 
-# test string interpolation with overridden to_s
-assert_equal 'foo', %q{
+    # test string interpolation with overridden to_s
+    assert_run_output 'foo', %q{
   class String
     def to_s
       "bad"
@@ -1413,8 +1420,8 @@ assert_equal 'foo', %q{
   make_str("foo")
 }
 
-# Test that String unary plus returns the same object ID for an unfrozen string.
-assert_equal '', %q{
+    # Test that String unary plus returns the same object ID for an unfrozen string.
+    assert_run_output [], %q{
   str = "bar"
 
   old_obj_id = str.object_id
@@ -1427,8 +1434,8 @@ assert_equal '', %q{
   ''
 }
 
-# Test that String unary plus returns a different unfrozen string when given a frozen string
-assert_equal 'false', %q{
+    # Test that String unary plus returns a different unfrozen string when given a frozen string
+    assert_run_output 'false', %q{
   frozen_str = "foo".freeze
 
   old_obj_id = frozen_str.object_id
@@ -1441,8 +1448,8 @@ assert_equal 'false', %q{
   uplus_str.frozen?
 }
 
-# String-subclass objects should behave as expected inside string-interpolation via concatstrings
-assert_equal 'monkeys, yo!', %q{
+    # String-subclass objects should behave as expected inside string-interpolation via concatstrings
+    assert_run_output 'monkeys, yo!', %q{
   class MyString < String
     # This is a terrible idea in production code, but we'd like YJIT to match CRuby
     def to_s
@@ -1459,8 +1466,8 @@ assert_equal 'monkeys, yo!', %q{
   m.to_s
 }
 
-# String-subclass objects should behave as expected for string equality
-assert_equal 'a', %q{
+    # String-subclass objects should behave as expected for string equality
+    assert_run_output 'a', %q{
   class MyString < String
     # This is a terrible idea in production code, but we'd like YJIT to match CRuby
     def ==(b)
@@ -1479,7 +1486,7 @@ assert_equal 'a', %q{
   ma.to_s
 }
 
-assert_equal '', %q{
+    assert_run_output [], %q{
   class MyString < String; end
 
   a = "a"
@@ -1500,8 +1507,8 @@ assert_equal '', %q{
   ''
 }
 
-# Test << operator on string subclass
-assert_equal 'abab', %q{
+    # Test << operator on string subclass
+    assert_run_output 'abab', %q{
   class MyString < String; end
 
   a = -"a"
@@ -1516,8 +1523,8 @@ assert_equal 'abab', %q{
   buf + mbuf
 }
 
-# test invokebuiltin as used in struct assignment
-assert_equal '123', %q{
+    # test invokebuiltin as used in struct assignment
+    assert_run_output '123', %q{
   def foo(obj)
     obj.foo = 123
   end
@@ -1528,8 +1535,8 @@ assert_equal '123', %q{
   foo(obj)
 }
 
-# test invokebuiltin_delegate as used inside Dir.open
-assert_equal '.', %q{
+    # test invokebuiltin_delegate as used inside Dir.open
+    assert_run_output '.', %q{
   def foo(path)
     Dir.open(path).path
   end
@@ -1538,8 +1545,8 @@ assert_equal '.', %q{
   foo(".")
 }
 
-# test invokebuiltin_delegate_leave in method called from jit
-assert_normal_exit %q{
+    # test invokebuiltin_delegate_leave in method called from jit
+    assert_normal_exit %q{
   def foo(obj)
     obj.clone
   end
@@ -1548,8 +1555,8 @@ assert_normal_exit %q{
   foo(Object.new)
 }
 
-# test invokebuiltin_delegate_leave in method called from cfunc
-assert_normal_exit %q{
+    # test invokebuiltin_delegate_leave in method called from cfunc
+    assert_normal_exit %q{
   def foo(obj)
     [obj].map(&:clone)
   end
@@ -1558,8 +1565,8 @@ assert_normal_exit %q{
   foo(Object.new)
 }
 
-# defining TrueClass#!
-assert_equal '[false, false, :ok]', %q{
+    # defining TrueClass#!
+    assert_run_output '[false, false, :ok]', %q{
   def foo(obj)
     !obj
   end
@@ -1578,8 +1585,8 @@ assert_equal '[false, false, :ok]', %q{
   [x, y, z]
 }
 
-# defining FalseClass#!
-assert_equal '[true, true, :ok]', %q{
+    # defining FalseClass#!
+    assert_run_output '[true, true, :ok]', %q{
   def foo(obj)
     !obj
   end
@@ -1598,8 +1605,8 @@ assert_equal '[true, true, :ok]', %q{
   [x, y, z]
 }
 
-# defining NilClass#!
-assert_equal '[true, true, :ok]', %q{
+    # defining NilClass#!
+    assert_run_output '[true, true, :ok]', %q{
   def foo(obj)
     !obj
   end
@@ -1618,8 +1625,8 @@ assert_equal '[true, true, :ok]', %q{
   [x, y, z]
 }
 
-# polymorphic opt_not
-assert_equal '[true, true, false, false, false, false, false]', %q{
+    # polymorphic opt_not
+    assert_run_output '[true, true, false, false, false, false, false]', %q{
   def foo(obj)
     !obj
   end
@@ -1628,8 +1635,8 @@ assert_equal '[true, true, false, false, false, false, false]', %q{
   [foo(nil), foo(false), foo(true), foo([]), foo(0), foo(4.2), foo(:sym)]
 }
 
-# getlocal with 2 levels
-assert_equal '7', %q{
+    # getlocal with 2 levels
+    assert_run_output '7', %q{
   def foo(foo, bar)
     while foo > 0
       while bar > 0
@@ -1642,8 +1649,8 @@ assert_equal '7', %q{
   foo(5,2)
 }
 
-# test pattern matching
-assert_equal '[:ok, :ok]', %q{
+    # test pattern matching
+    assert_run_output '[:ok, :ok]', %q{
   class C
     def destructure_keys
       {}
@@ -1662,8 +1669,8 @@ assert_equal '[:ok, :ok]', %q{
   [{}, C.new].map(&pattern_match)
 }
 
-# Call to object with singleton
-assert_equal '123', %q{
+    # Call to object with singleton
+    assert_run_output '123', %q{
   obj = Object.new
   def obj.foo
     123
@@ -1677,11 +1684,11 @@ assert_equal '123', %q{
   foo(obj)
 }
 
-# Call method on an object that has a non-material
-# singleton class.
-# TODO: assert that it takes no side exits? This
-# test case revealed that we were taking exits unnecessarily.
-assert_normal_exit %q{
+    # Call method on an object that has a non-material
+    # singleton class.
+    # TODO: assert that it takes no side exits? This
+    # test case revealed that we were taking exits unnecessarily.
+    assert_normal_exit %q{
   def foo(obj)
     obj.itself
   end
@@ -1691,8 +1698,8 @@ assert_normal_exit %q{
   foo(o)
 }
 
-# Call to singleton class
-assert_equal '123', %q{
+    # Call to singleton class
+    assert_run_output '123', %q{
   class Foo
     def self.foo
       123
@@ -1707,8 +1714,8 @@ assert_equal '123', %q{
   foo(Foo)
 }
 
-# invokesuper edge case
-assert_equal '[:A, [:A, :B]]', %q{
+    # invokesuper edge case
+    assert_run_output '[:A, [:A, :B]]', %q{
   class B
     def foo = :B
   end
@@ -1727,8 +1734,8 @@ assert_equal '[:A, [:A, :B]]', %q{
   C.new.bar
 }
 
-# Same invokesuper bytecode, multiple destinations
-assert_equal '[:Forward, :SecondTerminus]', %q{
+    # Same invokesuper bytecode, multiple destinations
+    assert_run_output '[:Forward, :SecondTerminus]', %q{
   module Terminus
     def foo = :Terminus
   end
@@ -1764,8 +1771,8 @@ assert_equal '[:Forward, :SecondTerminus]', %q{
   A.new.bar
 }
 
-# invokesuper calling into itself
-assert_equal '[:B, [:B, :m]]', %q{
+    # invokesuper calling into itself
+    assert_run_output '[:B, [:B, :m]]', %q{
   module M
     def foo = :m
   end
@@ -1784,8 +1791,8 @@ assert_equal '[:B, [:B, :m]]', %q{
   ins.bar
 }
 
-# invokesuper changed ancestor
-assert_equal '[:A, [:M, :B]]', %q{
+    # invokesuper changed ancestor
+    assert_run_output '[:A, [:M, :B]]', %q{
   class B
     def foo
       :B
@@ -1811,8 +1818,8 @@ assert_equal '[:A, [:M, :B]]', %q{
   ins.foo
 }
 
-# invokesuper changed ancestor via prepend
-assert_equal '[:A, [:M, :B]]', %q{
+    # invokesuper changed ancestor via prepend
+    assert_run_output '[:A, [:M, :B]]', %q{
   class B
     def foo
       :B
@@ -1838,8 +1845,8 @@ assert_equal '[:A, [:M, :B]]', %q{
   ins.foo
 }
 
-# invokesuper replaced method
-assert_equal '[:A, :Btwo]', %q{
+    # invokesuper replaced method
+    assert_run_output '[:A, :Btwo]', %q{
   class B
     def foo
       :B
@@ -1863,8 +1870,8 @@ assert_equal '[:A, :Btwo]', %q{
   ins.foo
 }
 
-# Call to fixnum
-assert_equal '[true, false]', %q{
+    # Call to fixnum
+    assert_run_output '[true, false]', %q{
   def is_odd(obj)
     obj.odd?
   end
@@ -1875,8 +1882,8 @@ assert_equal '[true, false]', %q{
   [is_odd(123), is_odd(456)]
 }
 
-# Call to bignum
-assert_equal '[true, false]', %q{
+    # Call to bignum
+    assert_run_output '[true, false]', %q{
   def is_odd(obj)
     obj.odd?
   end
@@ -1888,8 +1895,8 @@ assert_equal '[true, false]', %q{
   [is_odd(bignum), is_odd(bignum+1)]
 }
 
-# Call to fixnum and bignum
-assert_equal '[true, false, true, false]', %q{
+    # Call to fixnum and bignum
+    assert_run_output '[true, false, true, false]', %q{
   def is_odd(obj)
     obj.odd?
   end
@@ -1903,8 +1910,8 @@ assert_equal '[true, false, true, false]', %q{
   [is_odd(123), is_odd(456), is_odd(bignum), is_odd(bignum+1)]
 }
 
-# Call to static and dynamic symbol
-assert_equal 'bar', %q{
+    # Call to static and dynamic symbol
+    assert_run_output 'bar', %q{
   def to_string(obj)
     obj.to_s
   end
@@ -1915,8 +1922,8 @@ assert_equal 'bar', %q{
   to_string((-"bar").to_sym)
 }
 
-# Call to flonum and heap float
-assert_equal '[nil, nil, nil, 1]', %q{
+    # Call to flonum and heap float
+    assert_run_output '[nil, nil, nil, 1]', %q{
   def is_inf(obj)
     obj.infinite?
   end
@@ -1934,7 +1941,7 @@ assert_equal '[nil, nil, nil, 1]', %q{
   ]
 }
 
-assert_equal '[1, 2, 3, 4, 5]', %q{
+    assert_run_output '[1, 2, 3, 4, 5]', %q{
   def splatarray
     [*(1..5)]
   end
@@ -1943,7 +1950,7 @@ assert_equal '[1, 2, 3, 4, 5]', %q{
   splatarray
 }
 
-assert_equal '[1, 1, 2, 1, 2, 3]', %q{
+    assert_run_output '[1, 1, 2, 1, 2, 3]', %q{
   def expandarray
     arr = [1, 2, 3]
 
@@ -1958,7 +1965,7 @@ assert_equal '[1, 1, 2, 1, 2, 3]', %q{
   expandarray
 }
 
-assert_equal '[1, 1]', %q{
+    assert_run_output '[1, 1]', %q{
   def expandarray_useless_splat
     arr = (1..10).to_a
 
@@ -1972,7 +1979,7 @@ assert_equal '[1, 1]', %q{
   expandarray_useless_splat
 }
 
-assert_equal '[:not_heap, nil, nil]', %q{
+    assert_run_output '[:not_heap, nil, nil]', %q{
   def expandarray_not_heap
     a, b, c = :not_heap
     [a, b, c]
@@ -1982,7 +1989,7 @@ assert_equal '[:not_heap, nil, nil]', %q{
   expandarray_not_heap
 }
 
-assert_equal '[:not_array, nil, nil]', %q{
+    assert_run_output '[:not_array, nil, nil]', %q{
   def expandarray_not_array(obj)
     a, b, c = obj
     [a, b, c]
@@ -1997,7 +2004,7 @@ assert_equal '[:not_array, nil, nil]', %q{
   expandarray_not_array(obj)
 }
 
-assert_equal '[1, 2, nil]', %q{
+    assert_run_output '[1, 2, nil]', %q{
   def expandarray_rhs_too_small
     a, b, c = [1, 2]
     [a, b, c]
@@ -2007,7 +2014,7 @@ assert_equal '[1, 2, nil]', %q{
   expandarray_rhs_too_small
 }
 
-assert_equal '[1, [2]]', %q{
+    assert_run_output '[1, [2]]', %q{
   def expandarray_splat
     a, *b = [1, 2]
     [a, b]
@@ -2017,7 +2024,7 @@ assert_equal '[1, [2]]', %q{
   expandarray_splat
 }
 
-assert_equal '2', %q{
+    assert_run_output '2', %q{
   def expandarray_postarg
     *, a = [1, 2]
     a
@@ -2027,7 +2034,7 @@ assert_equal '2', %q{
   expandarray_postarg
 }
 
-assert_equal '10', %q{
+    assert_run_output '10', %q{
   obj = Object.new
   val = nil
   obj.define_singleton_method(:to_ary) { val = 10; [] }
@@ -2042,8 +2049,8 @@ assert_equal '10', %q{
   val
 }
 
-# regression test of local type change
-assert_equal '1.1', %q{
+    # regression test of local type change
+    assert_run_output '1.1', %q{
 def bar(baz, quux)
   if baz.integer?
     baz, quux = quux, nil
@@ -2055,8 +2062,8 @@ bar(123, 1.1)
 bar(123, 1.1)
 }
 
-# test enabling a line TracePoint in a C method call
-assert_equal '[[:line, true]]', %q{
+    # test enabling a line TracePoint in a C method call
+    assert_run_output '[[:line, true]]', %q{
   events = []
   events.instance_variable_set(
     :@tp,
@@ -2078,8 +2085,8 @@ assert_equal '[[:line, true]]', %q{
   events
 }
 
-# test enabling a c_return TracePoint in a C method call
-assert_equal '[[:c_return, :String, :string_alias, "events_to_str"]]', %q{
+    # test enabling a c_return TracePoint in a C method call
+    assert_run_output '[[:c_return, :String, :string_alias, "events_to_str"]]', %q{
   events = []
   events.instance_variable_set(:@tp, TracePoint.new(:c_return) { |tp| events << [tp.event, tp.method_id, tp.callee_id, tp.return_value] })
   def events.to_str
@@ -2098,8 +2105,8 @@ assert_equal '[[:c_return, :String, :string_alias, "events_to_str"]]', %q{
   events
 }
 
-# test enabling a TracePoint that targets a particular line in a C method call
-assert_equal '[true]', %q{
+    # test enabling a TracePoint that targets a particular line in a C method call
+    assert_run_output '[true]', %q{
   events = []
   events.instance_variable_set(:@tp, TracePoint.new(:line) { |tp| events << tp.lineno })
   def events.to_str
@@ -2119,8 +2126,8 @@ assert_equal '[true]', %q{
   events
 }
 
-# test enabling tracing in the middle of splatarray
-assert_equal '[true]', %q{
+    # test enabling tracing in the middle of splatarray
+    assert_run_output '[true]', %q{
   events = []
   obj = Object.new
   obj.instance_variable_set(:@tp, TracePoint.new(:line) { |tp| events << tp.lineno })
@@ -2142,9 +2149,9 @@ assert_equal '[true]', %q{
   events
 }
 
-# test enabling tracing in the middle of opt_aref. Different since the codegen
-# for it ends in a jump.
-assert_equal '[true]', %q{
+    # test enabling tracing in the middle of opt_aref. Different since the codegen
+    # for it ends in a jump.
+    assert_run_output '[true]', %q{
   def lookup(hash, tp)
     hash[42]
     tp.disable; __LINE__
@@ -2165,8 +2172,8 @@ assert_equal '[true]', %q{
   lines
 }
 
-# test enabling c_call tracing before compiling
-assert_equal '[[:c_call, :itself]]', %q{
+    # test enabling c_call tracing before compiling
+    assert_run_output '[[:c_call, :itself]]', %q{
   def shouldnt_compile
     itself
   end
@@ -2180,8 +2187,8 @@ assert_equal '[[:c_call, :itself]]', %q{
   events
 }
 
-# test enabling c_return tracing before compiling
-assert_equal '[[:c_return, :itself, main]]', %q{
+    # test enabling c_return tracing before compiling
+    assert_run_output '[[:c_return, :itself, main]]', %q{
   def shouldnt_compile
     itself
   end
@@ -2195,8 +2202,8 @@ assert_equal '[[:c_return, :itself, main]]', %q{
   events
 }
 
-# test enabling tracing for a suspended fiber
-assert_equal '[[:return, 42]]', %q{
+    # test enabling tracing for a suspended fiber
+    assert_run_output '[[:return, 42]]', %q{
   def traced_method
     Fiber.yield
     42
@@ -2213,8 +2220,8 @@ assert_equal '[[:return, 42]]', %q{
   events
 }
 
-# test compiling on non-tracing ractor then running on a tracing one
-assert_equal '[:itself]', %q{
+    # test compiling on non-tracing ractor then running on a tracing one
+    assert_run_output '[:itself]', %q{
   def traced_method
     itself
   end
@@ -2244,8 +2251,8 @@ assert_equal '[:itself]', %q{
   tracing_ractor.take
 }
 
-# Try to hit a lazy branch stub while another ractor enables tracing
-assert_equal '42', %q{
+    # Try to hit a lazy branch stub while another ractor enables tracing
+    assert_run_output '42', %q{
   def compiled(arg)
     if arg
       arg + 1
@@ -2268,8 +2275,8 @@ assert_equal '42', %q{
   ractor.take
 }
 
-# Test equality with changing types
-assert_equal '[true, false, false, false]', %q{
+    # Test equality with changing types
+    assert_run_output '[true, false, false, false]', %q{
   def eq(a, b)
     a == b
   end
@@ -2282,8 +2289,8 @@ assert_equal '[true, false, false, false]', %q{
   ]
 }
 
-# Redefined String eq
-assert_equal 'true', %q{
+    # Redefined String eq
+    assert_run_output 'true', %q{
   class String
     def ==(other)
       true
@@ -2298,8 +2305,8 @@ assert_equal 'true', %q{
   eq("foo", "bar")
 }
 
-# Redefined Integer eq
-assert_equal 'true', %q{
+    # Redefined Integer eq
+    assert_run_output 'true', %q{
   class Integer
     def ==(other)
       true
@@ -2314,8 +2321,8 @@ assert_equal 'true', %q{
   eq(1, 2)
 }
 
-# aset on array with invalid key
-assert_normal_exit %q{
+    # aset on array with invalid key
+    assert_normal_exit %q{
   def foo(arr)
     arr[:foo] = 123
   end
@@ -2324,8 +2331,8 @@ assert_normal_exit %q{
   foo([1]) rescue nil
 }
 
-# test ractor exception on when setting ivar
-assert_equal '42',  %q{
+    # test ractor exception on when setting ivar
+    assert_run_output '42',  %q{
   class A
     def self.foo
       _foo = 1
@@ -2344,7 +2351,7 @@ assert_equal '42',  %q{
   Ractor.new { A.foo }.take
 }
 
-assert_equal '["plain", "special", "sub", "plain"]', %q{
+    assert_run_output '["plain", "special", "sub", "plain"]', %q{
   def foo(arg)
     arg.to_s
   end
@@ -2363,7 +2370,7 @@ assert_equal '["plain", "special", "sub", "plain"]', %q{
   ]
 }
 
-assert_equal '["sub", "sub"]', %q{
+    assert_run_output '["sub", "sub"]', %q{
   def foo(arg)
     arg.to_s
   end
@@ -2379,7 +2386,7 @@ assert_equal '["sub", "sub"]', %q{
   [foo(sub), foo(sub)]
 }
 
-assert_equal '[1]', %q{
+    assert_run_output '[1]', %q{
   def kwargs(value:)
     value
   end
@@ -2387,7 +2394,7 @@ assert_equal '[1]', %q{
   5.times.map { kwargs(value: 1) }.uniq
 }
 
-assert_equal '[:ok]', %q{
+    assert_run_output '[:ok]', %q{
   def kwargs(value:)
     value
   end
@@ -2395,7 +2402,7 @@ assert_equal '[:ok]', %q{
   5.times.map { kwargs() rescue :ok }.uniq
 }
 
-assert_equal '[:ok]', %q{
+    assert_run_output '[:ok]', %q{
   def kwargs(a:, b: nil)
     value
   end
@@ -2403,7 +2410,7 @@ assert_equal '[:ok]', %q{
   5.times.map { kwargs(b: 123) rescue :ok }.uniq
 }
 
-assert_equal '[[1, 2]]', %q{
+    assert_run_output '[[1, 2]]', %q{
   def kwargs(left:, right:)
     [left, right]
   end
@@ -2416,7 +2423,7 @@ assert_equal '[[1, 2]]', %q{
   end.uniq
 }
 
-assert_equal '[[1, 2]]', %q{
+    assert_run_output '[[1, 2]]', %q{
   def kwargs(lead, kwarg:)
     [lead, kwarg]
   end
@@ -2424,8 +2431,8 @@ assert_equal '[[1, 2]]', %q{
   5.times.map { kwargs(1, kwarg: 2) }.uniq
 }
 
-# optional and keyword args
-assert_equal '[[1, 2, 3]]', %q{
+    # optional and keyword args
+    assert_run_output '[[1, 2, 3]]', %q{
   def opt_and_kwargs(a, b=2, c: nil)
     [a,b,c]
   end
@@ -2433,7 +2440,7 @@ assert_equal '[[1, 2, 3]]', %q{
   5.times.map { opt_and_kwargs(1, c: 3) }.uniq
 }
 
-assert_equal '[[1, 2, 3]]', %q{
+    assert_run_output '[[1, 2, 3]]', %q{
   def opt_and_kwargs(a, b=nil, c: nil)
     [a,b,c]
   end
@@ -2441,8 +2448,8 @@ assert_equal '[[1, 2, 3]]', %q{
   5.times.map { opt_and_kwargs(1, 2, c: 3) }.uniq
 }
 
-# Bug #18453
-assert_equal '[[1, nil, 2]]', %q{
+    # Bug #18453
+    assert_run_output '[[1, nil, 2]]', %q{
   def opt_and_kwargs(a = {}, b: nil, c: nil)
     [a, b, c]
   end
@@ -2450,7 +2457,7 @@ assert_equal '[[1, nil, 2]]', %q{
   5.times.map { opt_and_kwargs(1, c: 2) }.uniq
 }
 
-assert_equal '[[{}, nil, 1]]', %q{
+    assert_run_output '[[{}, nil, 1]]', %q{
   def opt_and_kwargs(a = {}, b: nil, c: nil)
     [a, b, c]
   end
@@ -2458,8 +2465,8 @@ assert_equal '[[{}, nil, 1]]', %q{
   5.times.map { opt_and_kwargs(c: 1) }.uniq
 }
 
-# leading and keyword arguments are swapped into the right order
-assert_equal '[[1, 2, 3, 4, 5, 6]]', %q{
+    # leading and keyword arguments are swapped into the right order
+    assert_run_output '[[1, 2, 3, 4, 5, 6]]', %q{
   def kwargs(five, six, a:, b:, c:, d:)
     [a, b, c, d, five, six]
   end
@@ -2494,8 +2501,8 @@ assert_equal '[[1, 2, 3, 4, 5, 6]]', %q{
   end.uniq
 }
 
-# implicit hashes get skipped and don't break compilation
-assert_equal '[[:key]]', %q{
+    # implicit hashes get skipped and don't break compilation
+    assert_run_output '[[:key]]', %q{
   def implicit(hash)
     hash.keys
   end
@@ -2503,8 +2510,8 @@ assert_equal '[[:key]]', %q{
   5.times.map { implicit(key: :value) }.uniq
 }
 
-# default values on keywords don't mess up argument order
-assert_equal '[2]', %q{
+    # default values on keywords don't mess up argument order
+    assert_run_output '[2]', %q{
   def default_value
     1
   end
@@ -2516,8 +2523,8 @@ assert_equal '[2]', %q{
   5.times.map { default_expression(value: 2) }.uniq
 }
 
-# constant default values on keywords
-assert_equal '[3]', %q{
+    # constant default values on keywords
+    assert_run_output '[3]', %q{
   def default_expression(value: 3)
     value
   end
@@ -2525,8 +2532,8 @@ assert_equal '[3]', %q{
   5.times.map { default_expression }.uniq
 }
 
-# non-constant default values on keywords
-assert_equal '[3]', %q{
+    # non-constant default values on keywords
+    assert_run_output '[3]', %q{
   def default_value
     3
   end
@@ -2538,8 +2545,8 @@ assert_equal '[3]', %q{
   5.times.map { default_expression }.uniq
 }
 
-# reordered optional kwargs
-assert_equal '[[100, 1]]', %q{
+    # reordered optional kwargs
+    assert_run_output '[[100, 1]]', %q{
   def foo(capacity: 100, max: nil)
     [capacity, max]
   end
@@ -2547,8 +2554,8 @@ assert_equal '[[100, 1]]', %q{
   5.times.map { foo(max: 1) }.uniq
 }
 
-# invalid lead param
-assert_equal 'ok', %q{
+    # invalid lead param
+    assert_run_output 'ok', %q{
   def bar(baz: 2)
     baz
   end
@@ -2565,8 +2572,8 @@ assert_equal 'ok', %q{
   end
 }
 
-# reordered required kwargs
-assert_equal '[[1, 2, 3, 4]]', %q{
+    # reordered required kwargs
+    assert_run_output '[[1, 2, 3, 4]]', %q{
   def foo(default1: 1, required1:, default2: 3, required2:)
     [default1, required1, default2, required2]
   end
@@ -2574,8 +2581,8 @@ assert_equal '[[1, 2, 3, 4]]', %q{
   5.times.map { foo(required1: 2, required2: 4) }.uniq
 }
 
-# reordered default expression kwargs
-assert_equal '[[:one, :two, 3]]', %q{
+    # reordered default expression kwargs
+    assert_run_output '[[:one, :two, 3]]', %q{
   def foo(arg1: (1+0), arg2: (2+0), arg3: (3+0))
     [arg1, arg2, arg3]
   end
@@ -2583,8 +2590,8 @@ assert_equal '[[:one, :two, 3]]', %q{
   5.times.map { foo(arg2: :two, arg1: :one) }.uniq
 }
 
-# complex kwargs
-assert_equal '[[1, 2, 3, 4]]', %q{
+    # complex kwargs
+    assert_run_output '[[1, 2, 3, 4]]', %q{
   def foo(required:, specified: 999, simple_default: 3, complex_default: "4".to_i)
     [required, specified, simple_default, complex_default]
   end
@@ -2592,8 +2599,8 @@ assert_equal '[[1, 2, 3, 4]]', %q{
   5.times.map { foo(specified: 2, required: 1) }.uniq
 }
 
-# cfunc kwargs
-assert_equal '{:foo=>123}', %q{
+    # cfunc kwargs
+    assert_run_output '{:foo=>123}', %q{
   def foo(bar)
     bar.store(:value, foo: 123)
     bar[:value]
@@ -2603,8 +2610,8 @@ assert_equal '{:foo=>123}', %q{
   foo({})
 }
 
-# cfunc kwargs
-assert_equal '{:foo=>123}', %q{
+    # cfunc kwargs
+    assert_run_output '{:foo=>123}', %q{
   def foo(bar)
     bar.replace(foo: 123)
   end
@@ -2613,8 +2620,8 @@ assert_equal '{:foo=>123}', %q{
   foo({})
 }
 
-# cfunc kwargs
-assert_equal '{:foo=>123, :bar=>456}', %q{
+    # cfunc kwargs
+    assert_run_output '{:foo=>123, :bar=>456}', %q{
   def foo(bar)
     bar.replace(foo: 123, bar: 456)
   end
@@ -2623,8 +2630,8 @@ assert_equal '{:foo=>123, :bar=>456}', %q{
   foo({})
 }
 
-# variadic cfunc kwargs
-assert_equal '{:foo=>123}', %q{
+    # variadic cfunc kwargs
+    assert_run_output '{:foo=>123}', %q{
   def foo(bar)
     bar.merge(foo: 123)
   end
@@ -2633,8 +2640,8 @@ assert_equal '{:foo=>123}', %q{
   foo({})
 }
 
-# optimized cfunc kwargs
-assert_equal 'false', %q{
+    # optimized cfunc kwargs
+    assert_run_output 'false', %q{
   def foo
     :foo.eql?(foo: :foo)
   end
@@ -2643,8 +2650,8 @@ assert_equal 'false', %q{
   foo
 }
 
-# attr_reader on frozen object
-assert_equal 'false', %q{
+    # attr_reader on frozen object
+    assert_run_output 'false', %q{
   class Foo
     attr_reader :exception
 
@@ -2658,8 +2665,8 @@ assert_equal 'false', %q{
   foo.failed?
 }
 
-# regression test for doing kwarg shuffle before checking for interrupts
-assert_equal 'ok', %q{
+    # regression test for doing kwarg shuffle before checking for interrupts
+    assert_run_output 'ok', %q{
   def new_media_drop(attributes:, product_drop:, context:, sources:)
     nil.nomethod rescue nil # force YJIT to bail to side exit
 
@@ -2697,8 +2704,8 @@ assert_equal 'ok', %q{
   :ok
 }
 
-# regression test for tracing attr_accessor methods.
-assert_equal "true", %q{
+    # regression test for tracing attr_accessor methods.
+    assert_run_output "true", %q{
     c = Class.new do
       attr_accessor :x
       alias y x
@@ -2747,8 +2754,8 @@ assert_equal "true", %q{
     expected == events
 }
 
-# duphash
-assert_equal '{:foo=>123}', %q{
+    # duphash
+    assert_run_output '{:foo=>123}', %q{
   def foo
     {foo: 123}
   end
@@ -2757,8 +2764,8 @@ assert_equal '{:foo=>123}', %q{
   foo
 }
 
-# newhash
-assert_equal '{:foo=>2}', %q{
+    # newhash
+    assert_run_output '{:foo=>2}', %q{
   def foo
     {foo: 1+1}
   end
@@ -2767,8 +2774,8 @@ assert_equal '{:foo=>2}', %q{
   foo
 }
 
-# block invalidation edge case
-assert_equal 'undef', %q{
+    # block invalidation edge case
+    assert_run_output 'undef', %q{
   class A
     def foo(arg)
       arg.times { A.remove_method(:bar) }
@@ -2793,8 +2800,8 @@ assert_equal 'undef', %q{
   A.new.use 1
 }
 
-# block invalidation edge case
-assert_equal 'ok', %q{
+    # block invalidation edge case
+    assert_run_output 'ok', %q{
   class A
     Good = :ng
     def foo(arg)
@@ -2819,7 +2826,7 @@ assert_equal 'ok', %q{
   A.new.use 1
 }
 
-assert_equal 'ok', %q{
+    assert_run_output 'ok', %q{
   # test hitting a branch stub when out of memory
   def nimai(jita)
     if jita
@@ -2837,7 +2844,7 @@ assert_equal 'ok', %q{
   nimai(false)
 }
 
-assert_equal 'new', %q{
+    assert_run_output 'new', %q{
   # test block invalidation while out of memory
   def foo
     :old
@@ -2859,7 +2866,7 @@ assert_equal 'new', %q{
   test
 }
 
-assert_equal 'ok', %q{
+    assert_run_output 'ok', %q{
   # Try to compile new method while OOM
   def foo
     :ok
@@ -2871,8 +2878,8 @@ assert_equal 'ok', %q{
   foo
 }
 
-# struct aref embedded
-assert_equal '2', %q{
+    # struct aref embedded
+    assert_run_output '2', %q{
   def foo(s)
     s.foo
   end
@@ -2882,8 +2889,8 @@ assert_equal '2', %q{
   foo(S.new(2))
 }
 
-# struct aref non-embedded
-assert_equal '4', %q{
+    # struct aref non-embedded
+    assert_run_output '4', %q{
   def foo(s)
     s.d
   end
@@ -2893,8 +2900,8 @@ assert_equal '4', %q{
   foo(S.new(1,2,3,4,5))
 }
 
-# struct aset embedded
-assert_equal '123', %q{
+    # struct aset embedded
+    assert_run_output '123', %q{
   def foo(s)
     s.foo = 123
   end
@@ -2906,8 +2913,8 @@ assert_equal '123', %q{
   s.foo
 }
 
-# struct aset non-embedded
-assert_equal '[1, 2, 3, 4, 5]', %q{
+    # struct aset non-embedded
+    assert_run_output '[1, 2, 3, 4, 5]', %q{
   def foo(s)
     s.a = 1
     s.b = 2
@@ -2924,8 +2931,8 @@ assert_equal '[1, 2, 3, 4, 5]', %q{
   [s.a, s.b, s.c, s.d, s.e]
 }
 
-# struct aref too many args
-assert_equal 'ok', %q{
+    # struct aref too many args
+    assert_run_output 'ok', %q{
   def foo(s)
     s.foo(:bad)
   end
@@ -2935,8 +2942,8 @@ assert_equal 'ok', %q{
   foo(s) rescue :ok
 }
 
-# struct aset too many args
-assert_equal 'ok', %q{
+    # struct aset too many args
+    assert_run_output 'ok', %q{
   def foo(s)
     s.set_foo(123, :bad)
   end
@@ -2948,8 +2955,8 @@ assert_equal 'ok', %q{
   foo(s) rescue :ok
 }
 
-# File.join is a cfunc accepting variable arguments as a Ruby array (argc = -2)
-assert_equal 'foo/bar', %q{
+    # File.join is a cfunc accepting variable arguments as a Ruby array (argc = -2)
+    assert_run_output 'foo/bar', %q{
   def foo
     File.join("foo", "bar")
   end
@@ -2958,8 +2965,8 @@ assert_equal 'foo/bar', %q{
   foo
 }
 
-# File.join is a cfunc accepting variable arguments as a Ruby array (argc = -2)
-assert_equal '', %q{
+    # File.join is a cfunc accepting variable arguments as a Ruby array (argc = -2)
+    assert_run_output [], %q{
   def foo
     File.join()
   end
@@ -2968,8 +2975,8 @@ assert_equal '', %q{
   foo
 }
 
-# Make sure we're correctly reading RStruct's as.ary union for embedded RStructs
-assert_equal '3,12', %q{
+    # Make sure we're correctly reading RStruct's as.ary union for embedded RStructs
+    assert_run_output '3,12', %q{
   pt_struct = Struct.new(:x, :y)
   p = pt_struct.new(3, 12)
   def pt_inspect(pt)
@@ -2983,8 +2990,8 @@ assert_equal '3,12', %q{
   pt_inspect(p)
 }
 
-# Regression test for deadlock between branch_stub_hit and ractor_receive_if
-assert_equal '10', %q{
+    # Regression test for deadlock between branch_stub_hit and ractor_receive_if
+    assert_run_output '10', %q{
   r = Ractor.new Ractor.current do |main|
     main << 1
     main << 2
@@ -3012,3 +3019,5 @@ assert_equal '10', %q{
 
   a.length
 }
+  end
+end

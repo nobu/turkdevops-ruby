@@ -1,6 +1,11 @@
+require 'test/unit'
 # This is a torture test for the JIT.
 # There are 30K tiny methods in a 30-deep call hierarchy.
-assert_equal '1000000', %q{
+
+class TestYJIT < Test::Unit::TestCase
+
+  def test_yjit_30k_method
+    assert_separately([], <<RUBY)
 
 def fun_l0_n0()
     fun_l1_n758
@@ -121013,6 +121018,8 @@ end
     fun_l0_n999
 end
 
-@count
+assert_equal 1000000, @count
 
-}
+RUBY
+  end
+end

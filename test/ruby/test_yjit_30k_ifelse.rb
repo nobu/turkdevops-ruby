@@ -1,6 +1,11 @@
+require 'test/unit'
 # This is a torture test for the JIT.
 # There are 30K tiny methods with if-else statements in a 30-deep call hierarchy.
-assert_equal '100000', %q{
+
+class TestYJIT < Test::Unit::TestCase
+
+  def test_yjit_30k_ifelse
+    assert_separately([], <<RUBY)
 
 def fun_l0_n0(x)
     if (x < 1)
@@ -241018,6 +241023,7 @@ end
     fun_l0_n999(@x)
 end
 
-@count
-
-}
+assert_equal 100000, @count
+RUBY
+  end
+end

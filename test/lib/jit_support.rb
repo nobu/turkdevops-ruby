@@ -96,4 +96,9 @@ module JITSupport
     RbConfig::CONFIG['CC'].start_with?('gcc') &&
       stderr.include?("error trying to exec 'cc1': execvp: No such file or directory")
   end
+
+  def assert_run_output(expected, code)
+    expected = [expected] unless Array === expected
+    assert_in_out_err(%w[-W0], "print(begin;#{code};end)", expected)
+  end
 end
