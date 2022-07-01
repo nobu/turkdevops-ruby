@@ -123,6 +123,27 @@ VALUE rb_int_uminus(VALUE num);
 VALUE rb_int_comp(VALUE num);
 MJIT_SYMBOL_EXPORT_END
 
+#if SIZEOF_LONG < SIZEOF_VOIDP
+void rb_assert_normalized_fixnum(const VALUE x);
+#else
+static inline void rb_assert_normalized_fixnum(const VALUE x) {}
+#endif
+
+RBIMPL_ATTR_CONST()
+RBIMPL_ATTR_CONSTEXPR(CXX11)
+RBIMPL_ATTR_ARTIFICIAL()
+static inline bool
+rb_debug_fixnum_p(VALUE obj)
+{
+    if (obj & RUBY_FIXNUM_FLAG) {
+        rb_assert_normalized_fixnum(obj);
+        return true;
+    }
+    return false;
+}
+#undef RB_FIXNUM_P
+#define RB_FIXNUM_P rb_debug_fixnum_p
+
 static inline bool
 INT_POSITIVE_P(VALUE num)
 {

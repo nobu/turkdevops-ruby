@@ -3849,6 +3849,18 @@ rb_int_uminus(VALUE num)
     }
 }
 
+#if SIZEOF_LONG < SIZEOF_VOIDP
+void
+rb_assert_normalized_fixnum(const VALUE x)
+{
+    const long val = FIX2LONG(x);
+    const VALUE over_bits = ~(VALUE)0ul << (sizeof(long) * CHAR_BIT);
+    if ((val >= 0) ? (x & over_bits) : ((x & over_bits) != over_bits)) {
+	rb_bug("Unnormalized Fixnum value %p", (void *)x);
+    }
+}
+#endif
+
 VALUE
 rb_fix2str(VALUE x, int base)
 {
@@ -3860,17 +3872,7 @@ rb_fix2str(VALUE x, int base)
     if (base < 2 || 36 < base) {
 	rb_raise(rb_eArgError, "invalid radix %d", base);
     }
-#if SIZEOF_LONG < SIZEOF_VOIDP
-# if SIZEOF_VOIDP == SIZEOF_LONG_LONG
-    if ((val >= 0 && (x & 0xFFFFFFFF00000000ull)) ||
-	(val < 0 && (x & 0xFFFFFFFF00000000ull) != 0xFFFFFFFF00000000ull)) {
-	rb_bug("Unnormalized Fixnum value %p", (void *)x);
-    }
-# else
-    /* should do something like above code, but currently ruby does not know */
-    /* such platforms */
-# endif
-#endif
+    rb_assert_normalized_fixnum(x);
     if (val == 0) {
 	return rb_usascii_str_new2("0");
     }
