@@ -5,12 +5,14 @@ CARGO_VERBOSE_0 = -q
 CARGO_VERBOSE_1 =
 CARGO_VERBOSE = $(CARGO_VERBOSE_$(V))
 
+YJIT_CRUBY_BINDINGS = $(top_srcdir)/yjit/src/cruby_bindings.inc.rs
+
 # Select between different build profiles with macro substitution
 .PHONY: yjit-static-lib
 yjit-static-lib: yjit-static-lib-$(YJIT_SUPPORT)
 
 # YJIT_SUPPORT=yes when `configure` gets `--enable-yjit`
-yjit-static-lib-yes:
+yjit-static-lib-yes: $(YJIT_CRUBY_BINDINGS)
 	$(ECHO) 'building Rust YJIT (release mode)'
 	$(Q) $(RUSTC) \
 	        --crate-name=yjit \
@@ -25,7 +27,7 @@ yjit-static-lib-no:
 	$(ECHO) 'Error: Tried to build YJIT without configuring it first. Check `make showconfig`?'
 	@false
 
-yjit-static-lib-dev:
+yjit-static-lib-dev: $(YJIT_CRUBY_BINDINGS)
 	$(ECHO) 'building Rust YJIT (dev mode)'
 	$(Q)$(CHDIR) $(top_srcdir)/yjit && \
 	        CARGO_TARGET_DIR='$(CARGO_TARGET_DIR)' \
@@ -45,15 +47,14 @@ miniruby$(EXEEXT): $(YJIT_LIBS)
 
 # Generate Rust bindings. See source for details.
 # Needs `./configure --enable-yjit=dev` and Clang.
-ifneq ($(strip $(CARGO)),) # if configure found Cargo
 .PHONY: yjit-bindgen yjit-bindgen-show-unused
+YJIT_BINDGEN = YJIT_SRC_ROOT_PATH='$(top_srcdir)' $(CARGO) run --manifest-path '$(top_srcdir)/yjit/bindgen/Cargo.toml' -- $(CFLAGS) $(XCFLAGS) $(CPPFLAGS)
+
+$(YJIT_CRUBY_BINDINGS): yjit.$(OBJEXT)
+	$(YJIT_BINDGEN)
+
 yjit-bindgen: yjit.$(OBJEXT)
-	YJIT_SRC_ROOT_PATH='$(top_srcdir)' $(CARGO) run --manifest-path '$(top_srcdir)/yjit/bindgen/Cargo.toml' -- $(CFLAGS) $(XCFLAGS) $(CPPFLAGS)
+	$(YJIT_BINDGEN)
 
-check-yjit-bindgen-unused: yjit.$(OBJEXT)
-	RUST_LOG=warn YJIT_SRC_ROOT_PATH='$(top_srcdir)' $(CARGO) run --manifest-path '$(top_srcdir)/yjit/bindgen/Cargo.toml' -- $(CFLAGS) $(XCFLAGS) $(CPPFLAGS) 2>&1 | (! grep "unused option: --allow")
-
-# For CI, check whether YJIT's FFI bindings are up-to-date.
-check-yjit-bindings: check-yjit-bindgen-unused
-	git -C "$(top_srcdir)" diff --exit-code yjit/src/cruby_bindings.inc.rs
-endif
+check-yjit-bindgen-unused: $(YJIT_CRUBY_BINDINGS)
+	RUST_LOG=warn $(YJIT_BINDGEN) 2>&1 | (! grep "unused option: --allow")
