@@ -12,7 +12,7 @@
 #include "internal.h"
 #include <stdio.h>
 #include <locale.h>
-#include "ruby/thread_native.h"
+#include "ruby/atomic.h"
 
 #if USE_DEBUG_COUNTER
 
@@ -28,25 +28,25 @@ static const char *const debug_counter_names[] = {
 MJIT_SYMBOL_EXPORT_BEGIN
 size_t rb_debug_counter[numberof(debug_counter_names)];
 void rb_debug_counter_add_atomic(enum rb_debug_counter_type type, int add);
+int rb_debug_counter_max_atomic(enum rb_debug_counter_type type, unsigned int num);
 MJIT_SYMBOL_EXPORT_END
 
-static rb_nativethread_lock_t debug_counter_lock;
-
-__attribute__((constructor))
-static void
-debug_counter_setup(void)
+int
+rb_debug_counter_max_atomic(enum rb_debug_counter_type type, unsigned int num)
 {
-    rb_nativethread_lock_initialize(&debug_counter_lock);
+    size_t *const count = &rb_debug_counter[(int)type], old = *count;
+    while (old < num) {
+        size_t prev = RUBY_ATOMIC_SIZE_CAS(*count, old, num);
+        if (old == prev) return 1;
+        old = prev;
+    }
+    return 0;
 }
 
 void
 rb_debug_counter_add_atomic(enum rb_debug_counter_type type, int add)
 {
-    rb_nativethread_lock_lock(&debug_counter_lock);
-    {
-        rb_debug_counter[(int)type] += add;
-    }
-    rb_nativethread_lock_unlock(&debug_counter_lock);
+    RUBY_ATOMIC_SIZE_ADD(rb_debug_counter[(int)type], add);
 }
 
 static int debug_counter_disable_show_at_exit = 0;

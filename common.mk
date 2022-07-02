@@ -3709,6 +3709,7 @@ debug.$(OBJEXT): {$(VPATH)}vm_debug.h
 debug.$(OBJEXT): {$(VPATH)}vm_opts.h
 debug_counter.$(OBJEXT): $(hdrdir)/ruby/ruby.h
 debug_counter.$(OBJEXT): {$(VPATH)}assert.h
+debug_counter.$(OBJEXT): {$(VPATH)}atomic.h
 debug_counter.$(OBJEXT): {$(VPATH)}backward/2/assume.h
 debug_counter.$(OBJEXT): {$(VPATH)}backward/2/attributes.h
 debug_counter.$(OBJEXT): {$(VPATH)}backward/2/bool.h

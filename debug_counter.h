@@ -411,6 +411,7 @@ enum rb_debug_counter_type {
 extern size_t rb_debug_counter[];
 RUBY_EXTERN struct rb_ractor_struct *ruby_single_main_ractor;
 RUBY_EXTERN void rb_debug_counter_add_atomic(enum rb_debug_counter_type type, int add);
+RUBY_EXTERN int rb_debug_counter_max_atomic(enum rb_debug_counter_type type, unsigned int num);
 
 inline static int
 rb_debug_counter_add(enum rb_debug_counter_type type, int add, int cond)
@@ -429,7 +430,9 @@ rb_debug_counter_add(enum rb_debug_counter_type type, int add, int cond)
 inline static int
 rb_debug_counter_max(enum rb_debug_counter_type type, unsigned int num)
 {
-    // TODO: sync
+    if (!ruby_single_main_ractor) {
+        return rb_debug_counter_max_atomic(type, num);
+    }
     if (rb_debug_counter[(int)type] < num) {
         rb_debug_counter[(int)type] = num;
         return 1;
