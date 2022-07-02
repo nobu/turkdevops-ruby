@@ -144,8 +144,36 @@ class TestObjSpace < Test::Unit::TestCase
     opts = %w[--disable-gem --disable=frozen-string-literal -robjspace]
     assert_separately opts, "#{<<-"begin;"}\n#{<<-'end;'}"
     begin;
+      if Numeric::const_defined?(:UnnormalizedFixnumValue)
+        def dump_invalid_object(o)
+          message = ObjectSpace.dump(o).chomp
+          if Hash === o
+            message = "{\n  hash: #{message}"
+            o.each_pair {|k, v|
+              message << ",\n  {\n    key: "
+              message << ObjectSpace.dump(k).chomp
+              message << "\n    value: "
+              message << ObjectSpace.dump(v).chomp
+              message << "\n  }"
+            }
+            message << "\n}"
+          end
+          message
+        end
+
+        def assert_valid_object(o)
+          o.inspect
+        rescue Numeric::UnnormalizedFixnumValue => e
+          raise e.class, "#{e.message}\n#{dump_invalid_object(o)}", e.backtrace
+        end
+      else
+        def assert_valid_object(o)
+          o.inspect
+        end
+      end
+
       ObjectSpace.each_object{|o|
-        o.inspect
+        assert_valid_object(o)
         ObjectSpace.reachable_objects_from(Class)
       }
     end;

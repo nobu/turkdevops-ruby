@@ -87,6 +87,18 @@ static void buffer_append(struct dump_config *dc, const char *cstr, unsigned lon
 
 # define dump_append(dc, str) buffer_append(dc, (str), (long)strlen(str))
 
+#ifdef SIZEOF_LONG < SIZEOF_VALUE
+static void
+dump_append_sv(struct dump_config *dc, const SIGNED_VALUE number)
+{
+    const unsigned int width = DECIMAL_SIZE_OF_BITS(sizeof(number) * CHAR_BIT - 1) + 2;
+    buffer_ensure_capa(dc, width);
+    unsigned long required = snprintf(dc->buffer + dc->buffer_len, width, "%"PRIdVALUE, number);
+    RUBY_ASSERT(required <= width);
+    dc->buffer_len += required;
+}
+#endif
+
 static void
 dump_append_ld(struct dump_config *dc, const long number)
 {
@@ -280,7 +292,11 @@ dump_append_special_const(struct dump_config *dc, VALUE value)
         dump_append(dc, "null");
     }
     else if (FIXNUM_P(value)) {
+#ifdef SIZEOF_LONG < SIZEOF_VALUE
+        dump_append_sv(dc, RSHIFT((SIGNED_VALUE)(value), 1));
+#else
         dump_append_ld(dc, FIX2LONG(value));
+#endif
     }
     else if (FLONUM_P(value)) {
         dump_append_g(dc, RFLOAT_VALUE(value));

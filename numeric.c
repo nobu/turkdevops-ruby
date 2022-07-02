@@ -3849,6 +3849,10 @@ rb_int_uminus(VALUE num)
     }
 }
 
+#if SIZEOF_LONG < SIZEOF_VOIDP
+static VALUE rb_eUnnormalizedFixnumValue;
+#endif
+
 VALUE
 rb_fix2str(VALUE x, int base)
 {
@@ -3864,7 +3868,11 @@ rb_fix2str(VALUE x, int base)
 # if SIZEOF_VOIDP == SIZEOF_LONG_LONG
     if ((val >= 0 && (x & 0xFFFFFFFF00000000ull)) ||
 	(val < 0 && (x & 0xFFFFFFFF00000000ull) != 0xFFFFFFFF00000000ull)) {
+#if 0
 	rb_bug("Unnormalized Fixnum value %p", (void *)x);
+#else
+	rb_raise(rb_eUnnormalizedFixnumValue, "Unnormalized Fixnum value %p", (void *)x);
+#endif
     }
 # else
     /* should do something like above code, but currently ruby does not know */
@@ -6411,6 +6419,10 @@ Init_Numeric(void)
     rb_define_method(rb_cFloat, "finite?",   rb_flo_is_finite_p, 0);
     rb_define_method(rb_cFloat, "next_float", flo_next_float, 0);
     rb_define_method(rb_cFloat, "prev_float", flo_prev_float, 0);
+
+#if SIZEOF_LONG < SIZEOF_VOIDP
+    rb_eUnnormalizedFixnumValue = rb_define_class_under(rb_cNumeric, "UnnormalizedFixnumValue", rb_eScriptError);
+#endif
 }
 
 #undef rb_float_value
