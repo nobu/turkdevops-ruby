@@ -24,6 +24,14 @@
 #include "ruby/backward/2/long_long.h"
 #include "ruby/backward/2/limits.h"
 
+#if SIZEOF_UINTPTR_T == SIZEOF_INT
+# define UINTPTR_C(c) c ## U
+#elif SIZEOF_UINTPTR_T == SIZEOF_LONG
+# define UINTPTR_C(c) c ## UL
+#elif SIZEOF_UINTPTR_T == SIZEOF_LONG_LONG
+# define UINTPTR_C(c) c ## ULL
+#endif
+
 #if defined(__DOXYGEN__) || \
     (defined HAVE_UINTPTR_T && defined HAVE_INTPTR_T && \
      SIZEOF_UINTPTR_T == SIZEOF_INTPTR_T)
