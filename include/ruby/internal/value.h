@@ -24,7 +24,9 @@
 #include "ruby/backward/2/long_long.h"
 #include "ruby/backward/2/limits.h"
 
-#if defined(__DOXYGEN__)
+#if defined(__DOXYGEN__) || \
+    (defined HAVE_UINTPTR_T && defined HAVE_INTPTR_T && \
+     SIZEOF_UINTPTR_T == SIZEOF_INTPTR_T)
 
 /**
  * Type that represents a Ruby object.  It is an unsigned integer of some kind,
