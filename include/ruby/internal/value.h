@@ -24,12 +24,14 @@
 #include "ruby/backward/2/long_long.h"
 #include "ruby/backward/2/limits.h"
 
-#if SIZEOF_UINTPTR_T == SIZEOF_INT
-# define UINTPTR_C(c) c ## U
+#if defined UINTPTR_C
+# define RBIMPL_VALUE_LITERAL(c) UINTPTR_C(c)
+#elif SIZEOF_UINTPTR_T == SIZEOF_INT
+# define RBIMPL_VALUE_LITERAL(c) c ## U
 #elif SIZEOF_UINTPTR_T == SIZEOF_LONG
-# define UINTPTR_C(c) c ## UL
+# define RBIMPL_VALUE_LITERAL(c) c ## UL
 #elif SIZEOF_UINTPTR_T == SIZEOF_LONG_LONG
-# define UINTPTR_C(c) c ## ULL
+# define RBIMPL_VALUE_LITERAL(c) c ## ULL
 #endif
 
 #if defined(__DOXYGEN__) || \
@@ -83,14 +85,14 @@ typedef intptr_t SIGNED_VALUE;
  *
  * A compile-time constant of type ::VALUE whose value is 0.
  */
-#define RBIMPL_VALUE_NULL UINTPTR_C(0)
+#define RBIMPL_VALUE_NULL RBIMPL_VALUE_LITERAL(0)
 
 /**
  * @private
  *
  * A compile-time constant of type ::VALUE whose value is 1.
  */
-#define RBIMPL_VALUE_ONE  UINTPTR_C(1)
+#define RBIMPL_VALUE_ONE  RBIMPL_VALUE_LITERAL(1)
 
 /**
  * @private
@@ -105,8 +107,8 @@ typedef uintptr_t ID;
 # define SIGNED_VALUE intptr_t
 # define SIZEOF_VALUE SIZEOF_UINTPTR_T
 # undef PRI_VALUE_PREFIX
-# define RBIMPL_VALUE_NULL UINTPTR_C(0)
-# define RBIMPL_VALUE_ONE  UINTPTR_C(1)
+# define RBIMPL_VALUE_NULL RBIMPL_VALUE_LITERAL(0)
+# define RBIMPL_VALUE_ONE  RBIMPL_VALUE_LITERAL(1)
 # define RBIMPL_VALUE_FULL UINTPTR_MAX
 
 #elif SIZEOF_LONG == SIZEOF_VOIDP
