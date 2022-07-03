@@ -24,6 +24,10 @@
 #include "ruby/backward/2/long_long.h"
 #include "ruby/backward/2/limits.h"
 
+#if defined(__DOXYGEN__) || \
+    (defined HAVE_UINTPTR_T && defined HAVE_INTPTR_T && \
+     SIZEOF_UINTPTR_T == SIZEOF_INTPTR_T)
+
 #if defined UINTPTR_C
 # define RBIMPL_VALUE_LITERAL(c) UINTPTR_C(c)
 #elif SIZEOF_UINTPTR_T == SIZEOF_INT
@@ -33,10 +37,6 @@
 #elif SIZEOF_UINTPTR_T == SIZEOF_LONG_LONG
 # define RBIMPL_VALUE_LITERAL(c) c ## ULL
 #endif
-
-#if defined(__DOXYGEN__) || \
-    (defined HAVE_UINTPTR_T && defined HAVE_INTPTR_T && \
-     SIZEOF_UINTPTR_T == SIZEOF_INTPTR_T)
 
 /**
  * Type that represents a Ruby object.  It is an unsigned integer of some kind,
@@ -100,16 +100,6 @@ typedef intptr_t SIGNED_VALUE;
  * Maximum possible value that a ::VALUE can take.
  */
 #define RBIMPL_VALUE_FULL UINTPTR_MAX
-
-#elif defined HAVE_UINTPTR_T && 0
-typedef uintptr_t VALUE;
-typedef uintptr_t ID;
-# define SIGNED_VALUE intptr_t
-# define SIZEOF_VALUE SIZEOF_UINTPTR_T
-# undef PRI_VALUE_PREFIX
-# define RBIMPL_VALUE_NULL RBIMPL_VALUE_LITERAL(0)
-# define RBIMPL_VALUE_ONE  RBIMPL_VALUE_LITERAL(1)
-# define RBIMPL_VALUE_FULL UINTPTR_MAX
 
 #elif SIZEOF_LONG == SIZEOF_VOIDP
 typedef unsigned long VALUE;
