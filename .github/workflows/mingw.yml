@@ -37,12 +37,12 @@ jobs:
         include:
           - msystem: "MINGW64"
             base_ruby: 2.6
-            test_task: "test-all"
-            test-all-opts: "-x fiddle --no-retry"
+            test_task: "test/objspace/test_objspace.rb"
+            test-all-opts: "--no-retry --repeat-count=10 -v"
           - msystem: "UCRT64"
             base_ruby: head
-            test_task: "test-all"
-            test-all-opts: "-x fiddle --no-retry"
+            test_task: "test/objspace/test_objspace.rb"
+            test-all-opts: "--no-retry --repeat-count=10 -v"
       fail-fast: false
     if: ${{ !contains(github.event.head_commit.message, '[DOC]') && !contains(github.event.pull_request.labels.*.name, 'Documentation') }}
     steps:
