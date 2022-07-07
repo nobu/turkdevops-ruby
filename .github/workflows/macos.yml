@@ -23,6 +23,7 @@ jobs:
         os:
           - macos-10.15
           - macos-11
+          - macos-12
       fail-fast: false
     env:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
