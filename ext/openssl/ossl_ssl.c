@@ -9,6 +9,8 @@
  * This program is licensed under the same licence as Ruby.
  * (See the file 'LICENCE'.)
  */
+
+#define OPENSSL_SUPPRESS_DEPRECATED 1
 #include "ossl.h"
 
 #define numberof(ary) (int)(sizeof(ary)/sizeof((ary)[0]))
@@ -291,7 +293,7 @@ ossl_tmp_dh_callback(SSL *ssl, int is_export, int keylength)
     if (!pkey)
 	return NULL;
 
-    return EVP_PKEY_get0_DH(pkey);
+    return (DH *)EVP_PKEY_get0_DH(pkey);
 }
 #endif /* OPENSSL_NO_DH */
 

@@ -7,6 +7,8 @@
  * This program is licensed under the same licence as Ruby.
  * (See the file 'LICENCE'.)
  */
+
+#define OPENSSL_SUPPRESS_DEPRECATED 1
 #include "ossl.h"
 
 #if !defined(OPENSSL_NO_RSA)
@@ -24,7 +26,7 @@
 } while (0)
 
 static inline int
-RSA_HAS_PRIVATE(RSA *rsa)
+RSA_HAS_PRIVATE(OSSL_3_const RSA *rsa)
 {
     const BIGNUM *e, *d;
 
@@ -33,7 +35,7 @@ RSA_HAS_PRIVATE(RSA *rsa)
 }
 
 static inline int
-RSA_PRIVATE(VALUE obj, RSA *rsa)
+RSA_PRIVATE(VALUE obj, OSSL_3_const RSA *rsa)
 {
     return RSA_HAS_PRIVATE(rsa) || OSSL_PKEY_IS_PRIVATE(obj);
 }
@@ -174,7 +176,7 @@ ossl_rsa_initialize_copy(VALUE self, VALUE other)
 static VALUE
 ossl_rsa_is_public(VALUE self)
 {
-    RSA *rsa;
+    OSSL_3_const RSA *rsa;
 
     GetRSA(self, rsa);
     /*
@@ -193,7 +195,7 @@ ossl_rsa_is_public(VALUE self)
 static VALUE
 ossl_rsa_is_private(VALUE self)
 {
-    RSA *rsa;
+    OSSL_3_const RSA *rsa;
 
     GetRSA(self, rsa);
 
@@ -203,7 +205,7 @@ ossl_rsa_is_private(VALUE self)
 static int
 can_export_rsaprivatekey(VALUE self)
 {
-    RSA *rsa;
+    OSSL_3_const RSA *rsa;
     const BIGNUM *n, *e, *d, *p, *q, *dmp1, *dmq1, *iqmp;
 
     GetRSA(self, rsa);
@@ -453,7 +455,7 @@ ossl_rsa_verify_pss(int argc, VALUE *argv, VALUE self)
 static VALUE
 ossl_rsa_get_params(VALUE self)
 {
-    RSA *rsa;
+    OSSL_3_const RSA *rsa;
     VALUE hash;
     const BIGNUM *n, *e, *d, *p, *q, *dmp1, *dmq1, *iqmp;
 
