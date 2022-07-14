@@ -6,10 +6,11 @@ AC_DEFUN([RUBY_TRY_LDFLAGS], [
     RUBY_WERROR_FLAG([
     AC_LINK_IFELSE([AC_LANG_PROGRAM([[$4]], [[$5]])],
 	[$2
+	m4_ifval([$6], [$6="`cat conftest.err`"])
 	AC_MSG_RESULT(yes)],
 	[$3
 	AC_MSG_RESULT(no)])
-    ])
+    ], [$6])
     LDFLAGS="$save_LDFLAGS"
     save_LDFLAGS=
 ])dnl

@@ -3052,8 +3052,10 @@ STATIC=
 	  "-multiply_defined suppress" \
 	  ; do
 	  test "x${linker_flag}" = x || flag="${linker_flag}`echo ${flag} | tr ' ' ,`"
-	  RUBY_TRY_LDFLAGS([$flag], [], [flag=])
+	  RUBY_TRY_LDFLAGS([$flag], [], [flag=], [], [], [werror])
 	  AS_IF([test "x$flag" != x], [
+	    AS_IF([test "x$werror" != x],
+	      [AC_MSG_WARN([$flag is working as LDFLAGS now but warned: $werror])])
 	    RUBY_APPEND_OPTIONS(DLDFLAGS, [$flag])
 	  ])
 	done
