@@ -3059,6 +3059,9 @@ STATIC=
 	    RUBY_APPEND_OPTIONS(DLDFLAGS, [$flag])
 	  ])
 	done
+	AS_CASE([$enable_shared:$LDFLAGS],
+	  [yes:* | no:*dynamic_lookup*], [],
+	  [AC_MSG_ERROR([-undefined dynamic_lookup is no longer supported, use --enable-shared])])
       ])
   ])
 
