@@ -1366,10 +1366,10 @@ $(RIPPER_SRCS): $(srcdir)/parse.y $(srcdir)/defs/id.def
 $(RIPPER_SRCS): $(srcdir)/ext/ripper/tools/preproc.rb $(srcdir)/ext/ripper/tools/dsl.rb
 $(RIPPER_SRCS): $(srcdir)/ext/ripper/ripper_init.c.tmpl $(srcdir)/ext/ripper/eventids2.c
 	$(ECHO) generating $@
-	$(Q) $(CHDIR) $(@D) && \
-	$(CAT_DEPEND) depend | \
+	$(Q)$(CAT_DEPEND) $(@D)/depend | \
 	$(exec) $(MAKE) -f - $(mflags) \
-		Q=$(Q) ECHO=$(ECHO) RM="$(RM1)" top_srcdir=../.. srcdir=. VPATH=../.. \
+		Q=$(Q) ECHO=$(ECHO) RM="$(RM1)" \
+		top_srcdir=$(srcdir) srcdir=$(@D) VPATH=$(@D)$(PATH_SEPARATOR)$(srcdir) \
 		RUBY="$(BASERUBY)" BASERUBY="$(BASERUBY)" PATH_SEPARATOR="$(PATH_SEPARATOR)" LANG=C
 
 $(srcdir)/ext/json/parser/parser.c: $(srcdir)/ext/json/parser/parser.rl $(srcdir)/ext/json/parser/prereq.mk
