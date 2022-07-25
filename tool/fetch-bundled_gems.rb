@@ -2,10 +2,14 @@
 BEGIN {
   require 'fileutils'
 
+  topdir = Dir.pwd
   dir = ARGV.shift
   ARGF.eof?
   FileUtils.mkdir_p(dir)
   Dir.chdir(dir)
+  if Dir.pwd == File.join(topdir, dir)
+    topdir = ".."
+  end
 }
 
 n, v, u, r = $F
@@ -22,6 +26,12 @@ end
 if r
   puts "fetching #{r} ..."
   system("git", "fetch", "origin", r, chdir: n) or abort
+  bdir = "#{topdir}/../.bundle/gems/#{n}-#{v}"
+  gsrc = "../../gems/src/#{n}"
+  unless (File.readlink(bdir) == gsrc rescue false)
+    FileUtils.rm_rf(bdir)
+    File.symlink(gsrc, bdir)
+  end
 end
 c = r || "v#{v}"
 checkout = %w"git -c advice.detachedHead=false checkout"
