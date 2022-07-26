@@ -35,12 +35,13 @@ if r
     success = false
     next
   end
-end
-c = r || "v#{v}"
-checkout = %w"git -c advice.detachedHead=false checkout"
-puts "checking out #{c} (v=#{v}, r=#{r}) ..."
-unless system(*checkout, c, "--", chdir: n)
-  if r or !system(*checkout, v, "--", chdir: n)
-    success = false
+  c = r
+else
+  c = "v#{v}"
+  unless system("git", "log", "-1", "--format=pretty:%%", c, err: IO::NULL, &:read)
+    c = v
   end
 end
+checkout = %w"git -c advice.detachedHead=false checkout"
+puts "checking out #{c} (v=#{v}, r=#{r}) ..."
+success &= system(*checkout, c, "--", chdir: n)
