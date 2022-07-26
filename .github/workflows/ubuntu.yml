@@ -19,20 +19,11 @@ jobs:
   make:
     strategy:
       matrix:
-        test_task: ["check", "test-bundler-parallel", "test-bundled-gems"]
+        test_task: ["test-bundled-gems"]
         os:
           - ubuntu-20.04
 #         - ubuntu-18.04
-        configure: ["", "cppflags=-DRUBY_DEBUG"]
-        include:
-          - test_task: "check"
-            configure: ""
-            arch: i686
-          - test_task: "check"
-            configure: "--enable-shared --enable-load-relative"
-            skipped_tests: "TestGem#test_.*_from_binstubs.*"
-            continue-on-skipped_tests: true
-          - test_task: "test-all TESTS=--repeat-count=2"
+        configure: [""]
       fail-fast: false
     env:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
