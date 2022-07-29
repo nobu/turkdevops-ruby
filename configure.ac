@@ -3011,6 +3011,9 @@ STATIC=
 			: ${LDFLAGS=""}
 			: ${LIBPATHENV=DYLD_FALLBACK_LIBRARY_PATH}
 			: ${PRELOADENV=DYLD_INSERT_LIBRARIES}
+			AS_IF([test x"$enable_shared" = xyes], [], [
+			    EXTDLDFLAGS='-bundle_loader $(topdir)/miniruby'
+			])
 			rb_cv_dlopen=yes],
         [aix*], [	: ${LDSHARED='$(CC)'}
 			AS_IF([test "$GCC" = yes], [
