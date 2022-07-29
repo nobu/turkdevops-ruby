@@ -3044,22 +3044,6 @@ STATIC=
 	[	: ${LDSHARED='$(LD)'}])
   AC_MSG_RESULT($rb_cv_dlopen)
 
-  AS_IF([test "$rb_cv_dlopen" = yes], [
-    AS_CASE(["$target_os"],
-      [darwin*], [
-	for flag in \
-	  "-undefined dynamic_lookup" \
-	  "-multiply_defined suppress" \
-	  ; do
-	  test "x${linker_flag}" = x || flag="${linker_flag}`echo ${flag} | tr ' ' ,`"
-	  RUBY_TRY_LDFLAGS([$flag], [], [flag=])
-	  AS_IF([test "x$flag" != x], [
-	    RUBY_APPEND_OPTIONS(DLDFLAGS, [$flag])
-	  ])
-	done
-      ])
-  ])
-
   AS_IF([test "$enable_rpath:${RPATHFLAG}" = yes:], [
       AS_IF([test "x$rpathflag" != x], [
 	  RPATHFLAG=" ${rpathflag}%1\$-s"
