@@ -114,6 +114,7 @@ jobs:
             matrix.entry.crosshost || '"${default_cc}${append_cc:+ $append_cc}"'
           }}
       - run: make extract-extlibs
+      - run: make extract-gems
       - run: make incs
       - run: make showflags
       - run: make
