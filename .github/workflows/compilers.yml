@@ -70,17 +70,6 @@ jobs:
               optflags: '-O2'
               append_configure: '--disable-shared'
             # check: true
-          - name: 'gcc-11 annocheck'
-            container: gcc-11
-            env:
-              # Minimal flags to pass the check.
-              default_cc: 'gcc-11 -O2 -fcf-protection -Wa,--generate-missing-build-notes=yes'
-              LDFLAGS: '-Wl,-z,now'
-              # FIXME: Drop skipping options
-              # https://bugs.ruby-lang.org/issues/18061
-              # https://sourceware.org/annobin/annobin.html/Test-pie.html
-              TEST_ANNOCHECK_OPTS: "--skip-pie"
-            check: true
           - { name: clang-15,  env: { default_cc: clang-15 } }
           - { name: clang-14,  env: { default_cc: clang-14 } }
           - name: 'clang-14 LTO'
@@ -131,7 +120,6 @@ jobs:
       - run: make leaked-globals
       - run: make test
       - run: make install
-        if: ${{ matrix.entry.check }}
       - run: make test-tool
         if: ${{ matrix.entry.check }}
       - run: make test-all TESTS='-- ruby -ext-'
