@@ -68,7 +68,7 @@ jobs:
             env:
               default_cc: 'gcc-11 -flto=auto -ffat-lto-objects'
               optflags: '-O2'
-            shared: disable
+              append_configure: '--disable-shared'
             # check: true
           - name: 'gcc-11 annocheck'
             container: gcc-11
@@ -88,7 +88,7 @@ jobs:
             env:
               default_cc: 'clang-14 -flto=auto'
               optflags: '-O2'
-            shared: disable
+              append_configure: '--disable-shared'
             # check: true
 
     name: ${{ matrix.entry.name }}
@@ -118,12 +118,12 @@ jobs:
       - name: Run configure
         run: >
           ../src/configure -C ${default_configure} ${append_configure}
+          ${{ !contains(matrix.entry.env.append_configure, '--disable-shared') && '--enable-shared' || '' }}
           --${{
             matrix.entry.crosshost && 'host' || 'with-gcc'
           }}=${{
             matrix.entry.crosshost || '"${default_cc}${append_cc:+ $append_cc}"'
           }}
-          --${{ matrix.entry.shared || 'enable' }}-shared
       - run: make extract-extlibs
       - run: make incs
       - run: make showflags
