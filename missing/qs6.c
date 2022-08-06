@@ -1,7 +1,12 @@
+/* mode: c; c-file-style: gnu */
+#include <limits.h>
+#include <stddef.h>
+#include <stdint.h>
+
 /* mm.c */
 
 #define mmtype long
-#define mmcount (16 / SIZEOF_LONG)
+#define mmcount (16 / sizeof(mmtype))
 #define A ((mmtype*)a)
 #define B ((mmtype*)b)
 #define C ((mmtype*)c)
@@ -9,12 +14,12 @@
 
 #define mmstep (sizeof(mmtype) * mmcount)
 #define mmprepare(base, size) do {\
- if (((VALUE)(base) % sizeof(mmtype)) == 0 && ((size) % sizeof(mmtype)) == 0) \
-   if ((size) >= mmstep) mmkind = 1;\
-   else              mmkind = 0;\
- else                mmkind = -1;\
- high = ((size) / mmstep) * mmstep;\
- low  = ((size) % mmstep);\
+  if (((uintptr_t)(base) % sizeof(mmtype)) == 0 && ((size) % sizeof(mmtype)) == 0) \
+    if ((size) >= mmstep) mmkind = 1;\
+    else              mmkind = 0;\
+  else                mmkind = -1;\
+  high = ((size) / mmstep) * mmstep;\
+  low  = ((size) % mmstep);\
 } while (0)\
 
 #define mmarg mmkind, size, high, low
@@ -22,77 +27,71 @@
 
 static void mmswap_(register char *a, register char *b, mmargdecl)
 {
- if (a == b) return;
- if (mmkind >= 0) {
-   register mmtype s;
-#if mmcount > 1
-   if (mmkind > 0) {
-     register char *t = a + high;
-     do {
-       s = A[0]; A[0] = B[0]; B[0] = s;
-       s = A[1]; A[1] = B[1]; B[1] = s;
-#if mmcount > 2
-       s = A[2]; A[2] = B[2]; B[2] = s;
-#if mmcount > 3
-       s = A[3]; A[3] = B[3]; B[3] = s;
-#endif
-#endif
-       a += mmstep; b += mmstep;
-     } while (a < t);
-   }
-#endif
-   if (low != 0) { s = A[0]; A[0] = B[0]; B[0] = s;
-#if mmcount > 2
-     if (low >= 2 * sizeof(mmtype)) { s = A[1]; A[1] = B[1]; B[1] = s;
-#if mmcount > 3
-       if (low >= 3 * sizeof(mmtype)) {s = A[2]; A[2] = B[2]; B[2] = s;}
-#endif
-     }
-#endif
-   }
- }
- else {
-   register char *t = a + size, s;
-   do {s = *a; *a++ = *b; *b++ = s;} while (a < t);
- }
+  if (a == b) return;
+  if (mmkind >= 0) {
+    register mmtype s;
+    if (mmcount > 1 && mmkind > 0) {
+      register char *t = a + high;
+      do {
+        s = A[0]; A[0] = B[0]; B[0] = s;
+        s = A[1]; A[1] = B[1]; B[1] = s;
+        if (mmcount > 2) {
+          s = A[2]; A[2] = B[2]; B[2] = s;
+        }
+        if (mmcount > 3) {
+          s = A[3]; A[3] = B[3]; B[3] = s;
+        }
+        a += mmstep; b += mmstep;
+      } while (a < t);
+    }
+    if (low != 0) { s = A[0]; A[0] = B[0]; B[0] = s;
+      if (mmcount > 2 && low >= 2 * sizeof(mmtype)) {
+        s = A[1]; A[1] = B[1]; B[1] = s;
+        if (mmcount > 3 && low >= 3 * sizeof(mmtype)) {
+          s = A[2]; A[2] = B[2]; B[2] = s;
+        }
+      }
+    }
+  }
+  else {
+    register char *t = a + size, s;
+    do {s = *a; *a++ = *b; *b++ = s;} while (a < t);
+  }
 }
 #define mmswap(a,b) mmswap_((a),(b),mmarg)
 
 /* a, b, c = b, c, a */
 static void mmrot3_(register char *a, register char *b, register char *c, mmargdecl)
 {
- if (mmkind >= 0) {
-   register mmtype s;
-#if mmcount > 1
-   if (mmkind > 0) {
-     register char *t = a + high;
-     do {
-       s = A[0]; A[0] = B[0]; B[0] = C[0]; C[0] = s;
-       s = A[1]; A[1] = B[1]; B[1] = C[1]; C[1] = s;
-#if mmcount > 2
-       s = A[2]; A[2] = B[2]; B[2] = C[2]; C[2] = s;
-#if mmcount > 3
-       s = A[3]; A[3] = B[3]; B[3] = C[3]; C[3] = s;
-#endif
-#endif
-       a += mmstep; b += mmstep; c += mmstep;
-     } while (a < t);
-   }
-#endif
-   if (low != 0) { s = A[0]; A[0] = B[0]; B[0] = C[0]; C[0] = s;
-#if mmcount > 2
-     if (low >= 2 * sizeof(mmtype)) { s = A[1]; A[1] = B[1]; B[1] = C[1]; C[1] = s;
-#if mmcount > 3
-       if (low == 3 * sizeof(mmtype)) {s = A[2]; A[2] = B[2]; B[2] = C[2]; C[2] = s;}
-#endif
-     }
-#endif
-   }
- }
- else {
-   register char *t = a + size, s;
-   do {s = *a; *a++ = *b; *b++ = *c; *c++ = s;} while (a < t);
- }
+  if (mmkind >= 0) {
+    register mmtype s;
+    if (mmcount > 1 && mmkind > 0) {
+      register char *t = a + high;
+      do {
+        s = A[0]; A[0] = B[0]; B[0] = C[0]; C[0] = s;
+        s = A[1]; A[1] = B[1]; B[1] = C[1]; C[1] = s;
+        if (mmcount > 2) {
+          s = A[2]; A[2] = B[2]; B[2] = C[2]; C[2] = s;
+        }
+        if (mmcount > 3) {
+          s = A[3]; A[3] = B[3]; B[3] = C[3]; C[3] = s;
+        }
+        a += mmstep; b += mmstep; c += mmstep;
+      } while (a < t);
+    }
+    if (low != 0) { s = A[0]; A[0] = B[0]; B[0] = C[0]; C[0] = s;
+      if (mmcount > 2 && low >= 2 * sizeof(mmtype)) {
+        s = A[1]; A[1] = B[1]; B[1] = C[1]; C[1] = s;
+        if (mmcount > 3 && low == 3 * sizeof(mmtype)) {
+          s = A[2]; A[2] = B[2]; B[2] = C[2]; C[2] = s;
+        }
+      }
+    }
+  }
+  else {
+    register char *t = a + size, s;
+    do {s = *a; *a++ = *b; *b++ = *c; *c++ = s;} while (a < t);
+  }
 }
 #define mmrot3(a,b,c) mmrot3_((a),(b),(c),mmarg)
 
@@ -107,18 +106,19 @@ static void mmrot3_(register char *a, register char *b, register char *c, mmargd
 
 typedef struct { char *LL, *RR; } stack_node; /* Stack structure for L,l,R,r */
 #define PUSH(ll,rr) do { top->LL = (ll); top->RR = (rr); ++top; } while (0)  /* Push L,l,R,r */
-#define POP(ll,rr)  do { --top; (ll) = top->LL; (rr) = top->RR; } while (0)      /* Pop L,l,R,r */
+#define POP(ll,rr)  do { --top; (ll) = top->LL; (rr) = top->RR; } while (0)  /* Pop L,l,R,r */
 
 #define med3(a,b,c) ((*cmp)((a),(b),d)<0 ?                                   \
                        ((*cmp)((b),(c),d)<0 ? (b) : ((*cmp)((a),(c),d)<0 ? (c) : (a))) : \
                        ((*cmp)((b),(c),d)>0 ? (b) : ((*cmp)((a),(c),d)<0 ? (a) : (c))))
 
 void
-qs6_qsort(void* base, const size_t nel, const size_t size, cmpfunc_t *cmp, void *d)
+qs6_qsort(void* base, const size_t nel, const size_t size,
+	  int (*cmp)(const void*, const void*, void*), void *d)
 {
-  register char *l, *r, *m;          	/* l,r:left,right group   m:median point */
-  register int t, eq_l, eq_r;       	/* eq_l: all items in left group are equal to S */
-  char *L = base;                    	/* left end of current region */
+  register char *l, *r, *m;             /* l,r:left,right group   m:median point */
+  register int t, eq_l, eq_r;           /* eq_l: all items in left group are equal to S */
+  char *L = base;                       /* left end of current region */
   char *R = (char*)base + size*(nel-1); /* right end of current region */
   size_t chklim = 63;                   /* threshold of ordering element check */
   enum {size_bits = sizeof(size) * CHAR_BIT};
