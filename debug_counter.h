@@ -452,11 +452,11 @@ VALUE rb_debug_counter_show(VALUE klass);
 #define RB_DEBUG_COUNTER_SETMAX(type, num)        rb_debug_counter_max(RB_DEBUG_COUNTER_##type, (unsigned int)(num))
 
 #else
-#define RB_DEBUG_COUNTER_INC(type)              ((void)0)
-#define RB_DEBUG_COUNTER_INC_UNLESS(type, cond) (!!(cond))
-#define RB_DEBUG_COUNTER_INC_IF(type, cond)     (!!(cond))
-#define RB_DEBUG_COUNTER_ADD(type, num)         ((void)0)
-#define RB_DEBUG_COUNTER_SETMAX(type, num)      0
+#define RB_DEBUG_COUNTER_INC(type)              (void)(RB_DEBUG_COUNTER_##type)
+#define RB_DEBUG_COUNTER_INC_UNLESS(type, cond) (RB_DEBUG_COUNTER_##type, !!(cond))
+#define RB_DEBUG_COUNTER_INC_IF(type, cond)     (RB_DEBUG_COUNTER_##type, !!(cond))
+#define RB_DEBUG_COUNTER_ADD(type, num)         ((void)RB_DEBUG_COUNTER_##type)
+#define RB_DEBUG_COUNTER_SETMAX(type, num)      (RB_DEBUG_COUNTER_##type, 0)
 #endif
 
 void rb_debug_counter_show_results(const char *msg);
