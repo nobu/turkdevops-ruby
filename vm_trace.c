@@ -983,7 +983,7 @@ rb_tracearg_return_value(rb_trace_arg_t *trace_arg)
         rb_raise(rb_eRuntimeError, "not supported by this event");
     }
     if (trace_arg->data == Qundef) {
-        rb_bug("rb_tracearg_return_value: unreachable");
+        rb_bug("rb_tracearg_return_value: undef");
     }
     return trace_arg->data;
 }
@@ -998,7 +998,7 @@ rb_tracearg_raised_exception(rb_trace_arg_t *trace_arg)
         rb_raise(rb_eRuntimeError, "not supported by this event");
     }
     if (trace_arg->data == Qundef) {
-        rb_bug("rb_tracearg_raised_exception: unreachable");
+        rb_bug("rb_tracearg_raised_exception: undef");
     }
     return trace_arg->data;
 }
@@ -1015,7 +1015,7 @@ rb_tracearg_eval_script(rb_trace_arg_t *trace_arg)
         rb_raise(rb_eRuntimeError, "not supported by this event");
     }
     if (data == Qundef) {
-        rb_bug("rb_tracearg_raised_exception: unreachable");
+        rb_bug("rb_tracearg_raised_exception: undef");
     }
     if (rb_obj_is_iseq(data)) {
         return Qnil;
@@ -1039,7 +1039,7 @@ rb_tracearg_instruction_sequence(rb_trace_arg_t *trace_arg)
         rb_raise(rb_eRuntimeError, "not supported by this event");
     }
     if (data == Qundef) {
-        rb_bug("rb_tracearg_raised_exception: unreachable");
+        rb_bug("rb_tracearg_raised_exception: undef");
     }
 
     if (rb_obj_is_iseq(data)) {
@@ -1064,7 +1064,7 @@ rb_tracearg_object(rb_trace_arg_t *trace_arg)
         rb_raise(rb_eRuntimeError, "not supported by this event");
     }
     if (trace_arg->data == Qundef) {
-        rb_bug("rb_tracearg_object: unreachable");
+        rb_bug("rb_tracearg_object: undef");
     }
     return trace_arg->data;
 }
