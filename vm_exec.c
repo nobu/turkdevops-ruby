@@ -148,7 +148,7 @@ vm_exec_core(rb_execution_context_t *ec, VALUE initial)
     END_INSNS_DISPATCH();
 
     /* unreachable */
-    rb_bug("vm_eval: unreachable");
+    VM_UNREACHABLE(vm_eval);
     goto first;
 }
 

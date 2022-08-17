@@ -1686,7 +1686,7 @@ rb_postponed_job_register(unsigned int flags, rb_postponed_job_func_t func, void
       case PJRR_SUCCESS    : return 1;
       case PJRR_FULL       : return 0;
       case PJRR_INTERRUPTED: goto begin;
-      default: rb_bug("unreachable\n");
+      default: VM_UNREACHABLE(rb_postponed_job_register);
     }
 }
 
@@ -1715,7 +1715,7 @@ rb_postponed_job_register_one(unsigned int flags, rb_postponed_job_func_t func, 
       case PJRR_SUCCESS    : return 1;
       case PJRR_FULL       : return 0;
       case PJRR_INTERRUPTED: goto begin;
-      default: rb_bug("unreachable\n");
+      default: VM_UNREACHABLE(rb_postponed_job_register_one);
     }
 }
 

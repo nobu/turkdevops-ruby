@@ -337,7 +337,7 @@ vm_push_frame_debug_counter_inc(
       case VM_FRAME_MAGIC_DUMMY:  RB_DEBUG_COUNTER_INC(frame_push_dummy);  return;
     }
 
-    rb_bug("unreachable");
+    VM_UNREACHABLE(vm_push_frame_debug_counter_inc);
 }
 #else
 #define vm_push_frame_debug_counter_inc(ec, cfp, t) /* void */
@@ -794,7 +794,7 @@ cref_replace_with_duplicated_cref_each_frame(const VALUE *vptr, int can_be_svar,
             }
             /* fall through */
           case imemo_ment:
-            rb_bug("cref_replace_with_duplicated_cref_each_frame: unreachable");
+            VM_UNREACHABLE(cref_replace_with_duplicated_cref_each_frame);
           default:
             break;
         }
@@ -820,7 +820,7 @@ vm_cref_replace_with_duplicated_cref(const VALUE *ep)
         return cref_replace_with_duplicated_cref_each_frame(&ep[VM_ENV_DATA_INDEX_ME_CREF], TRUE, envval);
     }
     else {
-        rb_bug("vm_cref_dup: unreachable");
+        VM_UNREACHABLE(vm_cref_dup);
     }
 }
 
@@ -833,7 +833,7 @@ vm_get_cref(const VALUE *ep)
         return cref;
     }
     else {
-        rb_bug("vm_get_cref: unreachable");
+        VM_UNREACHABLE(vm_get_cref);
     }
 }
 
@@ -2162,7 +2162,7 @@ check_match(rb_execution_context_t *ec, VALUE pattern, VALUE target, enum vm_che
         return rb_vm_call_with_refinements(ec, pattern, idEqq, 1, &target, RB_NO_KEYWORDS);
       }
       default:
-        rb_bug("check_match: unreachable");
+        VM_UNREACHABLE(check_match);
     }
 }
 
@@ -2218,7 +2218,7 @@ vm_base_ptr(const rb_control_frame_t *cfp)
             ruby_debug_printf("bp_check: %ld, bp: %ld\n",
                     (long)(cfp->bp_check - GET_EC()->vm_stack),
                     (long)(bp - GET_EC()->vm_stack));
-            rb_bug("vm_base_ptr: unreachable");
+            VM_UNREACHABLE(vm_base_ptr);
         }
 #endif
         return bp;
@@ -3793,7 +3793,7 @@ vm_call_method(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_ca
             return vm_call_method_each_type(ec, cfp, calling);
 
           default:
-            rb_bug("unreachable");
+            VM_UNREACHABLE(vm_call_method);
         }
     }
     else {
@@ -3825,7 +3825,7 @@ vm_call_super_method(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp, st
     // This line is introduced to make different from `vm_call_general` because some compilers (VC we found)
     // can merge the function and the address of the function becomes same.
     // The address of `vm_call_super_method` is used in `search_refined_method`, so it should be different.
-    if (ec == NULL) rb_bug("unreachable");
+    if (ec == NULL) VM_UNREACHABLE(vm_call_super_method);
 
     /* this check is required to distinguish with other functions. */
     VM_ASSERT(vm_cc_call(calling->cc) == vm_call_super_method);
@@ -4207,7 +4207,7 @@ vm_invoke_block(rb_execution_context_t *ec, rb_control_frame_t *reg_cfp,
       case block_handler_type_ifunc:  func = vm_invoke_ifunc_block;  break;
       case block_handler_type_proc:   func = vm_invoke_proc_block;   break;
       case block_handler_type_symbol: func = vm_invoke_symbol_block; break;
-      default: rb_bug("vm_invoke_block: unreachable");
+      default: VM_UNREACHABLE(vm_invoke_block);
     }
 
     return func(ec, reg_cfp, calling, ci, is_lambda, block_handler);
@@ -4221,7 +4221,7 @@ vm_make_proc_with_iseq(const rb_iseq_t *blockiseq)
     struct rb_captured_block *captured;
 
     if (cfp == 0) {
-        rb_bug("vm_make_proc_with_iseq: unreachable");
+        VM_UNREACHABLE(vm_make_proc_with_iseq);
     }
 
     captured = VM_CFP_TO_CAPTURED_BLOCK(cfp);
