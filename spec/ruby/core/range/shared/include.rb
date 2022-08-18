@@ -2,7 +2,7 @@
 require_relative '../../../spec_helper'
 require_relative '../fixtures/classes'
 
-describe :range_include, shared: true do
+describe :range_include_nonnumeric, shared: true do
   describe "on string elements" do
     it "returns true if other is matched by element.succ" do
       ('a'..'c').send(@method, 'b').should be_true
@@ -76,7 +76,9 @@ describe :range_include, shared: true do
       end
     end
   end
+end
 
+describe :range_include, shared: true do
   describe "with Time endpoints" do
     it "uses cover? logic" do
       now = Time.now

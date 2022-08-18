@@ -594,18 +594,19 @@ class TestRange < Test::Unit::TestCase
   end
 
   def test_include
-    assert_include("a".."z", "c")
-    assert_not_include("a".."z", "5")
-    assert_include("a"..."z", "y")
-    assert_not_include("a"..."z", "z")
-    assert_not_include("a".."z", "cc")
-    assert_include("a".., "c")
-    assert_not_include("a".., "5")
+    message = /use #cover\?/
+    assert_raise_with_message(ArgumentError, message) {("a".."z").include?("c")}
+    assert_raise_with_message(ArgumentError, message) {("a"..).include?("c")}
+    assert_raise_with_message(ArgumentError, message) {(.."z").include?("c")}
+    assert_raise_with_message(ArgumentError, message) {("a"..).include?("c")}
+    assert_raise_with_message(ArgumentError, message) {("a"..."z").include?("c")}
+    assert_raise_with_message(ArgumentError, message) {("a"...).include?("c")}
+    assert_raise_with_message(ArgumentError, message) {(..."z").include?("c")}
+    assert_raise_with_message(ArgumentError, message) {("a"...).include?("c")}
+
     assert_include(0...10, 5)
     assert_include(5..., 10)
     assert_not_include(5..., 0)
-    assert_include(.."z", "z")
-    assert_not_include(..."z", "z")
     assert_include(..10, 10)
     assert_not_include(...10, 10)
   end

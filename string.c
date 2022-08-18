@@ -5086,58 +5086,6 @@ rb_str_upto_endless_each(VALUE beg, int (*each)(VALUE, VALUE), VALUE arg)
     return beg;
 }
 
-static int
-include_range_i(VALUE str, VALUE arg)
-{
-    VALUE *argp = (VALUE *)arg;
-    if (!rb_equal(str, *argp)) return 0;
-    *argp = Qnil;
-    return 1;
-}
-
-VALUE
-rb_str_include_range_p(VALUE beg, VALUE end, VALUE val, VALUE exclusive)
-{
-    beg = rb_str_new_frozen(beg);
-    StringValue(end);
-    end = rb_str_new_frozen(end);
-    if (NIL_P(val)) return Qfalse;
-    val = rb_check_string_type(val);
-    if (NIL_P(val)) return Qfalse;
-    if (rb_enc_asciicompat(STR_ENC_GET(beg)) &&
-        rb_enc_asciicompat(STR_ENC_GET(end)) &&
-        rb_enc_asciicompat(STR_ENC_GET(val))) {
-        const char *bp = RSTRING_PTR(beg);
-        const char *ep = RSTRING_PTR(end);
-        const char *vp = RSTRING_PTR(val);
-        if (RSTRING_LEN(beg) == 1 && RSTRING_LEN(end) == 1) {
-            if (RSTRING_LEN(val) == 0 || RSTRING_LEN(val) > 1)
-                return Qfalse;
-            else {
-                char b = *bp;
-                char e = *ep;
-                char v = *vp;
-
-                if (ISASCII(b) && ISASCII(e) && ISASCII(v)) {
-                    if (b <= v && v < e) return Qtrue;
-                    return RBOOL(!RTEST(exclusive) && v == e);
-                }
-            }
-        }
-#if 0
-        /* both edges are all digits */
-        if (ISDIGIT(*bp) && ISDIGIT(*ep) &&
-            all_digits_p(bp, RSTRING_LEN(beg)) &&
-            all_digits_p(ep, RSTRING_LEN(end))) {
-            /* TODO */
-        }
-#endif
-    }
-    rb_str_upto_each(beg, end, RTEST(exclusive), include_range_i, (VALUE)&val);
-
-    return RBOOL(NIL_P(val));
-}
-
 static VALUE
 rb_str_subpat(VALUE str, VALUE re, VALUE backref)
 {

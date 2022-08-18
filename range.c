@@ -1679,7 +1679,8 @@ range_inspect(VALUE range)
     return rb_exec_recursive(inspect_range, range, 0);
 }
 
-static VALUE range_include_internal(VALUE range, VALUE val, int string_use_cover);
+static VALUE range_include_numeric(VALUE range, VALUE val);
+static VALUE range_cover_string(VALUE range, VALUE val);
 
 /*
  *  call-seq:
@@ -1723,7 +1724,9 @@ static VALUE range_include_internal(VALUE range, VALUE val, int string_use_cover
 static VALUE
 range_eqq(VALUE range, VALUE val)
 {
-    VALUE ret = range_include_internal(range, val, 1);
+    VALUE ret = range_include_numeric(range, val);
+    if (!UNDEF_P(ret)) return ret;
+    ret = range_cover_string(range, val);
     if (!UNDEF_P(ret)) return ret;
     return r_cover_p(range, RANGE_BEG(range), RANGE_END(range), val);
 }
@@ -1739,11 +1742,8 @@ range_eqq(VALUE range, VALUE val)
  *    (1..4).include?(5)        # => false
  *    (1..4).include?(4)        # => true
  *    (1...4).include?(4)       # => false
- *    ('a'..'d').include?('b')  # => true
- *    ('a'..'d').include?('e')  # => false
- *    ('a'..'d').include?('B')  # => false
- *    ('a'..'d').include?('d')  # => true
- *    ('a'...'d').include?('d') # => false
+ *    ('a'..'d').include?('b')  # => ArgumentError
+ *    ('a'...'d').include?('d') # => ArgumentError
  *
  *  If begin and end are numeric, #include? behaves like #cover?
  *
@@ -1763,13 +1763,15 @@ range_eqq(VALUE range, VALUE val)
 static VALUE
 range_include(VALUE range, VALUE val)
 {
-    VALUE ret = range_include_internal(range, val, 0);
-    if (!UNDEF_P(ret)) return ret;
-    return rb_call_super(1, &val);
+    VALUE ret = range_include_numeric(range, val);
+    if (UNDEF_P(ret)) {
+        rb_raise(rb_eArgError, "use #cover? for non-numeric range");
+    }
+    return ret;
 }
 
 static VALUE
-range_include_internal(VALUE range, VALUE val, int string_use_cover)
+range_include_numeric(VALUE range, VALUE val)
 {
     VALUE beg = RANGE_BEG(range);
     VALUE end = RANGE_END(range);
@@ -1781,15 +1783,17 @@ range_include_internal(VALUE range, VALUE val, int string_use_cover)
         !NIL_P(rb_check_to_integer(end, "to_int"))) {
         return r_cover_p(range, beg, end, val);
     }
-    else if (RB_TYPE_P(beg, T_STRING) || RB_TYPE_P(end, T_STRING)) {
+    return Qundef;
+}
+
+static VALUE
+range_cover_string(VALUE range, VALUE val)
+{
+    VALUE beg = RANGE_BEG(range);
+    VALUE end = RANGE_END(range);
+    if (RB_TYPE_P(beg, T_STRING) || RB_TYPE_P(end, T_STRING)) {
         if (RB_TYPE_P(beg, T_STRING) && RB_TYPE_P(end, T_STRING)) {
-            if (string_use_cover) {
-                return r_cover_p(range, beg, end, val);
-            }
-            else {
-                VALUE rb_str_include_range_p(VALUE beg, VALUE end, VALUE val, VALUE exclusive);
-                return rb_str_include_range_p(beg, end, val, RANGE_EXCL(range));
-            }
+            return r_cover_p(range, beg, end, val);
         }
         else if (NIL_P(beg)) {
             VALUE r = rb_funcall(val, id_cmp, 1, end);
