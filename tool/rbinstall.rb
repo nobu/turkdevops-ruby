@@ -538,9 +538,9 @@ $script_installer = Class.new(installer) do
     trans = proc {|base| base}
   end
 
-  def prolog(shebang)
+  def prolog(shebang, cmdtype = $cmdtype)
     shebang.sub!(/\r$/, '')
-    script = PROLOG_SCRIPT[$cmdtype]
+    script = PROLOG_SCRIPT[cmdtype]
     shebang.sub!(/\A(\#!.*?ruby\b)?/) do
       if script.end_with?("\n")
         script + ($1 || "#!ruby\n")
@@ -834,7 +834,7 @@ module RbInstall
     def shebang(bin_file_name)
       path = File.join(gem_dir, spec.bindir, bin_file_name)
       first_line = File.open(path, "rb") {|file| file.gets}
-      $script_installer.prolog(first_line).chomp
+      $script_installer.prolog(first_line, nil).chomp
     end
 
     def app_script_text(bin_file_name)
