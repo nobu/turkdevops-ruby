@@ -382,7 +382,7 @@ struct rb_iseq_constant_body {
      */
 
     struct {
-        struct {
+        struct rb_iseq_param_flags {
             unsigned int has_lead   : 1;
             unsigned int has_opt    : 1;
             unsigned int has_rest   : 1;
