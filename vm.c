@@ -4090,6 +4090,11 @@ rb_vm_fstring_table(void)
 
 #if VM_COLLECT_USAGE_DETAILS
 
+#define define_id(name) static ID id_##name(void) {ID id; CONST_ID(id, #name); return id;}
+define_id(USAGE_ANALYSIS_INSN);
+define_id(USAGE_ANALYSIS_INSN_BIGRAM);
+define_id(USAGE_ANALYSIS_REGS);
+
 #define HASH_ASET(h, k, v) rb_hash_aset((h), (st_data_t)(k), (st_data_t)(v))
 
 /* uh = {
@@ -4106,16 +4111,14 @@ rb_vm_fstring_table(void)
 static void
 vm_analysis_insn(int insn)
 {
-    ID usage_hash;
-    ID bigram_hash;
+    const ID usage_hash = id_USAGE_ANALYSIS_INSN();
+    const ID bigram_hash = id_USAGE_ANALYSIS_INSN_BIGRAM();
     static int prev_insn = -1;
 
     VALUE uh;
     VALUE ihash;
     VALUE cv;
 
-    CONST_ID(usage_hash, "USAGE_ANALYSIS_INSN");
-    CONST_ID(bigram_hash, "USAGE_ANALYSIS_INSN_BIGRAM");
     uh = rb_const_get(rb_cRubyVM, usage_hash);
     if (NIL_P(ihash = rb_hash_aref(uh, INT2FIX(insn)))) {
         ihash = rb_hash_new();
@@ -4148,15 +4151,13 @@ vm_analysis_insn(int insn)
 static void
 vm_analysis_operand(int insn, int n, VALUE op)
 {
-    ID usage_hash;
+    const ID usage_hash = id_USAGE_ANALYSIS_INSN();
 
     VALUE uh;
     VALUE ihash;
     VALUE ophash;
     VALUE valstr;
     VALUE cv;
-
-    CONST_ID(usage_hash, "USAGE_ANALYSIS_INSN");
 
     uh = rb_const_get(rb_cRubyVM, usage_hash);
     if (NIL_P(ihash = rb_hash_aref(uh, INT2FIX(insn)))) {
@@ -4180,7 +4181,7 @@ vm_analysis_operand(int insn, int n, VALUE op)
 static void
 vm_analysis_register(int reg, int isset)
 {
-    ID usage_hash;
+    const ID usage_hash = id_USAGE_ANALYSIS_REGS();
     VALUE uh;
     VALUE valstr;
     static const char regstrs[][5] = {
@@ -4199,7 +4200,6 @@ vm_analysis_register(int reg, int isset)
 
     VALUE cv;
 
-    CONST_ID(usage_hash, "USAGE_ANALYSIS_REGS");
     if (syms[0] == 0) {
         char buff[0x10];
         int i;
@@ -4311,11 +4311,9 @@ usage_analysis_clear(VALUE self, ID usage_hash)
 static VALUE
 usage_analysis_insn_clear(VALUE self)
 {
-    ID usage_hash;
-    ID bigram_hash;
+    const ID usage_hash = id_USAGE_ANALYSIS_INSN();
+    const ID bigram_hash = id_USAGE_ANALYSIS_INSN_BIGRAM();
 
-    CONST_ID(usage_hash, "USAGE_ANALYSIS_INSN");
-    CONST_ID(bigram_hash, "USAGE_ANALYSIS_INSN_BIGRAM");
     usage_analysis_clear(rb_cRubyVM, usage_hash);
     return usage_analysis_clear(rb_cRubyVM, bigram_hash);
 }
@@ -4324,9 +4322,7 @@ usage_analysis_insn_clear(VALUE self)
 static VALUE
 usage_analysis_operand_clear(VALUE self)
 {
-    ID usage_hash;
-
-    CONST_ID(usage_hash, "USAGE_ANALYSIS_INSN");
+    const ID usage_hash = id_USAGE_ANALYSIS_INSN();
     return usage_analysis_clear(self, usage_hash);
 }
 
@@ -4334,9 +4330,7 @@ usage_analysis_operand_clear(VALUE self)
 static VALUE
 usage_analysis_register_clear(VALUE self)
 {
-      ID usage_hash;
-
-    CONST_ID(usage_hash, "USAGE_ANALYSIS_REGS");
+    const ID usage_hash = id_USAGE_ANALYSIS_REGS();
     return usage_analysis_clear(self, usage_hash);
 }
 
