@@ -377,8 +377,11 @@ class TestBacktrace < Test::Unit::TestCase
   end
 
   def test_core_backtrace_hash_merge
+    def (obj = Object.new).to_h
+      raise
+    end
     e = assert_raise(TypeError) do
-      {**nil}
+      {**obj}
     end
     assert_not_match(/\Acore#/, e.backtrace_locations[0].base_label)
   end
