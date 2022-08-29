@@ -1571,6 +1571,9 @@ invoke_block_from_c_proc(rb_execution_context_t *ec, const rb_proc_t *proc,
       case block_type_ifunc:
         if (kw_splat == 1) {
             VALUE keyword_hash = argv[argc-1];
+            if (NIL_P(keyword_hash)) {
+                argc--;
+            }
             if (!RB_TYPE_P(keyword_hash, T_HASH)) {
                 keyword_hash = rb_to_hash_type(keyword_hash);
             }
@@ -3500,7 +3503,9 @@ m_core_ensure_shareable(VALUE recv, VALUE obj, VALUE name)
 static VALUE
 core_hash_merge_kwd(VALUE hash, VALUE kw)
 {
-    rb_hash_foreach(rb_to_hash_type(kw), kwmerge_i, hash);
+    if (!NIL_P(kw)) {
+        rb_hash_foreach(rb_to_hash_type(kw), kwmerge_i, hash);
+    }
     return hash;
 }
 

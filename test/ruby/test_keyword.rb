@@ -4408,6 +4408,13 @@ class TestKeywordArgumentsSymProcRefinements < Test::Unit::TestCase
     assert_equal({one: 1, two: 2}, f.call(one:, two:))
   end
 
+  def test_splat_nil
+    def (obj = Object.new).foo(**h)
+      h
+    end
+    assert_equal({}, obj.foo(**nil))
+  end
+
   private def one
     1
   end

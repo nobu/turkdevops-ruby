@@ -2315,7 +2315,7 @@ CALLER_SETUP_ARG(struct rb_control_frame_struct *restrict cfp,
              */
             vm_caller_setup_arg_kw(cfp, calling, ci);
         }
-        else {
+        else if (!NIL_P(cfp->sp[-1])) {
             VALUE keyword_hash = cfp->sp[-1];
             if (!RB_TYPE_P(keyword_hash, T_HASH)) {
                 /* Convert a non-hash keyword splat to a new hash */
