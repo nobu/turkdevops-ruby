@@ -39,6 +39,14 @@ jobs:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
       RUBY_DEBUG: ci
       SETARCH: ${{ matrix.arch && format('setarch {0}', matrix.arch) }}
+    name: >-
+      ${{
+        matrix.name ||
+        format('{0}{1}{2}{3}', matrix.test_task,
+          (matrix.configure && format(', configure: [{0}]', matrix.configure) || ''),
+          (matrix.arch && format(', arch: {0}', matrix.arch) || ''),
+          '')
+      }}
     runs-on: ${{ matrix.os || 'ubuntu-20.04' }}
     if: ${{ !contains(github.event.head_commit.message, '[DOC]') && !contains(github.event.pull_request.labels.*.name, 'Documentation') }}
     steps:
