@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ruby/internal/config.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,14 @@ const char MJIT_HEADER[] = BUILDDIR "/" MJIT_MIN_HEADER;
 
 #define STRINGIZE(expr) STRINGIZE0(expr)
 #define STRINGIZE0(expr) #expr
+
+NORETURN(static void die(const char *));
+static void
+die(const char *message)
+{
+    fputs(message, stderr);
+    exit(-1);
+}
 
 static void
 insert_env_path(const char *envname, const char *paths, size_t size, int prepend)
@@ -66,8 +75,10 @@ main(int argc, char **argv)
         ;
 #ifndef LOAD_RELATIVE
     static const char mjit_build_dir[] = BUILDDIR"/mjit_build_dir."SOEXT;
-    struct stat stbuf;
 #endif
+    static const char fake_opt[] = "-r"BUILDDIR"/"ARCH"-fake.rb";
+    static const char *const fake_path = fake_opt + sizeof("-r") - 1;
+    struct stat stbuf;
     const size_t dirsize = sizeof(builddir);
     const size_t namesize = sizeof(rubypath) - dirsize;
     const char *rubyname = rubypath + dirsize;
@@ -81,6 +92,23 @@ main(int argc, char **argv)
         setenv("MJIT_SEARCH_BUILD_DIR", "true", 0);
     }
 #endif
+
+    if (stat(fake_path, &stbuf)) {
+        die("fake file not found.\n");
+    }
+    else if (argc > (int)(INT_MAX / sizeof(char *) - 2)) {
+        die("cannot insert fake.rb path due to too many arguments.\n");
+    }
+    else {
+        char **new_argv = malloc((argc + 2) * sizeof(char *));
+        if (!new_argv) {
+            die("cannot allocate memory for new argv.\n");
+        }
+        new_argv[0] = argv[0];
+        new_argv[1] = (char *)fake_opt;
+        memcpy(&new_argv[2], &argv[1], argc * sizeof(char *));
+        argv = new_argv;
+    }
 
     if (!(p = strrchr(arg0, '/'))) p = arg0; else p++;
     if (strlen(p) < namesize - 1) {
