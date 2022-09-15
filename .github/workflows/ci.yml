@@ -1,4 +1,4 @@
-name: Ubuntu
+name: CI
 on:
   push:
     paths-ignore:
@@ -32,6 +32,7 @@ jobs:
         test_task: [check]
         configure: [cppflags=-DRUBY_DEBUG] # default to use more assertions
         arch: ['']
+        os: [ubuntu-20.04, macos-11, macos-12]
         # specify all jobs with `include` to avoid testing duplicated things
         include:
           - test_task: check
@@ -49,14 +50,21 @@ jobs:
       GITPULLOPTIONS: --no-tags origin ${{github.ref}}
       RUBY_DEBUG: ci
       SETARCH: ${{ matrix.arch && format('setarch {0}', matrix.arch) }}
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.os || 'ubuntu-20.04' }}
     if: ${{ !contains(github.event.head_commit.message, '[DOC]') && !contains(github.event.pull_request.labels.*.name, 'Documentation') }}
     steps:
       - run: mkdir build
         working-directory:
+
       - name: Set ENV
         run: |
           echo "GNUMAKEFLAGS=-j$((1 + $(nproc --all)))" >> $GITHUB_ENV
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      - name: Set ENV
+        run: |
+          echo "MAKEFLAGS=-j$((1 + $(sysctl -n hw.activecpu)))" >> $GITHUB_ENV
+        if: ${{ startsWith(matrix.os, 'macos') }}
+
       - name: Install libraries
         env:
           arch: ${{matrix.arch}}
@@ -71,6 +79,18 @@ jobs:
           zlib1g-dev${arch} libncurses5-dev${arch} libffi-dev${arch} \
           bison autoconf ruby
           sudo apt-get install -q -y pkg-config${arch} || :
+        if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      - name: Install libraries
+        run: |
+          brew upgrade
+          brew install gmp libffi openssl@1.1 zlib autoconf automake libtool readline bison
+          echo "PATH="/usr/local/opt/bison/bin:$PATH"" >> $GITHUB_ENV
+          for lib in openssl@1.1 readline; do
+            CONFIGURE_ARGS="${CONFIGURE_ARGS:+$CONFIGURE_ARGS }--with-${lib%@*}-dir=$(brew --prefix $lib)"
+          done
+          echo CONFIGURE_ARGS="${CONFIGURE_ARGS}" >> $GITHUB_ENV
+        if: ${{ startsWith(matrix.os, 'macos') }}
+
       - name: git config
         run: |
           git config --global advice.detachedHead 0
@@ -84,9 +104,10 @@ jobs:
           key: downloaded-cache
       - name: Fixed world writable dirs
         run: |
+          set +x
           chmod -v go-w $HOME $HOME/.config
-          sudo chmod -R go-w /usr/share
-          sudo bash -c 'IFS=:; for d in '"$PATH"'; do chmod -v go-w $d; done' || :
+          [ -d /usr/share -a -w /usr/share ] && sudo chmod -R go-w /usr/share
+          (IFS=:; exec sudo chmod -v go-w $PATH) || :
       - run: ./autogen.sh
         working-directory: src
       - name: Run configure
@@ -103,7 +124,9 @@ jobs:
         if: ${{ matrix.test_task == 'check' }}
       - name: Create dummy files in build dir
         run: |
-          $SETARCH ./miniruby -e '(("a".."z").to_a+("A".."Z").to_a+("0".."9").to_a+%w[foo bar test zzz]).each{|basename|File.write("#{basename}.rb", "raise %(do not load #{basename}.rb)")}'
+          for basename in {a..z} {A..Z} {0..9} foo bar test zzz; do
+            echo "raise %(do not load ${basename}.rb)" > ${basename}.rb
+          done
         if: ${{ matrix.test_task == 'check' }}
       - name: make ${{ matrix.test_task }}
         run: |
@@ -121,6 +144,7 @@ jobs:
           GNUMAKEFLAGS: ""
           RUBY_TESTOPTS: "-v --tty=no"
           TESTS: ${{ matrix.skipped_tests }}
+          PRECHECK_BUNDLED_GEMS: "no"
         if: ${{ matrix.test_task == 'check' && matrix.skipped_tests != '' }}
         continue-on-error: ${{ matrix.continue-on-skipped_tests || false }}
       - uses: ruby/action-slack@b6882ea6ef8f556f9f9af9ec1220d3f1ced74acf # v3.0.0
