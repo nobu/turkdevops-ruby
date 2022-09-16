@@ -499,7 +499,14 @@ AS_CASE(["$target_os"],
     ])
     rb_cv_binary_elf=no
     : ${enable_shared=yes}
-    ],
+],
+[darwin*], [
+    AS_IF([test x"${enable_shared=yes}" != xyes], [
+        AS_CASE([$MAJOR.$MINOR],
+            [3.3], [AC_MSG_WARN([--disable-shared on macOS will be deprecated])],
+            [AC_MSG_ERROR([No longer support --disable-shared on macOS])])
+    ])
+],
 [hiuxmpp*], [AC_DEFINE(__HIUX_MPP__)])    # by TOYODA Eizi <toyoda@npd.kishou.go.jp>
 
 AC_PROG_LN_S
