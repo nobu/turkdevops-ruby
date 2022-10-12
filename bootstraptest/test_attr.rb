@@ -50,3 +50,14 @@ assert_equal %{ok}, %{
 
   Big.new.foo
 }
+
+assert_equal %{ok}, %{
+  class A
+    attr_reader :foo
+    def initialize(foo)
+      @foo = foo
+    end
+  end
+  obj = A.new("ok")
+  obj.__send__(:foo)
+}
