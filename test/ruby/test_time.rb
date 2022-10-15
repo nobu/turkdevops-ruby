@@ -1407,4 +1407,42 @@ class TestTime < Test::Unit::TestCase
       t.deconstruct_keys(%i[year month sec nonexistent])
     )
   end
+
+  def test_ractor_shareable
+    t = Time.new(2000, 1, 1, 0, 0, 0, "-00:00")
+    assert_not_operator(Ractor, :shareable?, t)
+    t.freeze
+    assert_operator(Ractor, :shareable?, t)
+    assert_in_ractor do |r|
+      r.send(t)
+      assert_equal(t, r.take)
+    end
+  end
+
+  def test_ractor_unshareable_zone
+    z = Proc.new {|tm| tm}
+    class << z
+      alias local_to_utc call
+      alias utc_to_local call
+    end
+    t = Time.new(2000, 1, 1, 0, 0, 0, z)
+    assert_not_operator(Ractor, :shareable?, t)
+    t.freeze
+    assert_not_operator(Ractor, :shareable?, t)
+    assert_in_ractor do |r|
+      assert_raise(Ractor::Error) {r.send(t)}
+    end
+  end
+
+  def assert_in_ractor(block = Ractor.method(:recv))
+    r = EnvUtil.suppress_warning {Ractor.new(&block)}
+    yield r
+  ensure
+    if r
+      begin
+        r.send(nil); r.take
+      rescue Ractor::ClosedError
+      end
+    end
+  end
 end
