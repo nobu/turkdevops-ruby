@@ -104,7 +104,9 @@ class OpenSSL::TestX509CRL < OpenSSL::TestCase
     assert_equal(1, revoked[0].serial)
     assert_equal(1000, revoked[999].serial)
 
+    assert_empty(OpenSSL.errors)
     crl.revoked = revoked
+    OpenSSL.errors.clear if OpenSSL::OPENSSL_LIBRARY_VERSION[" 3.0.6 "]
     revoked2 = crl.revoked
     assert_equal(revoked.map(&:serial), revoked2.map(&:serial))
   end
