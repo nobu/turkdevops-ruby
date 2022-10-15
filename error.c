@@ -1978,7 +1978,7 @@ static const rb_data_type_t name_err_mesg_data_type = {
         name_err_mesg_free,
         name_err_mesg_memsize,
     },
-    0, 0, RUBY_TYPED_FREE_IMMEDIATELY
+    0, 0, RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_FROZEN_SHAREABLE
 };
 
 /* :nodoc: */
@@ -1999,7 +1999,9 @@ rb_name_err_mesg_init(VALUE klass, VALUE mesg, VALUE recv, VALUE method)
 static VALUE
 rb_name_err_mesg_new(VALUE mesg, VALUE recv, VALUE method)
 {
-    return rb_name_err_mesg_init(rb_cNameErrorMesg, mesg, recv, method);
+    VALUE exc = rb_name_err_mesg_init(rb_cNameErrorMesg, mesg, recv, method);
+    OBJ_FREEZE_RAW(exc);
+    return exc;
 }
 
 /* :nodoc: */

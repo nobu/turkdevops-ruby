@@ -1511,7 +1511,7 @@ assert_equal "ok", %q{
   end
   begin
     Ractor.new{} << err
-  rescue TypeError
+  rescue TypeError, Ractor::Error
     'ok'
   end
 }
