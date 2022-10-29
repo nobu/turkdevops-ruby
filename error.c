@@ -965,6 +965,7 @@ builtin_class_name(VALUE x)
     return etype;
 }
 
+MJIT_FUNC_EXPORTED
 const char *
 rb_builtin_class_name(VALUE x)
 {

@@ -11,6 +11,7 @@
 #include "ruby/internal/config.h"
 #include <stddef.h>             /* for size_t */
 #include "internal/array.h"     /* for rb_ary_hidden_new_fill */
+#include "internal/error.h"     /* for rb_builtin_class_name */
 #include "internal/gc.h"        /* for RB_OBJ_WRITE */
 #include "ruby/internal/stdbool.h"     /* for bool */
 #include "ruby/ruby.h"          /* for rb_block_call_func_t */
@@ -174,6 +175,22 @@ imemo_type_p(VALUE imemo, enum imemo_type imemo_type)
 }
 
 #define IMEMO_TYPE_P(v, t) imemo_type_p((VALUE)v, t)
+
+static inline void
+imemo_assert_type(VALUE imemo, enum imemo_type expected_type)
+{
+    const char *expected_name = rb_imemo_name(expected_type);
+    if (UNLIKELY(!RB_TYPE_P(imemo, T_IMEMO))) {
+        rb_bug("imemo_%s expected but %p (class %s)", expected_name,
+               (void *)imemo, rb_builtin_class_name(imemo));
+    }
+
+    enum imemo_type actual_type = imemo_type(imemo);
+    if (actual_type != expected_type) {
+        rb_bug("imemo_%s expected but imemo_%s", expected_name,
+               rb_imemo_name(actual_type));
+    }
+}
 
 static inline bool
 imemo_throw_data_p(VALUE imemo)
