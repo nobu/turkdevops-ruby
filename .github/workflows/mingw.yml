@@ -32,8 +32,7 @@ jobs:
       MSYSTEM: ${{ matrix.msystem }}
       MSYS2_ARCH: x86_64
       CHOST: "x86_64-w64-mingw32"
-      CFLAGS:   "-march=x86-64 -mtune=generic -O3 -pipe"
-      CXXFLAGS: "-march=x86-64 -mtune=generic -O3 -pipe"
+      optflags: "-march=x86-64 -mtune=generic -O3 -pipe -fno-omit-frame-pointer -fno-fast-math"
       CPPFLAGS: "-D_FORTIFY_SOURCE=2 -D__USE_MINGW_ANSI_STDIO=1 -DFD_SETSIZE=2048"
       LDFLAGS:  "-pipe"
       UPDATE_UNICODE: "UNICODE_FILES=. UNICODE_PROPERTY_FILES=. UNICODE_AUXILIARY_FILES=. UNICODE_EMOJI_FILES=."
