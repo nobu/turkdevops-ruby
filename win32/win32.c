@@ -42,7 +42,7 @@
 #include <shlobj.h>
 #include <mbstring.h>
 #include <shlwapi.h>
-#if defined _MSC_VER && _MSC_VER >= 1400
+#if (defined(_MSC_VER) && _MSC_VER >= 1400) || defined(__MINGW32__)
 #include <crtdbg.h>
 #include <rtcapi.h>
 #endif
@@ -679,6 +679,8 @@ invalid_parameter(const wchar_t *expr, const wchar_t *func, const wchar_t *file,
 int ruby_w32_rtc_error;
 
 /* License: Ruby's */
+RBIMPL_ATTR_NONNULL((2, 4, 5))
+RBIMPL_ATTR_FORMAT(RBIMPL_PRINTF_FORMAT, 5, 6)
 static int __cdecl
 rtc_error_handler(int e, const char *src, int line, const char *exe, const char *fmt, ...)
 {
@@ -888,10 +890,6 @@ socklist_delete(SOCKET *sockp, int *flagp)
 }
 
 #if RUBY_MSVCRT_VERSION >= 80
-# ifdef __MINGW32__
-#  define _CrtSetReportMode(type,mode) ((void)0)
-#  define _RTC_SetErrorFunc(func) ((void)0)
-# endif
 static void set_pioinfo_extra(void);
 #endif
 static int w32_cmdvector(const WCHAR *, char ***, UINT, rb_encoding *);
