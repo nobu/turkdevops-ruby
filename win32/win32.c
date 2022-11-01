@@ -680,18 +680,32 @@ int ruby_w32_rtc_error;
 
 /* License: Ruby's */
 RBIMPL_ATTR_NONNULL((2, 4, 5))
-RBIMPL_ATTR_FORMAT(RBIMPL_PRINTF_FORMAT, 5, 6)
 static int __cdecl
-rtc_error_handler(int e, const char *src, int line, const char *exe, const char *fmt, ...)
+rtc_error_handler(int e, const wchar_t *src, int line, const wchar_t *exe, const wchar_t *fmt, ...)
 {
-    va_list ap;
+    va_list ap, ap2;
     VALUE str;
+    long slen;
+    int len;
 
     if (!ruby_w32_rtc_error) return 0;
-    str = rb_sprintf("%s:%d: ", src, line);
+    str = rb_w32_conv_from_wchar(src, rb_utf8_encoding());
+    rb_str_catf(str, ":%d: ", line);
+    slen = RSTRING_LEN(str);
     va_start(ap, fmt);
-    rb_str_vcatf(str, fmt, ap);
+    va_copy(ap2, ap);
+    len = _vsnwprintf(NULL, 0, fmt, ap);
     va_end(ap);
+    if (len > 0) {
+        VALUE vbuf = 0;
+        wchar_t *wbuf = ALLOCV_N(wchar_t, vbuf, len + 1);
+        int wlen = _vsnwprintf(wbuf, len + 1, fmt, ap2);
+        len = WideCharToMultiByte(CP_UTF8, 0, wbuf, wlen, NULL, 0, NULL, NULL);
+        rb_str_modify_expand(str, len);
+        WideCharToMultiByte(CP_UTF8, 0, wbuf, wlen, RSTRING_PTR(str) + slen, len, NULL, NULL);
+        ALLOCV_END(vbuf);
+    }
+    va_end(ap2);
     rb_str_cat(str, "\n", 1);
     rb_write_error2(RSTRING_PTR(str), RSTRING_LEN(str));
     return 0;
@@ -904,7 +918,7 @@ rb_w32_sysinit(int *argc, char ***argv)
 
     _CrtSetReportMode(_CRT_ASSERT, 0);
     _set_invalid_parameter_handler(invalid_parameter);
-    _RTC_SetErrorFunc(rtc_error_handler);
+    _RTC_SetErrorFuncW(rtc_error_handler);
     set_pioinfo_extra();
 #endif
     SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
