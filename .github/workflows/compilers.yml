@@ -231,6 +231,7 @@ jobs:
       - name: setenv
         run: |
           echo "GNUMAKEFLAGS=-sj$((1 + $(nproc --all)))" >> $GITHUB_ENV
+      - run: sudo apt-get install -q -y rustc
       - uses: actions/checkout@v3
         with:
           path: src
