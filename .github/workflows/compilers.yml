@@ -231,7 +231,12 @@ jobs:
       - name: setenv
         run: |
           echo "GNUMAKEFLAGS=-sj$((1 + $(nproc --all)))" >> $GITHUB_ENV
-      - run: sudo apt-get install -q -y rustc
+      - run: sudo apt-get install -q -y rustc snap
+      - name: Add rust target ${{ matrix.entry.crosshost }}
+        run: |
+          sudo snap install rustup
+          sudo rustup target add ${{ matrix.entry.crosshost }}
+        if: ${{ matrix.entry.crosshost }}
       - uses: actions/checkout@v3
         with:
           path: src
