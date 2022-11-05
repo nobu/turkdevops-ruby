@@ -117,7 +117,7 @@ jobs:
             shared: disable
             # check: true
 
-#         - { name: aarch64-linux-gnu,     crosshost: aarch64-linux-gnu, container: crossbuild-essential-arm64 }
+          - { name: aarch64-linux-gnu,     crosshost: aarch64-linux-gnu, container: crossbuild-essential-arm64 }
 #         - { name: arm-linux-gnueabi,     crosshost: arm-linux-gnueabi }
 #         - { name: arm-linux-gnueabihf,   crosshost: arm-linux-gnueabihf }
 #         - { name: i686-w64-mingw32,      crosshost: i686-w64-mingw32 }
