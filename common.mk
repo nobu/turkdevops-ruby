@@ -114,8 +114,6 @@ COMMONOBJS    = array.$(OBJEXT) \
 		marshal.$(OBJEXT) \
 		math.$(OBJEXT) \
 		memory_view.$(OBJEXT) \
-		mjit.$(OBJEXT) \
-		mjit_compiler.$(OBJEXT) \
 		node.$(OBJEXT) \
 		numeric.$(OBJEXT) \
 		object.$(OBJEXT) \
@@ -156,12 +154,18 @@ COMMONOBJS    = array.$(OBJEXT) \
 		vm_dump.$(OBJEXT) \
 		vm_sync.$(OBJEXT) \
 		vm_trace.$(OBJEXT) \
+		$(MJIT_OBJS) \
 		$(YJIT_OBJ) \
 		$(COROUTINE_OBJ) \
 		$(DTRACE_OBJ) \
 		$(BUILTIN_ENCOBJS) \
 		$(BUILTIN_TRANSOBJS) \
 		$(MISSING)
+
+$(MJIT_SUPPORT:yes=)MJIT_OBJS = \
+		mjit.$(OBJEXT) \
+		mjit_compiler.$(OBJEXT) \
+#
 
 EXPORTOBJS    = $(DLNOBJ) \
 		localeinit.$(OBJEXT) \
