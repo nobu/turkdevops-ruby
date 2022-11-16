@@ -125,23 +125,93 @@ err_vcatf(VALUE str, const char *pre, const char *file, int line,
     return str;
 }
 
-static VALUE syntax_error_with_path(VALUE, VALUE, VALUE*, rb_encoding*);
+static VALUE syntax_error_with_path(VALUE, VALUE, VALUE*, VALUE*, rb_encoding*);
+static VALUE rb_eSyntaxErrorDiag;
+static ID id_diagnostic;
+
+typedef struct {
+    VALUE message, src;
+    int lineno, beg, end;
+} syntax_error_diag;
+
+static void
+syntax_error_diag_mark(void *ptr)
+{
+    syntax_error_diag *diag = ptr;
+    rb_gc_mark(diag->message);
+    rb_gc_mark(diag->src);
+}
+
+static size_t
+syntax_error_diag_size(const void *ptr)
+{
+    return sizeof(syntax_error_diag);
+}
+
+static void
+syntax_error_diag_compact(void *ptr)
+{
+    syntax_error_diag *diag = ptr;
+    diag->message = rb_gc_location(diag->message);
+    diag->src = rb_gc_location(diag->src);
+}
+
+static const rb_data_type_t syntax_error_diag_type = {
+    "SyntaxError::Diagnostic",
+    {
+        syntax_error_diag_mark, RUBY_TYPED_DEFAULT_FREE,
+        syntax_error_diag_size, syntax_error_diag_compact,
+    },
+    NULL, NULL,
+    RUBY_TYPED_WB_PROTECTED | RUBY_TYPED_FREE_IMMEDIATELY,
+};
+
+static VALUE
+syntax_error_diag_new(VALUE message, VALUE src, int lineno, int beg, int end)
+{
+    syntax_error_diag *diag;
+    VALUE obj = TypedData_Make_Struct(rb_eSyntaxErrorDiag, syntax_error_diag,
+                                      &syntax_error_diag_type, diag);
+    diag->message = message;
+    diag->src = src;
+    diag->lineno = lineno;
+    diag->beg = beg;
+    diag->end = end;
+    return obj;
+}
+
+VALUE ruby_show_error_line(VALUE errbuf, VALUE str, int lineno, int beg, int end, int highlight);
+static VALUE
+syntax_error_diag_detail(VALUE self, VALUE errbuf, int highlight)
+{
+    syntax_error_diag *diag = rb_check_typeddata(self, &syntax_error_diag_type);
+
+    Check_Type(errbuf, T_STRING);
+    rb_str_append(errbuf, diag->message);
+    if (RTEST(diag->src)) {
+        errbuf = ruby_show_error_line(errbuf, diag->src,
+                                      diag->lineno, diag->beg, diag->end,
+                                      highlight);
+    }
+    return errbuf;
+}
 
 VALUE
-rb_syntax_error_append(VALUE exc, VALUE file, int line, int column,
+rb_syntax_error_append(VALUE exc, VALUE file, VALUE src, int lineno, int beg, int end,
                        rb_encoding *enc, const char *fmt, va_list args)
 {
     const char *fn = NIL_P(file) ? NULL : RSTRING_PTR(file);
+    VALUE mesg = rb_enc_str_new(0, 0, enc);
+    err_vcatf(mesg, NULL, fn, lineno, fmt, args);
     if (!exc) {
-        VALUE mesg = rb_enc_str_new(0, 0, enc);
-        err_vcatf(mesg, NULL, fn, line, fmt, args);
         rb_str_cat2(mesg, "\n");
         rb_write_error_str(mesg);
     }
     else {
         VALUE mesg;
-        exc = syntax_error_with_path(exc, file, &mesg, enc);
-        err_vcatf(mesg, NULL, fn, line, fmt, args);
+        VALUE diags = Qnil;
+        exc = syntax_error_with_path(exc, file, &mesg, &diags, enc);
+        rb_ary_push(diags, syntax_error_diag_new(mesg, src, lineno, beg, end));
     }
 
     return exc;
@@ -2388,22 +2458,42 @@ syntax_error_initialize(int argc, VALUE *argv, VALUE self)
 }
 
 static VALUE
-syntax_error_with_path(VALUE exc, VALUE path, VALUE *mesg, rb_encoding *enc)
+syntax_error_with_path(VALUE exc, VALUE path, VALUE *mesg, VALUE *diags, rb_encoding *enc)
 {
     if (NIL_P(exc)) {
         *mesg = rb_enc_str_new(0, 0, enc);
         exc = rb_class_new_instance(1, mesg, rb_eSyntaxError);
+        *diags = rb_ary_hidden_new(0);
+        rb_ivar_set(exc, id_diagnostic, *diags);
         rb_ivar_set(exc, id_i_path, path);
     }
     else {
         if (rb_attr_get(exc, id_i_path) != path) {
             rb_raise(rb_eArgError, "SyntaxError#path changed");
         }
+        *diags = rb_ivar_get(exc, id_diagnostic);
+        Check_Type(*diags, T_ARRAY);
         VALUE s = *mesg = rb_attr_get(exc, idMesg);
         if (RSTRING_LEN(s) > 0 && *(RSTRING_END(s)-1) != '\n')
             rb_str_cat_cstr(s, "\n");
     }
     return exc;
+}
+
+static VALUE
+syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
+{
+    VALUE opt;
+    rb_scan_args(argc, argv, "0:", &opt);
+
+    int highlight = RTEST(check_highlight_keyword(opt, 0));
+    VALUE diags = rb_ivar_get(exc, id_diagnostic);
+    Check_Type(diags, T_ARRAY);
+    VALUE errbuf = rb_str_new(0, 0);
+    for (long i = 0; i < RARRAY_LEN(diags); ++i) {
+        errbuf = syntax_error_diag_detail(RARRAY_AREF(diags, i), errbuf, highlight);
+    }
+    return errbuf;
 }
 
 /*
@@ -3066,7 +3156,10 @@ Init_Exception(void)
 
     rb_eScriptError = rb_define_class("ScriptError", rb_eException);
     rb_eSyntaxError = rb_define_class("SyntaxError", rb_eScriptError);
+    rb_define_method(rb_eSyntaxError, "detailed_message", syntax_error_detailed_message, -1);
     rb_define_method(rb_eSyntaxError, "initialize", syntax_error_initialize, -1);
+    rb_eSyntaxErrorDiag = rb_define_class_under(rb_eSyntaxError, "Diagnostic", rb_cBasicObject);
+    rb_undef_alloc_func(rb_eSyntaxErrorDiag);
 
     /* RDoc will use literal name value while parsing rb_attr,
     *  and will render `idPath` as an attribute name without this trick */
@@ -3151,6 +3244,7 @@ Init_Exception(void)
     id_bottom = rb_intern_const("bottom");
     id_iseq = rb_make_internal_id();
     id_recv = rb_make_internal_id();
+    id_diagnostic = rb_intern_const("diagnostic");
 
     sym_category = ID2SYM(id_category);
     sym_highlight = ID2SYM(rb_intern_const("highlight"));
