@@ -795,15 +795,27 @@ noarch-fake.rb: # prerequisite of yes-fake
 	touch $@
 
 btest: $(TEST_RUNNABLE)-btest
-no-btest: PHONY
-yes-btest: yes-fake miniruby$(EXEEXT) PHONY
+no-btest: test-misc
+yes-btest: yes-fake miniruby$(EXEEXT) test-misc
 	$(ACTIONS_GROUP)
 	$(Q)$(gnumake_recursive)$(exec) $(BOOTSTRAPRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(BTESTRUBY) $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(BTESTS)
 	$(ACTIONS_ENDGROUP)
 
+test-misc: PHONY
+	$(ACTIONS_GROUP)
+	$(ECHO) Check if C-sources are US-ASCII
+	$(BOOTSTRAPRUBY) -C "$(srcdir)" -r./tool/lib/git-files \
+	-e "git_files_check(*ARGV) {|n| n.ascii_only?}" \
+	-- *.[chy] 'include/**/*.h' 'internal/**/*.h' win32/*.[ch]
+	$(ECHO) Check for trailing spaces
+	$(BOOTSTRAPRUBY) -C "$(srcdir)" -r./tool/lib/git-files \
+	-e "git_files_check(*ARGV) {|n| /[ \t]$$/ !~ n rescue false}" \
+	-- '*.rb' '*.[chy]'
+	$(ACTIONS_ENDGROUP)
+
 btest-ruby: $(TEST_RUNNABLE)-btest-ruby
-no-btest-ruby: PHONY
-yes-btest-ruby: prog PHONY
+no-btest-ruby: test-misc
+yes-btest-ruby: prog test-misc
 	$(ACTIONS_GROUP)
 	$(Q)$(gnumake_recursive)$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(srcdir)/lib $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(BTESTS)
 	$(ACTIONS_ENDGROUP)
