@@ -5,6 +5,7 @@ class LeakChecker
   def initialize
     @fd_info = find_fds
     @@skip = false
+    @tmpdir, @old_tmpdir = setup_tmpdir
     @tempfile_info = find_tempfiles
     @thread_info = find_threads
     @env_info = find_env
@@ -13,12 +14,17 @@ class LeakChecker
     @old_warning_flags = find_warning_flags
   end
 
+  def finish
+    finish_tmpdir_leak
+  end
+
   def check(test_name)
     if /i386-solaris/ =~ RUBY_PLATFORM && /TestGem/ =~ test_name
       GC.verify_internal_consistency
     end
 
     leaks = [
+      check_tmpdir_leak(test_name),
       check_fd_leak(test_name),
       check_thread_leak(test_name),
       check_tempfile_leak(test_name),
@@ -178,6 +184,56 @@ class LeakChecker
     end
     @tempfile_info = [count2, initial_tempfiles]
     return leaked
+  end
+
+  def setup_tmpdir
+    tmpdir = (old_tmpdir = ENV['TMPDIR']) || '/tmp'
+    begin
+      tmpdir = File.join(tmpdir, "rubytest-#{Random.new_seed.to_s(36)[0, 6]}")
+      Dir.mkdir(tmpdir, 0o700)
+    rescue
+      retry
+    end
+    ENV['TMPDIR'] = tmpdir
+    return tmpdir, old_tmpdir
+  end
+
+  def clean_tmpdir(tmpdir, test_name)
+    output = Test::Unit::Runner.output
+    dirs = []
+    count = 0
+    Dir.glob("#{tmpdir}/**/*", File::FNM_DOTMATCH) do |n|
+      next if n.end_with?("/.")
+      if count == 0
+        output.print "TMPDIR "
+        output.print "(#{test_name}) " if test_name
+        output.puts "#{tmpdir}:"
+      end
+      count += 1
+      st = File.stat(n)
+      output.printf "    %s\t%o %d [%p]\n", n[(tmpdir.size+1)..-1], st.mode, st.size, st.mtime
+      if File.directory?(n)
+        dirs << n
+      else
+        File.unlink(n)
+      end
+    end
+    dirs.reverse_each {|n| Dir.rmdir(n)}
+    count
+  end
+
+  def finish_tmpdir_leak
+    ENV['TMPDIR'] = @old_tmpdir
+    clean_tmpdir(@tmpdir, nil)
+    begin
+      Dir.rmdir(@tmpdir)
+    rescue
+      Test::Unit::Runner.output.puts "Cannot remove #{@tmpdir}:"
+    end
+  end
+
+  def check_tmpdir_leak(test_name)
+    clean_tmpdir(@tmpdir, test_name) > 0
   end
 
   def find_threads

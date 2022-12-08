@@ -1597,6 +1597,7 @@ module Test
 
           inst._assertions
         }
+        leakchecker.finish
         return assertions.size, assertions.inject(0) { |sum, n| sum + n }
       end
 
