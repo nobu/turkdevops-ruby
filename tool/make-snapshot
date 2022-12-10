@@ -14,6 +14,7 @@ require 'yaml'
 require 'json'
 require File.expand_path("../lib/vcs", __FILE__)
 require File.expand_path("../lib/colorize", __FILE__)
+require File.expand_path("../update-NEWS-refs", __FILE__)
 STDOUT.sync = true
 
 $srcdir ||= nil
@@ -392,6 +393,9 @@ def package(vcs, rev, destdir, tmp = nil)
   Dir.chdir(v) do
     unless File.exist?("ChangeLog")
       vcs.export_changelog(url, nil, revision, "ChangeLog")
+    end
+    if File.exist?(news = "NEWS.md")
+      File.write(news, NEWS.update_refs(File.read(news)))
     end
 
     unless touch_all(modified, "**/*", File::FNM_DOTMATCH)
