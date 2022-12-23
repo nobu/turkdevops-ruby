@@ -40,8 +40,26 @@ $(YJIT_LIBS): $(YJIT_SRC_FILES)
 else
 endif
 
+yjit-libobj: $(YJIT_LIBOBJ)
+
+YJIT_LIB_SYMBOLS = $(YJIT_LIBS:.a=).symbols
+$(YJIT_LIBOBJ): $(YJIT_LIB_SYMBOLS)
+	$(ECHO0) 'merging $(YJIT_LIBS) into $@'
+ifneq ($(filter linux%,$(target_os)),)
+	$(LD) -r -o $@ --whole-archive $(YJIT_LIBS)
+	objcopy --keep-global-symbols=$(YJIT_LIB_SYMBOLS) $(@)
+else ifneq ($(filter darwin%,$(target_os)),)
+	$(LD) -r -o $@ -exported_symbols_list $(YJIT_LIB_SYMBOLS) $(YJIT_LIBS)
+else
+	false
+endif
+
+$(YJIT_LIB_SYMBOLS): $(YJIT_LIBS)
+	$(NM) --defined-only --extern-only $(YJIT_LIBS) | \
+	sed -n -e 's/.* //' -e '/^$(SYMBOL_PREFIX)rb_/p' > $@
+
 # Put this here instead of in common.mk to avoid breaking nmake builds
-miniruby$(EXEEXT): $(YJIT_LIBS)
+miniruby$(EXEEXT): $(YJIT_LIBOBJ)
 
 # By using YJIT_BENCH_OPTS instead of RUN_OPTS, you can skip passing the options to `make install`
 YJIT_BENCH_OPTS = $(RUN_OPTS) --enable-gems
