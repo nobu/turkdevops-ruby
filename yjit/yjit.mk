@@ -56,7 +56,9 @@ endif
 
 $(YJIT_LIB_SYMBOLS): $(YJIT_LIBS)
 	$(NM) --defined-only --extern-only $(YJIT_LIBS) | \
-	sed -n -e 's/.* //' -e '/^$(SYMBOL_PREFIX)rb_/p' > $@
+	sed -n -e 's/.* //' -e '/^$(SYMBOL_PREFIX)rb_/p' \
+	$(if $(filter darwin%,$(target_os)),-e '/^$(SYMBOL_PREFIX)rust_eh_personality/p') \
+	> $@
 
 # Put this here instead of in common.mk to avoid breaking nmake builds
 miniruby$(EXEEXT): $(YJIT_LIBOBJ)
