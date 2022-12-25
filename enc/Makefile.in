@@ -40,6 +40,7 @@ BUILTRUBY = $(topdir)/miniruby$(EXEEXT)
 
 empty =
 AR = @AR@
+CC_WRAPPER = @CC_WRAPPER@
 CC = @CC@
 ARFLAGS = @ARFLAGS@$(empty)
 RANLIB = @RANLIB@

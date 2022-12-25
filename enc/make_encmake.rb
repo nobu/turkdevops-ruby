@@ -24,30 +24,25 @@ until ARGV.empty?
   case ARGV[0]
   when /\A--builtin-encs=/
     BUILTIN_ENCS.concat $'.split.map {|e| File.basename(e, '.*') << '.c'}
-    ARGV.shift
   when /\A--builtin-transes=/
     BUILTIN_TRANSES.concat $'.split.map {|e| File.basename(e, '.*') }
-    ARGV.shift
   when /\A--encs=/
     ENC_PATTERNS.concat $'.split
-    ARGV.shift
   when /\A--no-encs=/
     NOENC_PATTERNS.concat $'.split
-    ARGV.shift
   when /\A--transes=/
     TRANS_PATTERNS.concat $'.split
-    ARGV.shift
   when /\A--no-transes=/
     NOTRANS_PATTERNS.concat $'.split
-    ARGV.shift
   when /\A--module$/
-    ARGV.shift
   when /\A--modulestatic$/
     module_type = :static
-    ARGV.shift
+  when /\A(\w+)=(.*)/m
+    CONFIG[$1] = $2
   else
     break
   end
+  ARGV.shift
 end
 
 ALPHANUMERIC_ORDER = proc {|e| e.scan(/(\d+)|(\D+)/).map {|n,a| a||[n.size,n.to_i]}.flatten}

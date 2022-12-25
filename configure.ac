@@ -420,16 +420,15 @@ AS_IF([test "x$cross_compiling" = xno], [
     MJIT_CC="$MJIT_CC${1+ }$*"
 ])
 
+CC_WRAPPER=""
 AS_CASE(["$build_os"],
   [darwin1*.*], [
     # Xcode linker warns for deprecated architecture and wrongly
     # installed TBD files.
-    CC_WRAPPER=""
     echo 'int main(void) {return 0;}' > conftest.c
     AS_IF([$CC -framework Foundation -o conftest conftest.c 2>&1 |
 	   grep '^ld: warning: text-based stub file' >/dev/null], [
-	CC_WRAPPER=`cd -P "${tooldir}" && pwd`/darwin-cc
-	CC="$CC_WRAPPER $CC"
+	CC_WRAPPER=darwin-cc
     ])
     rm -fr conftest*
   ])
@@ -439,9 +438,13 @@ AS_CASE(["$target_os"],
     # https://github.com/llvm/llvm-project/blob/812828984c10857a4cd260eb638c52a4411f9143/clang/lib/Driver/ToolChains/WebAssembly.cpp#L95-L118
     # However optimization before asyncify causes misoptimization,
     # so wrap clang to insert our fake wasm-opt, which does nothing, in PATH.
-    CC_WRAPPER=`cd -P "${tooldir}" && pwd`/wasm-clangw
-    CC="$CC_WRAPPER $CC"
+    CC_WRAPPER=wasm-clangw
   ])
+AS_IF([test x"$CC_WRAPPER" != x], [
+    XCC_WRAPPER='$(tooldir)'/"$CC_WRAPPER"
+    CC_WRAPPER=`cd -P "${tooldir}" && pwd`/"$CC_WRAPPER"
+    CC="$CC_WRAPPER $CC"
+])
 
 cc_version=
 for option in --version -v -V -qversion; do
@@ -3356,7 +3359,7 @@ AS_IF([test x"$cross_compiling" = xyes], [
   PREP='$(arch)-fake.rb'
   AS_CASE(["$enable_shared:$EXTSTATIC:$target_os"], [no::darwin*], [
     # darwin target requires miniruby for linking ext bundles
-    PREP="$PREP"' miniruby$(EXEEXT)'
+    PREP="${PREP:+$PREP }"'miniruby$(EXEEXT)'
   ])
   RUNRUBY_COMMAND='$(MINIRUBY) -I`cd $(srcdir)/lib; pwd`'
   RUNRUBY='$(RUNRUBY_COMMAND)'
@@ -4414,7 +4417,6 @@ AS_MESSAGE([$PACKAGE library version = $ruby_version])
 AS_IF([test x"$CC_WRAPPER" != x], [
     CC='$(CC_WRAPPER) '"${CC@%:@$CC_WRAPPER }"
     CPP='$(CC_WRAPPER) '"${CPP@%:@$CC_WRAPPER }"
-    XCC_WRAPPER="$CC_WRAPPER"
 ])
 AC_SUBST(CC_WRAPPER, '')
 AC_SUBST(XCC_WRAPPER)
