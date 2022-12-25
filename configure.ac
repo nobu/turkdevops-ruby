@@ -422,12 +422,15 @@ AS_IF([test "x$cross_compiling" = xno], [
 
 CC_WRAPPER=""
 AS_CASE(["$build_os"],
-  [darwin1*.*], [
+  [darwin*.*], [
     # Xcode linker warns for deprecated architecture and wrongly
     # installed TBD files.
     echo 'int main(void) {return 0;}' > conftest.c
     AS_IF([$CC -framework Foundation -o conftest conftest.c 2>&1 |
 	   grep '^ld: warning: text-based stub file' >/dev/null], [
+	CC_WRAPPER=darwin-cc
+    ], [$CC -Wl,-undefined,dynamic_lookup -o conftest.bundle conftest.c 2>&1 |
+	   grep '^ld: warning: -undefined dynamic_lookup may not work with chained fixups' >/dev/null], [
 	CC_WRAPPER=darwin-cc
     ])
     rm -fr conftest*
@@ -3059,6 +3062,7 @@ AC_SUBST(EXTOBJS)
                         AS_IF([test x"$enable_shared" = xyes], [
                             # Resolve symbols from libruby.dylib when --enable-shared
                             EXTDLDFLAGS='$(LIBRUBYARG_SHARED)'
+                        ], [:], [
                         ], [test "x$EXTSTATIC" = x], [
                             # When building exts as bundles, a mach-o bundle needs to know its loader
                             # program to bind symbols from the ruby executable
