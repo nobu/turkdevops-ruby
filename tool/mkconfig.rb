@@ -33,7 +33,6 @@ fast = %w[
 vars = {}
 continued_name = nil
 continued_line = nil
-platform = nil
 drive = File::PATH_SEPARATOR == ';'
 dest = drive ? %r'= "(?!\$[\(\{])(?i:[a-z]:)' : %r'= "(?!\$[\(\{])'
 File.foreach "config.status" do |line|
@@ -150,14 +149,10 @@ end
 
 arch = vars['arch']
 if /universal/ =~ arch
-  vars['ARCH_FLAG'][0, 0] = "arch_flag || "
-  universal = vars['UNIVERSAL_ARCHNAMES']
-  vars['UNIVERSAL_ARCHNAMES'] = 'universal'
-  arch.sub!(/universal/, %q[#{universal[/(?:\A|\s)#{Regexp.quote(arch)}=(\S+)/, 1] || '\&'}])
-  vars['target_cpu'] = 'cpu'
-end
-if /darwin/ =~ arch
-  vars['includedir'][0, 0] = '$(SDKROOT)'
+  arch_flag = vars.delete('ARCH_FLAG')
+  universal = vars.delete('UNIVERSAL_ARCHNAMES')
+else
+  vars["platform"] = "$(arch)"
 end
 
 val = vars['program_transform_name']
@@ -205,7 +200,7 @@ vconf.expand(prefix)
 vconf.expand(rubyarchdir)
 relative_archdir = rubyarchdir.rindex(prefix, 0) ? rubyarchdir[prefix.size..-1] : rubyarchdir
 
-puts %[\
+puts <<CONF
 # encoding: ascii-8bit
 # frozen-string-literal: false
 #
@@ -220,22 +215,59 @@ module RbConfig
   RUBY_VERSION.start_with?("#{version[/^[0-9]+\.[0-9]+\./] || version}") or
     raise "ruby lib version (#{version}) doesn't match executable version (\#{RUBY_VERSION})"
 
-]
-print "  # Ruby installed directory.\n"
-print "  TOPDIR = File.dirname(__FILE__).chomp!(#{relative_archdir.dump})\n"
-print "  # DESTDIR on make install.\n"
-print "  DESTDIR = ", (drive ? "TOPDIR && TOPDIR[/\\A[a-z]:/i] || " : ""), "'' unless defined? DESTDIR\n"
+  # Ruby installed directory.
+  TOPDIR = File.dirname(__FILE__).chomp!(#{relative_archdir.dump})
+  # DESTDIR on make install.
+  DESTDIR = #{(drive ? "TOPDIR && TOPDIR[/\\A[a-z]:/i] || " : "")}'' unless defined? DESTDIR
+
+  prefix = TOPDIR || "\#{DESTDIR}"#{prefix.dump}
+CONF
 print <<"UNIVERSAL", <<'ARCH' if universal
-  universal = #{universal.dump}
+  universal = #{universal.strip.dump}
 UNIVERSAL
   arch_flag = ENV['ARCHFLAGS'] || ((e = ENV['RC_ARCHS']) && e.split.uniq.map {|a| "-arch #{a}"}.join(' '))
-  arch = arch_flag && arch_flag[/\A\s*-arch\s+(\S+)\s*\z/, 1]
-  cpu = arch && universal[/(?:\A|\s)#{Regexp.quote(arch)}=(\S+)/, 1] || RUBY_PLATFORM[/\A[^-]*/]
+  cpu = arch_flag && arch_flag[/\A\s*-arch\s+(\S+)\s*\z/, 1]
+  cpu = cpu && universal[/(?:\A|\s)#{Regexp.quote(cpu)}=(\S+)/, 1] || RUBY_PLATFORM[/\A(?:universal\.)?([^-]*)/, 1]
 ARCH
-print "  # The hash configurations stored.\n"
-print "  CONFIG = {}\n"
-print "  CONFIG[\"DESTDIR\"] = DESTDIR\n"
-print "  CONFIG[\"prefix\"] = (TOPDIR || DESTDIR + #{vars.delete('prefix').dump})\n"
+if /darwin/ =~ arch
+  if prefix.start_with?("/System/")
+    sdkroot = ''
+    vars['includedir'][0, 0] = '$(SDKROOT)'
+  elsif vars['LIBRUBY_RELATIVE'] == 'yes'
+    sdkroot = %[!prefix.start_with?("/System/")]
+  end
+  print <<SDKROOT if sdkroot
+  if #{sdkroot.empty? ? 'false' : sdkroot}
+    sdkroot = +""
+  elsif sdkroot = ENV["SDKROOT"]
+    sdkroot = sdkroot.dup
+  elsif File.exist?(File.join(prefix, "include")) ||
+        !(sdkroot = (IO.popen(%w[/usr/bin/xcrun --sdk macosx --show-sdk-path], in: IO::NULL, err: IO::NULL, &:read) rescue nil))
+    sdkroot = +""
+  else
+    sdkroot.chomp!
+  end
+SDKROOT
+end
+
+prefix = vars.delete("prefix")
+print <<CONF
+
+  # The hash configurations stored.
+  CONFIG = {}
+  CONFIG["DESTDIR"] = DESTDIR
+  CONFIG["prefix"] = prefix
+CONF
+print <<'SDKROOT' if sdkroot
+  CONFIG["SDKROOT"] = sdkroot
+SDKROOT
+if universal
+  print <<-UNIVERSAL
+  CONFIG["ARCH_FLAG"] = arch_flag || #{arch_flag.strip.dump}
+  CONFIG["platform"] = cpu + #{arch.sub(/\Auniversal/, '').dump}
+  CONFIG["UNIVERSAL_ARCHNAMES"] = universal
+  UNIVERSAL
+end
 
 fast.each do |n|
   v = vars.delete(n)
@@ -243,30 +275,23 @@ fast.each do |n|
 end
 
 vars.each do |n, v|
-  unless v.include?("\n")
-    print "  CONFIG[#{n.dump}] = #{v.dump}\n"
-    next
-  end
-  sep = "="
-  v.each_line do |_|
-    print "  CONFIG[#{n.dump}] #{sep} #{_.dump}\n"
-    sep = :<<
-  end
-end
-print <<EOS if /darwin/ =~ arch
-  if sdkroot = ENV["SDKROOT"]
-    sdkroot = sdkroot.dup
-  elsif File.exist?(File.join(CONFIG["prefix"], "include")) ||
-        !(sdkroot = (IO.popen(%w[/usr/bin/xcrun --sdk macosx --show-sdk-path], in: IO::NULL, err: IO::NULL, &:read) rescue nil))
-    sdkroot = +""
+  if v.empty?
+    v = '""'
   else
-    sdkroot.chomp!
+    v = v.split(/(?<!^)\n\K/).map {|s|
+      s.scan(/.{1,72}(?:\s+|\z)/m).map(&:dump)
+    }.join(" \\\n        ")
   end
-  CONFIG["SDKROOT"] = sdkroot
-EOS
-print <<EOS
-  CONFIG["platform"] = #{platform || '"$(arch)"'}
-  CONFIG["archdir"] = "$(rubyarchdir)"
+  print "  CONFIG[#{n.dump}] = #{v}\n"
+end
+
+if sdkroot and sdkroot != ''
+  print <<SDKROOT
+  CONFIG["includedir"][0, 0] = '$(SDKROOT)'
+SDKROOT
+end
+
+print <<CONF
   CONFIG["topdir"] = File.dirname(__FILE__)
 
   # Almost same with CONFIG. MAKEFILE_CONFIG has other variable
@@ -370,6 +395,6 @@ print <<EOS
   end
 end
 CROSS_COMPILING = nil unless defined? CROSS_COMPILING
-EOS
+CONF
 
 # vi:set sw=2:
