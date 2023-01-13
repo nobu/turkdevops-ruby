@@ -4461,7 +4461,7 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
 	echo; test x"$EXEEXT" = x || echo 'miniruby: miniruby$(EXEEXT)'
 	AS_IF([test "$gnumake" != yes], [
 	    echo ['$(MKFILES): $(srcdir)/common.mk']
-	    sed ['s/{\$([^(){}]*)[^{}]*}//g'] ${srcdir}/common.mk
+	    ${SHELL} "${tooldir}/make-uncommon.sh" "$srcdir"
             AS_IF([test "$YJIT_SUPPORT" = yes], [
                 cat ${srcdir}/yjit/not_gmake.mk
                 echo ['$(MKFILES): ${srcdir}/yjit/not_gmake.mk']
