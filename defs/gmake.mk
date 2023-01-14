@@ -408,6 +408,8 @@ ifneq ($(REVISION_IN_HEADER),$(REVISION_LATEST))
 $(REVISION_H): PHONY
 endif
 
+uncommon.mk: $(if $(filter yes,$(HAVE_BASERUBY)),$(REVISION_H))
+
 include $(top_srcdir)/yjit/yjit.mk
 
 # Query on the generated rdoc
