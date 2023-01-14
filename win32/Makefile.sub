@@ -3,7 +3,7 @@
 SHELL = $(COMSPEC)
 ECHO1 = $(V:1=@:)
 RUNCMD = $(COMSPEC) /c
-MKFILES = Makefile verconf.mk
+MKFILES = Makefile
 NULLCMD = exit /b0.		# exit ignores the rest
 NULL = nul
 CHDIR = cd
@@ -54,6 +54,9 @@ CROSS_COMPILING = no
 win_srcdir = $(srcdir)/win32
 !endif
 
+!if ! [$(MAKE) -q -f $(srcdir)/win32/mkverconf.mk CPP="$(CC) -EP" srcdir="$(srcdir)"]
+!else if [$(MAKE) -f $(srcdir)/win32/mkverconf.mk CPP="$(CC) -EP" srcdir="$(srcdir)"]
+!endif
 !if exist(verconf.mk)
 ! include verconf.mk
 !endif
@@ -1385,3 +1388,6 @@ loadpath: verconf.h
 	@$(CPP) $(XCFLAGS) $(CPPFLAGS) $(srcdir)/loadpath.c | \
 	sed -e '1,/^const char ruby_initial_load_paths/d;/;/,$$d' \
 	    -e '/^^ /!d;s/ *"\\\\0"$$//;s/" *"//g'
+
+verconf.mk: {$(VPATH)}revision.h
+	$(MAKE) -f $(srcdir)/win32/mkverconf.mk CPP="$(CC) -EP" srcdir="$(srcdir)"
