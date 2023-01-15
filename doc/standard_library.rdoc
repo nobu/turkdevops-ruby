@@ -84,7 +84,6 @@ Etc:: Provides access to information typically stored in UNIX /etc directory
 Fcntl:: Loads constants defined in the OS fcntl.h C header file
 Fiddle:: A libffi wrapper for Ruby
 IO:: Extensions for Ruby IO class, including #wait, #nonblock and ::console
-JSON:: Implements Javascript Object Notation for Ruby
 NKF:: Ruby extension for Network Kanji Filter
 OpenSSL:: Provides SSL, TLS and general purpose cryptography for Ruby
 Pathname:: Representation of the name of a file or directory on the filesystem
@@ -116,3 +115,4 @@ Prime:: Prime numbers and factorization library
 RBS:: RBS is a language to describe the structure of Ruby programs
 TypeProf:: A type analysis tool for Ruby code based on abstract interpretation
 DEBUGGER__:: Debugging functionality for Ruby
+JSON:: Implements Javascript Object Notation for Ruby
