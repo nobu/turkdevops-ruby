@@ -19,6 +19,7 @@
 #include "internal.h"
 #include "internal/array.h"
 #include "internal/bits.h"
+#include "internal/object.h"
 #include "internal/string.h"
 #include "internal/symbol.h"
 #include "internal/variable.h"
@@ -36,10 +37,11 @@
  */
 #ifdef HAVE_TRUE_LONG_LONG
 static const char natstr[] = "sSiIlLqQjJ";
+#define endstr natstr
 #else
 static const char natstr[] = "sSiIlLjJ";
-#endif
 static const char endstr[] = "sSiIlLqQjJ";
+#endif
 
 #ifdef HAVE_TRUE_LONG_LONG
 /* It is intentional to use long long instead of LONG_LONG. */
@@ -193,7 +195,7 @@ VALUE_to_float(VALUE obj)
 }
 
 static VALUE
-pack_pack(rb_execution_context_t *ec, VALUE ary, VALUE fmt, VALUE buffer)
+pack_pack(rb_execution_context_t *ec, VALUE ary, VALUE fmt, VALUE buffer, VALUE strict_flag)
 {
     static const char nul10[] = "\0\0\0\0\0\0\0\0\0\0";
     static const char spc10[] = "          ";
@@ -223,6 +225,8 @@ pack_pack(rb_execution_context_t *ec, VALUE ary, VALUE fmt, VALUE buffer)
         res = buffer;
     }
 
+    int strict = rb_bool_expected(strict_flag, "strict", TRUE);
+
     idx = 0;
 
 #define TOO_FEW (rb_raise(rb_eArgError, toofew), 0)
@@ -232,6 +236,7 @@ pack_pack(rb_execution_context_t *ec, VALUE ary, VALUE fmt, VALUE buffer)
 
     while (p < pend) {
         int explicit_endian = 0;
+        int range_check = 0;
         if (RSTRING_PTR(fmt) + RSTRING_LEN(fmt) != pend) {
             rb_raise(rb_eRuntimeError, "format string modified");
         }
@@ -476,40 +481,47 @@ pack_pack(rb_execution_context_t *ec, VALUE ary, VALUE fmt, VALUE buffer)
           case 'C':		/* unsigned char */
             integer_size = 1;
             bigendian_p = BIGENDIAN_P(); /* not effective */
+            range_check = strict;
             goto pack_integer;
 
           case 's':		/* s for int16_t, s! for signed short */
           case 'S':		/* S for uint16_t, S! for unsigned short */
             integer_size = NATINT_LEN(short, 2);
             bigendian_p = BIGENDIAN_P();
+            range_check = strict;
             goto pack_integer;
 
           case 'i':		/* i and i! for signed int */
           case 'I':		/* I and I! for unsigned int */
             integer_size = (int)sizeof(int);
             bigendian_p = BIGENDIAN_P();
+            range_check = strict;
             goto pack_integer;
 
           case 'l':		/* l for int32_t, l! for signed long */
           case 'L':		/* L for uint32_t, L! for unsigned long */
             integer_size = NATINT_LEN(long, 4);
             bigendian_p = BIGENDIAN_P();
+            range_check = strict;
             goto pack_integer;
 
           case 'q':		/* q for int64_t, q! for signed long long */
           case 'Q':		/* Q for uint64_t, Q! for unsigned long long */
             integer_size = NATINT_LEN_Q;
             bigendian_p = BIGENDIAN_P();
+            range_check = strict;
             goto pack_integer;
 
           case 'j':		/* j for intptr_t */
             integer_size = sizeof(intptr_t);
             bigendian_p = BIGENDIAN_P();
+            range_check = strict;
             goto pack_integer;
 
           case 'J':		/* J for uintptr_t */
             integer_size = sizeof(uintptr_t);
             bigendian_p = BIGENDIAN_P();
+            range_check = strict;
             goto pack_integer;
 
           case 'n':		/* 16 bit (2 bytes) integer (network byte-order)  */
@@ -540,11 +552,29 @@ pack_pack(rb_execution_context_t *ec, VALUE ary, VALUE fmt, VALUE buffer)
                 rb_bug("unexpected integer size for pack: %d", integer_size);
             while (len-- > 0) {
                 char intbuf[MAX_INTEGER_PACK_SIZE];
+                int endian = bigendian_p ? INTEGER_PACK_BIG_ENDIAN : INTEGER_PACK_LITTLE_ENDIAN;
 
                 from = NEXTFROM;
-                rb_integer_pack(from, intbuf, integer_size, 1, 0,
-                    INTEGER_PACK_2COMP |
-                    (bigendian_p ? INTEGER_PACK_BIG_ENDIAN : INTEGER_PACK_LITTLE_ENDIAN));
+                int packed = rb_integer_pack(from, intbuf, integer_size, 1, 0,
+                                             INTEGER_PACK_2COMP | endian);
+                if (range_check) {
+                    if (packed <= -2 || packed >= 2) {
+                      out_of_range:
+                        rb_raise(rb_eRangeError, "out of range for %c", type);
+                    }
+                    if (ISUPPER(type)) { /* unsigned */
+                        if (packed < 0) goto out_of_range; /* negative value */
+                    }
+                    else {
+                        signed char msb = (signed char)intbuf[bigendian_p ? 0 : integer_size - 1];
+                        if (packed > 0) { /* positive value */
+                            if (msb < 0) goto out_of_range;
+                        }
+                        else if (packed < 0) {
+                            if (msb >= 0) goto out_of_range;
+                        }
+                    }
+                }
                 rb_str_buf_cat(res, intbuf, integer_size);
             }
             break;

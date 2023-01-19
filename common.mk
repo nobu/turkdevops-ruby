@@ -10855,6 +10855,7 @@ pack.$(OBJEXT): {$(VPATH)}internal/memory.h
 pack.$(OBJEXT): {$(VPATH)}internal/method.h
 pack.$(OBJEXT): {$(VPATH)}internal/module.h
 pack.$(OBJEXT): {$(VPATH)}internal/newobj.h
+pack.$(OBJEXT): {$(VPATH)}internal/object.h
 pack.$(OBJEXT): {$(VPATH)}internal/rgengc.h
 pack.$(OBJEXT): {$(VPATH)}internal/scan_args.h
 pack.$(OBJEXT): {$(VPATH)}internal/special_consts.h

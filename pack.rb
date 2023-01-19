@@ -4,8 +4,8 @@ class Array
   #
   #  Formats each element in +self+ into a binary string; returns that string.
   #  See {Packed Data}[rdoc-ref:packed_data.rdoc].
-  def pack(fmt, buffer: nil)
-    Primitive.pack_pack(fmt, buffer)
+  def pack(fmt, buffer: nil, strict: false)
+    Primitive.pack_pack(fmt, buffer, strict)
   end
 end
 
