@@ -16591,6 +16591,7 @@ time.$(OBJEXT): {$(VPATH)}builtin.h
 time.$(OBJEXT): {$(VPATH)}config.h
 time.$(OBJEXT): {$(VPATH)}constant.h
 time.$(OBJEXT): {$(VPATH)}defines.h
+time.$(OBJEXT): {$(VPATH)}encindex.h
 time.$(OBJEXT): {$(VPATH)}encoding.h
 time.$(OBJEXT): {$(VPATH)}id.h
 time.$(OBJEXT): {$(VPATH)}id_table.h

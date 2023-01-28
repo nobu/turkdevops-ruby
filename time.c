@@ -43,6 +43,7 @@
 #include "internal/variable.h"
 #include "ruby/encoding.h"
 #include "timev.h"
+#include "encindex.h"
 
 #include "builtin.h"
 
@@ -1645,11 +1646,20 @@ localtime_with_gmtoff_zone(const time_t *t, struct tm *result, long *gmtoff, VAL
         if (zone) {
 #if defined(HAVE_TM_ZONE)
             *zone = zone_str(tm.tm_zone);
+#elif defined(_WIN32)
+            wchar_t buf[64];
+            if (wcsftime(buf, numberof(buf), L"%Z", &tm)) {
+                VALUE rb_w32_conv_from_wchar(const WCHAR *, rb_encoding *);
+                VALUE z = rb_w32_conv_from_wchar(buf, rb_locale_encoding());
+                if (rb_enc_str_coderange(z) == ENC_CODERANGE_7BIT) {
+                    rb_enc_associate_index(z, ENCINDEX_US_ASCII);
+                }
+                *zone = z;
+            }
+            else {
+                *zone = zone_str(NULL);
+            }
 #elif defined(HAVE_TZNAME) && defined(HAVE_DAYLIGHT)
-# if defined(RUBY_MSVCRT_VERSION) && RUBY_MSVCRT_VERSION >= 140
-#  define tzname _tzname
-#  define daylight _daylight
-# endif
             /* this needs tzset or localtime, instead of localtime_r */
             *zone = zone_str(tzname[daylight && tm.tm_isdst]);
 #else
