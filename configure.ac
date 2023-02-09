@@ -3057,10 +3057,6 @@ AC_SUBST(EXTOBJS)
                         AS_IF([test x"$enable_shared" = xyes], [
                             # Resolve symbols from libruby.dylib when --enable-shared
                             EXTDLDFLAGS='$(LIBRUBYARG_SHARED)'
-                        ], [test "x$EXTSTATIC" = x], [
-                            # When building exts as bundles, a mach-o bundle needs to know its loader
-                            # program to bind symbols from the ruby executable
-                            EXTDLDFLAGS="-bundle_loader '\$(BUILTRUBY)'"
 			])
 			rb_cv_dlopen=yes],
         [aix*], [	: ${LDSHARED='$(CC)'}
@@ -3105,15 +3101,17 @@ AS_IF([test "$rb_cv_dlopen" = yes], [
 	  "-undefined dynamic_lookup" \
 	  ; do
             test "x${linker_flag}" = x || flag="${linker_flag}`echo ${flag} | tr ' ' ,`"
-            RUBY_TRY_LDFLAGS([$flag], [], [flag=])
-            AS_IF([test x"$flag" = x], [continue])
 
             AC_MSG_CHECKING([whether $flag is accepted for bundle])
             : > conftest.c
             AS_IF([${LDSHARED%%'$(CC)'*}$CC${LDSHARED@%:@*'$(CC)'} -o conftest.bundle $flag conftest.c >/dev/null 2>conftest.err &&
-                test ! -s conftest.err], [
+                ! grep -v '^ld: warning: -undefined dynamic_lookup may not work with chained fixups' conftest.err >/dev/null], [
                 AC_MSG_RESULT([yes])
                 RUBY_APPEND_OPTIONS(DLDFLAGS, [$flag])
+                AS_IF([test x"$CC_WRAPPER" = x -a -s conftest.err], [
+                    CC_WRAPPER=`cd -P "${tooldir}" && pwd`/darwin-cc
+                    CC="$CC_WRAPPER $CC"
+                ])
             ], [
                 AC_MSG_RESULT([no])
                 RUBY_APPEND_OPTIONS(ADDITIONAL_DLDFLAGS, [$flag])
@@ -3355,10 +3353,6 @@ AS_IF([test x"$cross_compiling" = xyes], [
   AC_SUBST(XRUBY_RUBYLIBDIR)
   AC_SUBST(XRUBY_RUBYHDRDIR)
   PREP='$(arch)-fake.rb'
-  AS_CASE(["$enable_shared:$EXTSTATIC:$target_os"], [no::darwin*], [
-    # darwin target requires miniruby for linking ext bundles
-    PREP="$PREP"' miniruby$(EXEEXT)'
-  ])
   RUNRUBY_COMMAND='$(MINIRUBY) -I`cd $(srcdir)/lib; pwd`'
   RUNRUBY='$(RUNRUBY_COMMAND)'
   XRUBY='$(MINIRUBY)'
@@ -4415,7 +4409,7 @@ AS_MESSAGE([$PACKAGE library version = $ruby_version])
 AS_IF([test x"$CC_WRAPPER" != x], [
     CC='$(CC_WRAPPER) '"${CC@%:@$CC_WRAPPER }"
     CPP='$(CC_WRAPPER) '"${CPP@%:@$CC_WRAPPER }"
-    XCC_WRAPPER="$CC_WRAPPER"
+    XCC_WRAPPER='$(tooldir)/'`echo $CC_WRAPPER | sed 's|.*/||'`
 ])
 AC_SUBST(CC_WRAPPER, '')
 AC_SUBST(XCC_WRAPPER)
@@ -4457,6 +4451,7 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
         done
 	sed '/^MISSING/s/\$U\././g;/^VCS *=/s#@VCS@#'"$VCS"'#;/^VCSUP *=/s#@VCSUP@#'"$VCSUP"'#' Makefile
 	echo; test x"$EXEEXT" = x || echo 'miniruby: miniruby$(EXEEXT)'
+        echo; test x"$CC_WRAPPER" = x || echo "MFLAGS += CC_WRAPPER='\$\$(top_srcdir)/tool/$CC_WRAPPER'"
 	AS_IF([test "$gnumake" != yes], [
 	    echo ['$(MKFILES): $(srcdir)/common.mk']
 	    sed ['s/{\$([^(){}]*)[^{}]*}//g'] ${srcdir}/common.mk
@@ -4481,7 +4476,7 @@ AC_CONFIG_FILES(Makefile:template/Makefile.in, [
 	echo 'ruby: $(PROGRAM);' >> $tmpmk
 	test "$tmpmk" = "$tmpgmk" || rm -f "$tmpgmk"
     ]) && mv -f $tmpmk Makefile],
-[EXEEXT='$EXEEXT' MAKE='${MAKE-make}' gnumake='$gnumake' GIT='$GIT' YJIT_SUPPORT='$YJIT_SUPPORT'])
+[EXEEXT='$EXEEXT' MAKE='${MAKE-make}' gnumake='$gnumake' GIT='$GIT' YJIT_SUPPORT='$YJIT_SUPPORT' CC_WRAPPER='`echo $XCC_WRAPPER | sed s:.*/::`'])
 
 AC_ARG_WITH([ruby-pc],
 	    AS_HELP_STRING([--with-ruby-pc=FILENAME], [pc file basename]),
