@@ -224,6 +224,18 @@ module MakeMakefile
   if not $extmk and File.exist?(($hdrdir = RbConfig::CONFIG["rubyhdrdir"]) + "/ruby/ruby.h")
     $topdir = $hdrdir
     $top_srcdir = $hdrdir
+    path = $0
+    # find the top of source directory of the library including the
+    # extension; assume
+    # * "ext" directory is placed at the top
+    # * there is not "extconf.rb" file
+    #   (for the case having multiple extensions, like json)
+    until %r"(?:\A|/)(?:\.\.)?\z" =~ (path = File.dirname(path))
+      if %r"/ext\z" =~ path and !File.exist?("#{path}conf.rb")
+        $top_srcdir = File.dirname(path)
+        break
+      end
+    end
     $arch_hdrdir = RbConfig::CONFIG["rubyarchhdrdir"]
   elsif File.exist?(($hdrdir = ($top_srcdir ||= topdir) + "/include")  + "/ruby.h")
     $topdir ||= RbConfig::CONFIG["topdir"]
@@ -1981,7 +1993,7 @@ ECHO = $(ECHO1:0=@ echo)
 NULLCMD = #{CONFIG['NULLCMD']}
 
 #### Start of system configuration section. ####
-#{"top_srcdir = " + $top_srcdir.sub(%r"\A#{Regexp.quote($topdir)}/", "$(topdir)/") if $extmk}
+top_srcdir = #{$top_srcdir.sub(%r"\A#{Regexp.quote($topdir)}/", "$(topdir)/")}
 srcdir = #{srcdir.gsub(/\$\((srcdir)\)|\$\{(srcdir)\}/) {mkintpath(CONFIG[$1||$2]).unspace}}
 topdir = #{mkintpath(topdir = $extmk ? CONFIG["topdir"] : $topdir).unspace}
 hdrdir = #{(hdrdir = CONFIG["hdrdir"]) == topdir ? "$(topdir)" : mkintpath(hdrdir).unspace}
