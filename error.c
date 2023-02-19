@@ -125,7 +125,7 @@ err_vcatf(VALUE str, const char *pre, const char *file, int line,
     return str;
 }
 
-static VALUE syntax_error_with_path(VALUE, VALUE, VALUE*, VALUE*, rb_encoding*);
+static VALUE syntax_error_with_path(VALUE, VALUE, VALUE, VALUE*, rb_encoding*);
 static VALUE rb_eSyntaxErrorDiag;
 static ID id_diagnostic;
 
@@ -201,17 +201,18 @@ rb_syntax_error_append(VALUE exc, VALUE file, VALUE src, int lineno, int beg, in
                        rb_encoding *enc, const char *fmt, va_list args)
 {
     const char *fn = NIL_P(file) ? NULL : RSTRING_PTR(file);
-    VALUE mesg = rb_enc_str_new(0, 0, enc);
+    VALUE diag, mesg = rb_enc_str_new(0, 0, enc);
     err_vcatf(mesg, NULL, fn, lineno, fmt, args);
+    diag = syntax_error_diag_new(mesg, src, lineno, beg, end);
     if (!exc) {
-        rb_str_cat2(mesg, "\n");
+        int highlight = rb_stderr_tty_p();
+        mesg = syntax_error_diag_detail(diag, rb_str_new(0, 0), highlight);
         rb_write_error_str(mesg);
     }
     else {
-        VALUE mesg;
         VALUE diags = Qnil;
-        exc = syntax_error_with_path(exc, file, &mesg, &diags, enc);
-        rb_ary_push(diags, syntax_error_diag_new(mesg, src, lineno, beg, end));
+        exc = syntax_error_with_path(exc, file, mesg, &diags, enc);
+        rb_ary_push(diags, diag);
     }
 
     return exc;
@@ -2458,11 +2459,19 @@ syntax_error_initialize(int argc, VALUE *argv, VALUE self)
 }
 
 static VALUE
-syntax_error_with_path(VALUE exc, VALUE path, VALUE *mesg, VALUE *diags, rb_encoding *enc)
+append_line(VALUE s1, VALUE s2)
+{
+    if (RSTRING_LEN(s1) > 0 && RSTRING_LEN(s2) > 0 && *(RSTRING_END(s1)-1) != '\n') {
+        rb_str_cat_cstr(s1, "\n");
+    }
+    return rb_str_append(s1, s2);
+}
+
+static VALUE
+syntax_error_with_path(VALUE exc, VALUE path, VALUE mesg, VALUE *diags, rb_encoding *enc)
 {
     if (NIL_P(exc)) {
-        *mesg = rb_enc_str_new(0, 0, enc);
-        exc = rb_class_new_instance(1, mesg, rb_eSyntaxError);
+        exc = rb_class_new_instance(1, &mesg, rb_eSyntaxError);
         *diags = rb_ary_hidden_new(0);
         rb_ivar_set(exc, id_diagnostic, *diags);
         rb_ivar_set(exc, id_i_path, path);
@@ -2473,9 +2482,7 @@ syntax_error_with_path(VALUE exc, VALUE path, VALUE *mesg, VALUE *diags, rb_enco
         }
         *diags = rb_ivar_get(exc, id_diagnostic);
         Check_Type(*diags, T_ARRAY);
-        VALUE s = *mesg = rb_attr_get(exc, idMesg);
-        if (RSTRING_LEN(s) > 0 && *(RSTRING_END(s)-1) != '\n')
-            rb_str_cat_cstr(s, "\n");
+        append_line(rb_attr_get(exc, idMesg), mesg);
     }
     return exc;
 }
@@ -2487,11 +2494,14 @@ syntax_error_detailed_message(int argc, VALUE *argv, VALUE exc)
     rb_scan_args(argc, argv, "0:", &opt);
 
     int highlight = RTEST(check_highlight_keyword(opt, 0));
+    VALUE errbuf = rb_ivar_get(exc, idMesg);
     VALUE diags = rb_ivar_get(exc, id_diagnostic);
-    Check_Type(diags, T_ARRAY);
-    VALUE errbuf = rb_str_new(0, 0);
-    for (long i = 0; i < RARRAY_LEN(diags); ++i) {
-        errbuf = syntax_error_diag_detail(RARRAY_AREF(diags, i), errbuf, highlight);
+    if (!NIL_P(diags)) {
+        Check_Type(diags, T_ARRAY);
+        errbuf = rb_str_dup(errbuf);
+        for (long i = 0; i < RARRAY_LEN(diags); ++i) {
+            errbuf = syntax_error_diag_detail(RARRAY_AREF(diags, i), errbuf, highlight);
+        }
     }
     return errbuf;
 }
