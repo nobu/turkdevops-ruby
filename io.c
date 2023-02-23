@@ -14440,7 +14440,7 @@ argf_inplace_mode_get(VALUE argf)
 {
     if (!ARGF.inplace) return Qnil;
     if (NIL_P(ARGF.inplace)) return rb_str_new(0, 0);
-    return rb_str_dup(ARGF.inplace);
+    return rb_str_resurrect(ARGF.inplace);
 }
 
 static VALUE
@@ -14480,7 +14480,9 @@ argf_inplace_mode_set(VALUE argf, VALUE val)
         ARGF.inplace = Qnil;
     }
     else {
-        ARGF.inplace = rb_str_new_frozen(val);
+        val = rb_str_new_frozen(val);
+        rb_obj_hide(val);
+        ARGF.inplace = val;
     }
     return argf;
 }
@@ -14494,7 +14496,18 @@ opt_i_set(VALUE val, ID id, VALUE *var)
 void
 ruby_set_inplace_mode(const char *suffix)
 {
-    ARGF.inplace = !suffix ? Qfalse : !*suffix ? Qnil : rb_str_new(suffix, strlen(suffix));
+    if (!suffix) {
+        ARGF.inplace = Qfalse;
+    }
+    else if (!*suffix) {
+        ARGF.inplace = Qnil;
+    }
+    else {
+        VALUE val = rb_str_new_cstr(suffix);
+        rb_str_freeze(val);
+        rb_obj_hide(val);
+        ARGF.inplace = val;
+    }
 }
 
 /*

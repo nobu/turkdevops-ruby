@@ -413,6 +413,16 @@ class TestArgf < Test::Unit::TestCase
     assert_equal("1\n2\n", File.read("#{@t1.path}.bak"))
   end
 
+  def test_inplace_hidden
+    assert_separately(["-i.bakkkkk"], "#{<<~"{#"}#{<<~'};'}")
+    {#
+      require "objspace"
+      found = []
+      ObjectSpace.each_object(String) {|x| found << x if /\A\.bak+\z/ =~ x}
+      assert_empty found
+    };
+  end
+
   def test_encoding
     ruby('-e', "#{<<~"{#"}\n#{<<~'};'}", @t1.path, @t2.path, @t3.path) do |f|
       {#
