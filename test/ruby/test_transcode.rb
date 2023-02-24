@@ -972,6 +972,144 @@ class TestTranscode < Test::Unit::TestCase
     assert_undefined_in("\xFF", 'TIS-620')
   end
 
+  def test_CP708
+    check_both_ways("\u{2502}", "\x80", 'CP708') # │
+    check_both_ways("\u{2524}", "\x81", 'CP708') # ┤
+    check_both_ways("\u{00e9}", "\x82", 'CP708') # é
+    check_both_ways("\u{00e2}", "\x83", 'CP708') # â
+    check_both_ways("\u{2561}", "\x84", 'CP708') # ╡
+    check_both_ways("\u{00e0}", "\x85", 'CP708') # à
+    check_both_ways("\u{2562}", "\x86", 'CP708') # ╢
+    check_both_ways("\u{00e7}", "\x87", 'CP708') # ç
+    check_both_ways("\u{00ea}", "\x88", 'CP708') # ê
+    check_both_ways("\u{00eb}", "\x89", 'CP708') # ë
+    check_both_ways("\u{00e8}", "\x8A", 'CP708') # è
+    check_both_ways("\u{00ef}", "\x8B", 'CP708') # ï
+    check_both_ways("\u{00ee}", "\x8C", 'CP708') # î
+    check_both_ways("\u{2556}", "\x8D", 'CP708') # ╖
+    check_both_ways("\u{2555}", "\x8E", 'CP708') # ╕
+    check_both_ways("\u{2563}", "\x8F", 'CP708') # ╣
+
+    check_both_ways("\u{2551}", "\x90", 'CP708') # ║
+    check_both_ways("\u{2557}", "\x91", 'CP708') # ╗
+    check_both_ways("\u{255d}", "\x92", 'CP708') # ╝
+    check_both_ways("\u{00f4}", "\x93", 'CP708') # ô
+    check_both_ways("\u{255c}", "\x94", 'CP708') # ╜
+    check_both_ways("\u{255b}", "\x95", 'CP708') # ╛
+    check_both_ways("\u{00fb}", "\x96", 'CP708') # û
+    check_both_ways("\u{00f9}", "\x97", 'CP708') # ù
+    check_both_ways("\u{2510}", "\x98", 'CP708') # ┐
+    check_both_ways("\u{2514}", "\x99", 'CP708') # └
+    assert_undefined_in("\x9A", 'CP708')
+    assert_undefined_in("\x9B", 'CP708')
+    assert_undefined_in("\x9C", 'CP708')
+    assert_undefined_in("\x9D", 'CP708')
+    assert_undefined_in("\x9E", 'CP708')
+    assert_undefined_in("\x9F", 'CP708')
+
+    assert_undefined_in("\xA0", 'CP708')
+    check_both_ways("\u{2534}", "\xA1", 'CP708') # ┴
+    check_both_ways("\u{252c}", "\xA2", 'CP708') # ┬
+    check_both_ways("\u{251c}", "\xA3", 'CP708') # ├
+    check_both_ways("\u{00a4}", "\xA4", 'CP708') # ¤
+    check_both_ways("\u{2500}", "\xA5", 'CP708') # ─
+    check_both_ways("\u{253c}", "\xA6", 'CP708') # ┼
+    check_both_ways("\u{255e}", "\xA7", 'CP708') # ╞
+    check_both_ways("\u{255f}", "\xA8", 'CP708') # ╟
+    check_both_ways("\u{255a}", "\xA9", 'CP708') # ╚
+    check_both_ways("\u{2554}", "\xAA", 'CP708') # ╔
+    check_both_ways("\u{2569}", "\xAB", 'CP708') # ╩
+    check_both_ways("\u{060c}", "\xAC", 'CP708') # ،
+    check_both_ways("\u{2566}", "\xAD", 'CP708') # ╦
+    check_both_ways("\u{00ab}", "\xAE", 'CP708') # «
+    check_both_ways("\u{00bb}", "\xAF", 'CP708') # »
+
+    check_both_ways("\u{2591}", "\xB0", 'CP708') # ░
+    check_both_ways("\u{2592}", "\xB1", 'CP708') # ▒
+    check_both_ways("\u{2593}", "\xB2", 'CP708') # ▓
+    check_both_ways("\u{2560}", "\xB3", 'CP708') # ╠
+    check_both_ways("\u{2550}", "\xB4", 'CP708') # ═
+    check_both_ways("\u{256c}", "\xB5", 'CP708') # ╬
+    check_both_ways("\u{2567}", "\xB6", 'CP708') # ╧
+    check_both_ways("\u{2568}", "\xB7", 'CP708') # ╨
+    check_both_ways("\u{2564}", "\xB8", 'CP708') # ╤
+    check_both_ways("\u{2565}", "\xB9", 'CP708') # ╥
+    check_both_ways("\u{2559}", "\xBA", 'CP708') # ╙
+    check_both_ways("\u{061b}", "\xBB", 'CP708') # ؛
+    check_both_ways("\u{2558}", "\xBC", 'CP708') # ╘
+    check_both_ways("\u{2552}", "\xBD", 'CP708') # ╒
+    check_both_ways("\u{2553}", "\xBE", 'CP708') # ╓
+    check_both_ways("\u{061f}", "\xBF", 'CP708') # ؟
+
+    assert_undefined_in("\xC0", 'CP708')
+    check_both_ways("\u{0621}", "\xC1", 'CP708') # ء
+    check_both_ways("\u{0622}", "\xC2", 'CP708') # آ
+    check_both_ways("\u{0623}", "\xC3", 'CP708') # أ
+    check_both_ways("\u{0624}", "\xC4", 'CP708') # ؤ
+    check_both_ways("\u{0625}", "\xC5", 'CP708') # إ
+    check_both_ways("\u{0626}", "\xC6", 'CP708') # ئ
+    check_both_ways("\u{0627}", "\xC7", 'CP708') # ا
+    check_both_ways("\u{0628}", "\xC8", 'CP708') # ب
+    check_both_ways("\u{0629}", "\xC9", 'CP708') # ة
+    check_both_ways("\u{062a}", "\xCA", 'CP708') # ت
+    check_both_ways("\u{062b}", "\xCB", 'CP708') # ث
+    check_both_ways("\u{062c}", "\xCC", 'CP708') # ج
+    check_both_ways("\u{062d}", "\xCD", 'CP708') # ح
+    check_both_ways("\u{062e}", "\xCE", 'CP708') # خ
+    check_both_ways("\u{062f}", "\xCF", 'CP708') # د
+
+    check_both_ways("\u{0630}", "\xD0", 'CP708') # ذ
+    check_both_ways("\u{0631}", "\xD1", 'CP708') # ر
+    check_both_ways("\u{0632}", "\xD2", 'CP708') # ز
+    check_both_ways("\u{0633}", "\xD3", 'CP708') # س
+    check_both_ways("\u{0634}", "\xD4", 'CP708') # ش
+    check_both_ways("\u{0635}", "\xD5", 'CP708') # ص
+    check_both_ways("\u{0636}", "\xD6", 'CP708') # ض
+    check_both_ways("\u{0637}", "\xD7", 'CP708') # ط
+    check_both_ways("\u{0638}", "\xD8", 'CP708') # ظ
+    check_both_ways("\u{0639}", "\xD9", 'CP708') # ع
+    check_both_ways("\u{063a}", "\xDA", 'CP708') # غ
+    check_both_ways("\u{2588}", "\xDB", 'CP708') # █
+    check_both_ways("\u{2584}", "\xDC", 'CP708') # ▄
+    check_both_ways("\u{258c}", "\xDD", 'CP708') # ▌
+    check_both_ways("\u{2590}", "\xDE", 'CP708') # ▐
+    check_both_ways("\u{2580}", "\xDF", 'CP708') # ▀
+
+    check_both_ways("\u0640", "\xE0", 'CP708') # ـ
+    check_both_ways("\u0641", "\xE1", 'CP708') # ف
+    check_both_ways("\u0642", "\xE2", 'CP708') # ق
+    check_both_ways("\u0643", "\xE3", 'CP708') # ك
+    check_both_ways("\u0644", "\xE4", 'CP708') # ل
+    check_both_ways("\u0645", "\xE5", 'CP708') # م
+    check_both_ways("\u0646", "\xE6", 'CP708') # ن
+    check_both_ways("\u0647", "\xE7", 'CP708') # ه
+    check_both_ways("\u0648", "\xE8", 'CP708') # و
+    check_both_ways("\u0649", "\xE9", 'CP708') # ى
+    check_both_ways("\u064a", "\xEA", 'CP708') # ي
+    check_both_ways("\u064b", "\xEB", 'CP708') # ◌ً
+    check_both_ways("\u064c", "\xEC", 'CP708') # ◌ٌ
+    check_both_ways("\u064d", "\xED", 'CP708') # ◌ٍ
+    check_both_ways("\u064e", "\xEE", 'CP708') # ◌َ
+    check_both_ways("\u064f", "\xEF", 'CP708') # ◌ُ
+
+    check_both_ways("\u{0650}", "\xF0", 'CP708') # ◌ِ
+    check_both_ways("\u{0651}", "\xF1", 'CP708') # ◌ّ
+    check_both_ways("\u{0652}", "\xF2", 'CP708') # ◌ْ
+    assert_undefined_in("\xF3", 'CP708')
+    assert_undefined_in("\xF4", 'CP708')
+    assert_undefined_in("\xF5", 'CP708')
+    assert_undefined_in("\xF6", 'CP708')
+    assert_undefined_in("\xF7", 'CP708')
+    assert_undefined_in("\xF8", 'CP708')
+    check_both_ways("\u{256a}", "\xF9", 'CP708') # ╪
+    check_both_ways("\u{2518}", "\xFA", 'CP708') # ┘
+    check_both_ways("\u{250c}", "\xFB", 'CP708') # ┌
+    check_both_ways("\u{00b5}", "\xFC", 'CP708') # µ
+    check_both_ways("\u{00a3}", "\xFD", 'CP708') # £
+    check_both_ways("\u{25a0}", "\xFE", 'CP708') # ■
+    check_both_ways("\u{00a0}", "\xFF", 'CP708') # NBSP
+  end
+
   def test_CP850
     check_both_ways("\u00C7", "\x80", 'CP850') # Ç
     check_both_ways("\u00C5", "\x8F", 'CP850') # Å
