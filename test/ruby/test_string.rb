@@ -862,6 +862,10 @@ CODE
     assert_equal('\#', S('"\\\\#"').undump)
     assert_equal('\#{', S('"\\\\\#{"').undump)
 
+    assert_undump("\0\u{ABCD}")
+    assert_undump(S('"\x00\u3042"'.force_encoding("SJIS")))
+    assert_undump(S('"\u3042\x7E"'.force_encoding("SJIS")))
+
     assert_raise(RuntimeError) { S('\u3042').undump }
     assert_raise(RuntimeError) { S('"\x82\xA0\u3042"'.force_encoding("SJIS")).undump }
     assert_raise(RuntimeError) { S('"\u3042\x82\xA0"'.force_encoding("SJIS")).undump }
@@ -3539,6 +3543,10 @@ CODE
 
   def assert_bytesplice_raise(e, s, *args)
     assert_raise(e) { s.send(:bytesplice, *args) }
+  end
+
+  def assert_undump(str, *rest)
+    assert_equal(str, str.dump.undump, *rest)
   end
 end
 
