@@ -16,422 +16,431 @@ else
   end
 end
 
-fsl   = { frozen_string_literal: true } # used later
-tests = [
-  # insn ,   expression to generate such insn
-  [ 'nop',   %q{ raise rescue true }, ],
+# +expr+ is  expression to generate +insn+
+def assert_insn(insn, expr, *a, **kw)
+  # normal path
+  assert_equal 'true', expr, insn, *a, **kw
 
-  [ 'setlocal *, 0', %q{ x = true }, ],
-  [ 'setlocal *, 1', %q{ x = nil; -> { x = true }.call }, ],
-  [ 'setlocal',      %q{ x = nil; -> { -> { x = true }.() }.() }, ],
-  [ 'getlocal *, 0', %q{ x = true; x }, ],
-  [ 'getlocal *, 1', %q{ x = true; -> { x }.call }, ],
-  [ 'getlocal',      %q{ x = true; -> { -> { x }.() }.() }, ],
-
-  [ 'setblockparam', <<-'},', ], # {
-    def m&b
-      b = # here
-        proc { true }
-    end
-    m { false }.call
-  },
-  [ 'getblockparam', <<-'},', ], # {
-    def m&b
-      b # here
-    end
-    m { true }.call
-  },
-  [ 'getblockparamproxy', <<-'},', ], # {
-    def m&b
-      b # here
-        .call
-    end
-    m { true }
-  },
-
-  [ 'setspecial', %q{ true if true..true }, ],
-  [ 'getspecial', %q{ $&.nil? }, ],
-  [ 'getspecial', %q{ $`.nil? }, ],
-  [ 'getspecial', %q{ $'.nil? }, ],
-  [ 'getspecial', %q{ $+.nil? }, ],
-  [ 'getspecial', %q{ $1.nil? }, ],
-  [ 'getspecial', %q{ $128.nil? }, ],
-
-  [ 'getglobal', %q{ String === $0 }, ],
-  [ 'getglobal', %q{ $_.nil? }, ],
-  [ 'setglobal', %q{ $0 = "true" }, ],
-
-  [ 'setinstancevariable', %q{ @x = true }, ],
-  [ 'getinstancevariable', %q{ @x = true; @x }, ],
-
-  [ 'setclassvariable', %q{ class A; @@x = true; end }, ],
-  [ 'getclassvariable', %q{ class A; @@x = true; @@x end }, ],
-
-  [ 'setconstant', %q{ X = true }, ],
-  [ 'setconstant', %q{ Object::X = true }, ],
-  [ 'getconstant', %q{ X = true; X }, ],
-  [ 'getconstant', %q{ X = true; Object::X }, ],
-
-  [ 'getinlinecache / setinlinecache', %q{ def x; X; end; X = true; x; x; x }, ],
-
-  [ 'putnil',               %q{ $~ == nil }, ],
-  [ 'putself',              %q{ $~ != self }, ],
-  [ 'putobject INT2FIX(0)', %q{ $~ != 0 }, ],
-  [ 'putobject INT2FIX(1)', %q{ $~ != 1 }, ],
-  [ 'putobject',            %q{ $~ != -1 }, ],
-  [ 'putobject',            %q{ $~ != /x/ }, ],
-  [ 'putobject',            %q{ $~ != :x }, ],
-  [ 'putobject',            %q{ $~ != (1..2) }, ],
-  [ 'putobject',            %q{ $~ != true }, ],
-  [ 'putobject',            %q{ /(?<x>x)/ =~ "x"; x == "x" }, ],
-
-  [ 'putspecialobject',         %q{ {//=>true}[//] }, ],
-  [ 'putstring',                %q{ "true" }, ],
-  [ 'tostring / concatstrings', %q{ "#{true}" }, ],
-  [ 'toregexp',                 %q{ /#{true}/ =~ "true" && $~ }, ],
-  [ 'intern',                   %q{ :"#{true}" }, ],
-
-  [ 'newarray',    %q{ ["true"][0] }, ],
-  [ 'newarraykwsplat', %q{ [**{x:'true'}][0][:x] }, ],
-  [ 'duparray',    %q{ [ true ][0] }, ],
-  [ 'expandarray', %q{ y = [ true, false, nil ]; x, = y; x }, ],
-  [ 'expandarray', %q{ y = [ true, false, nil ]; x, *z = y; x }, ],
-  [ 'expandarray', %q{ y = [ true, false, nil ]; x, *z, w = y; x }, ],
-  [ 'splatarray',  %q{ x, = *(y = true), false; x }, ],
-  [ 'concatarray', %q{ ["t", "r", *x = "u", "e"].join }, ],
-  [ 'concatarray', <<-'},', ],  # {
-    class X; def to_a; ['u']; end; end
-    ['t', 'r', *X.new, 'e'].join
-  },
-  [ 'concatarray', <<-'},', ],  # {
-    r = false
-    t = [true, nil]
-    q, w, e = r, *t             # here
-    w
-  },
-
-  [ 'newhash',  %q{ x = {}; x[x] = true }, ],
-  [ 'newhash',  %q{ x = true; { x => x }[x] }, ],
-  [ 'newhashfromarray', %q{ { a: true }[:a] }, ],
-  [ 'newrange', %q{ x = 1; [*(0..x)][0] == 0 }, ],
-  [ 'newrange', %q{ x = 1; [*(0...x)][0] == 0 }, ],
-
-  [ 'pop',     %q{ def x; true; end; x }, ],
-  [ 'dup',     %q{ x = y = true; x }, ],
-  [ 'dupn',    %q{ Object::X ||= true }, ],
-  [ 'reverse', %q{ q, (w, e), r = 1, [2, 3], 4; e == 3 }, ],
-  [ 'swap',    %q{ !!defined?([[]]) }, ],
-  [ 'swap',    <<-'},', ],      # {
-    x = [[false, true]]
-    for i, j in x               # here
-      ;
-    end
-    j
-  },
-
-  [ 'topn',        %q{ x, y = [], 0; x[*y], = [true, false]; x[0] }, ],
-  [ 'setn',        %q{ x, y = [], 0; x[*y]  =  true        ; x[0] }, ],
-  [ 'adjuststack', %q{ x = [true]; x[0] ||= nil; x[0] }, ],
-
-  [ 'defined',      %q{ !defined?(x) }, ],
-  [ 'checkkeyword', %q{ def x x:rand;x end; x x: true }, ],
-  [ 'checktype',    %q{ x = true; "#{x}" }, ],
-  [ 'checkmatch',   <<-'},', ], # {
-    x = y = true
-    case x
-    when false
-      y = false
-    when true                   # here
-      y = nil
-    end
-    y == nil
-  },
-  [ 'checkmatch',   <<-'},', ], # {
-    x, y = true, [false]
-    case x
-    when *y                     # here
-      z = false
-    else
-      z = true
-    end
-    z
-  },
-  [ 'checkmatch',   <<-'},', ], # {
-    x = false
-    begin
-      raise
-    rescue                      # here
-      x = true
-    end
-    x
-  },
-
-  [ 'defineclass', %q{                 module X;    true end }, ],
-  [ 'defineclass', %q{ X = Module.new; module X;    true end }, ],
-  [ 'defineclass', %q{                 class X;     true end }, ],
-  [ 'defineclass', %q{ X = Class.new;  class X;     true end }, ],
-  [ 'defineclass', %q{ X = Class.new;  class Y < X; true end }, ],
-  [ 'defineclass', %q{ X = Class.new;  class << X;  true end }, ],
-  [ 'defineclass', <<-'},', ], # {
-    X = Class.new
-    Y = Class.new(X)
-    class Y < X
-      true
-    end
-  },
-
-  [ 'opt_send_without_block', %q{ true.to_s }, ],
-  [ 'send',                   %q{ true.tap {|i| i.to_s } }, ],
-  [ 'leave',                  %q{ def x; true; end; x }, ],
-  [ 'invokesuper',            <<-'},', ], # {
-    class X < String
-      def empty?
-        super                   # here
-      end
-    end
-   X.new.empty?
-  },
-  [ 'invokeblock',            <<-'},', ], # {
-    def x
-      return yield self         # here
-    end
-    x do
-      true
-    end
-  },
-
-  [ 'opt_str_freeze', %q{ 'true'.freeze }, ],
-  [ 'opt_nil_p',      %q{ nil.nil? }, ],
-  [ 'opt_nil_p',      %q{ !Object.nil? }, ],
-  [ 'opt_nil_p',      %q{ Class.new{def nil?; true end}.new.nil? }, ],
-  [ 'opt_str_uminus', %q{ -'true' }, ],
-  [ 'opt_str_freeze', <<-'},', ], # {
-    class String
-      def freeze
-        true
-      end
-    end
-    'true'.freeze
-  },
-
-  [ 'opt_newarray_max', %q{ [ ].max.nil? }, ],
-  [ 'opt_newarray_max', %q{ [1, x = 2, 3].max == 3 }, ],
-  [ 'opt_newarray_max', <<-'},', ], # {
-    class Array
-      def max
-        true
-      end
-    end
-    [1, x = 2, 3].max
-  },
-  [ 'opt_newarray_min', %q{ [ ].min.nil? }, ],
-  [ 'opt_newarray_min', %q{ [3, x = 2, 1].min == 1 }, ],
-  [ 'opt_newarray_min', <<-'},', ], # {
-    class Array
-      def min
-        true
-      end
-    end
-    [3, x = 2, 1].min
-  },
-
-  [ 'throw',        %q{ false.tap { break true } }, ],
-  [ 'branchif',     %q{ x = nil;  x ||= true }, ],
-  [ 'branchif',     %q{ x = true; x ||= nil; x }, ],
-  [ 'branchunless', %q{ x = 1;    x &&= true }, ],
-  [ 'branchunless', %q{ x = nil;  x &&= true; x.nil? }, ],
-  [ 'branchnil',    %q{ x = true; x&.to_s }, ],
-  [ 'branchnil',    %q{ x = nil;  (x&.to_s).nil? }, ],
-  [ 'jump',         <<-'},', ], # {
-    y = 1
-    x = if y == 0 then nil elsif y == 1 then true else nil end
-    x
-  },
-  [ 'jump',         <<-'},', ], # {
-    # ultra complicated situation: this ||= assignment only generates
-    # 15 instructions, not including the class definition.
-    class X; attr_accessor :x; end
-    x = X.new
-    x&.x ||= true               # here
-  },
-
-  [ 'once', %q{ /#{true}/o =~ "true" && $~ }, ],
-  [ 'once', <<-'},', ],         # {
-    def once expr
-      return /#{expr}/o         # here
-    end
-    x = once(true); x = once(false); x = once(nil);
-    x =~ "true" && $~
-  },
-  [ 'once', <<-'},', ],         # {
-    # recursive once
-    def once n
-      return %r/#{
-        if n == 0
-          true
-        else
-          once(n-1)             # here
-        end
-      }/ox
-    end
-    x = once(128); x = once(7); x = once(16);
-    x =~ "true" && $~
-  },
-  [ 'once', <<-'},', ],         # {
-    # inter-thread lockup situation
-    def once n
-      return Thread.start n do |m|
-        Thread.pass
-        next %r/#{
-          sleep m               # here
-          true
-        }/ox
-      end
-    end
-    x = once(1); y = once(0.1); z = y.value
-    z =~ "true" && $~
-  },
-
-  [ 'opt_case_dispatch', %q{ case   0 when 1.1 then false else true end }, ],
-  [ 'opt_case_dispatch', %q{ case 1.0 when 1.1 then false else true end }, ],
-
-  [ 'opt_plus',    %q{ 1 + 1 == 2 }, ],
-  if defined? $FIXNUM_MAX then
-    [ 'opt_plus',  %Q{ #{ $FIXNUM_MAX } + 1 == #{ $FIXNUM_MAX + 1 } }, ]
-  end,
-  [ 'opt_plus',    %q{ 1.0 + 1.0 == 2.0 }, ],
-  [ 'opt_plus',    %q{ x = +0.0.next_float; x + x >= x }, ],
-  [ 'opt_plus',    %q{ 't' + 'rue' }, ],
-  [ 'opt_plus',    %q{ ( ['t'] + ['r', ['u', ['e'], ], ] ).join }, ],
-  [ 'opt_plus',    %q{ Time.at(1) + 1 == Time.at(2) }, ],
-  [ 'opt_minus',   %q{ 1 - 1 == 0 }, ],
-  if defined? $FIXNUM_MIN then
-    [ 'opt_minus', %Q{ #{ $FIXNUM_MIN } - 1 == #{ $FIXNUM_MIN - 1 } }, ]
-  end,
-  [ 'opt_minus',   %q{ 1.0 - 1.0 == 0.0 }, ],
-  [ 'opt_minus',   %q{ x = -0.0.prev_float; x - x == 0.0 }, ],
-  [ 'opt_minus',   %q{ ( [false, true] - [false] )[0] }, ],
-  [ 'opt_mult',    %q{ 1 * 1 == 1 }, ],
-  [ 'opt_mult',    %q{ 1.0 * 1.0 == 1.0 }, ],
-  [ 'opt_mult',    %q{ x = +0.0.next_float; x * x <= x }, ],
-  [ 'opt_mult',    %q{ ( "ruet" * 3 )[7,4] }, ],
-  [ 'opt_div',     %q{ 1 / 1 == 1 }, ],
-  [ 'opt_div',     %q{ 1.0 / 1.0 == 1.0 }, ],
-  [ 'opt_div',     %q{ x = +0.0.next_float; x / x >= x }, ],
-  [ 'opt_div',     %q{ x = 1/2r; x / x == 1 }, ],
-  [ 'opt_mod',     %q{ 1 % 1 == 0 }, ],
-  [ 'opt_mod',     %q{ 1.0 % 1.0 == 0.0 }, ],
-  [ 'opt_mod',     %q{ x = +0.0.next_float; x % x == 0.0 }, ],
-  [ 'opt_mod',     %q{ '%s' % [ true ] }, ],
-
-  [ 'opt_eq', %q{ 1 == 1 }, ],
-  [ 'opt_eq', <<-'},', ],       # {
-    class X; def == other; true; end; end
-    X.new == true
-  },
-  [ 'opt_neq', %q{ 1 != 0 }, ],
-  [ 'opt_neq', <<-'},', ],       # {
-    class X; def != other; true; end; end
-    X.new != true
-  },
-
-  [ 'opt_lt', %q{            -1   <  0 }, ],
-  [ 'opt_lt', %q{            -1.0 <  0.0 }, ],
-  [ 'opt_lt', %q{ -0.0.prev_float <  0.0 }, ],
-  [ 'opt_lt', %q{              ?a <  ?z }, ],
-  [ 'opt_le', %q{            -1   <= 0 }, ],
-  [ 'opt_le', %q{            -1.0 <= 0.0 }, ],
-  [ 'opt_le', %q{ -0.0.prev_float <= 0.0 }, ],
-  [ 'opt_le', %q{              ?a <= ?z }, ],
-  [ 'opt_gt', %q{             1   >  0 }, ],
-  [ 'opt_gt', %q{             1.0 >  0.0 }, ],
-  [ 'opt_gt', %q{ +0.0.next_float >  0.0 }, ],
-  [ 'opt_gt', %q{              ?z >  ?a }, ],
-  [ 'opt_ge', %q{             1   >= 0 }, ],
-  [ 'opt_ge', %q{             1.0 >= 0.0 }, ],
-  [ 'opt_ge', %q{ +0.0.next_float >= 0.0 }, ],
-  [ 'opt_ge', %q{              ?z >= ?a }, ],
-
-  [ 'opt_ltlt', %q{  '' << 'true' }, ],
-  [ 'opt_ltlt', %q{ ([] << 'true').join }, ],
-  [ 'opt_ltlt', %q{ (1 << 31) == 2147483648 }, ],
-
-  [ 'opt_aref', %q{ ['true'][0] }, ],
-  [ 'opt_aref', %q{ { 0 => 'true'}[0] }, ],
-  [ 'opt_aref', %q{ 'true'[0] == ?t }, ],
-  [ 'opt_aset', %q{ [][0] = true }, ],
-  [ 'opt_aset', %q{ {}[0] = true }, ],
-  [ 'opt_aset', %q{ x = 'frue'; x[0] = 't'; x }, ],
-  [ 'opt_aset', <<-'},', ], # {
-    # opt_aref / opt_aset mixup situation
-    class X; def x; {}; end; end
-    x = X.new
-    x&.x[true] ||= true         # here
-  },
-
-  [ 'opt_aref_with', %q{ { 'true' => true }['true'] }, ],
-  [ 'opt_aref_with', %q{ Struct.new(:nil).new['nil'].nil? }, ],
-  [ 'opt_aset_with', %q{ {}['true'] = true }, ],
-  [ 'opt_aset_with', %q{ Struct.new(:true).new['true'] = true }, ],
-
-  [ 'opt_length',  %q{   'true'       .length == 4 }, ],
-  [ 'opt_length',  %q{   :true        .length == 4 }, ],
-  [ 'opt_length',  %q{ [ 'true' ]     .length == 1 }, ],
-  [ 'opt_length',  %q{ { 'true' => 1 }.length == 1 }, ],
-  [ 'opt_size',    %q{   'true'       .size   == 4 }, ],
-  [ 'opt_size',    %q{               1.size   >= 4 }, ],
-  [ 'opt_size',    %q{ [ 'true' ]     .size   == 1 }, ],
-  [ 'opt_size',    %q{ { 'true' => 1 }.size   == 1 }, ],
-  [ 'opt_empty_p', %q{ ''.empty? }, ],
-  [ 'opt_empty_p', %q{ [].empty? }, ],
-  [ 'opt_empty_p', %q{ {}.empty? }, ],
-  [ 'opt_empty_p', %q{ Thread::Queue.new.empty? }, ],
-
-  [ 'opt_succ',  %q{ 1.succ == 2 }, ],
-  if defined? $FIXNUM_MAX then
-    [ 'opt_succ',%Q{ #{ $FIXNUM_MAX }.succ == #{ $FIXNUM_MAX + 1 } }, ]
-  end,
-  [ 'opt_succ',  %q{ '1'.succ == '2' }, ],
-
-  [ 'opt_not',  %q{ ! false }, ],
-  [ 'opt_neq', <<-'},', ],       # {
-    class X; def !; true; end; end
-    ! X.new
-  },
-
-  [ 'opt_regexpmatch2',  %q{ /true/ =~ 'true' && $~ }, ],
-  [ 'opt_regexpmatch2', <<-'},', ],       # {
-    class Regexp; def =~ other; true; end; end
-    /true/ =~ 'true'
-  },
-  [ 'opt_regexpmatch2',  %q{ 'true' =~ /true/ && $~ }, ],
-  [ 'opt_regexpmatch2', <<-'},', ],       # {
-    class String; def =~ other; true; end; end
-    'true' =~ /true/
-  },
-]
-
-# normal path
-tests.compact.each do |(insn, expr, *a)|
-  if a.last.is_a?(Hash)
-    a = a.dup
-    kw = a.pop
-    assert_equal 'true', expr, insn, *a, **kw
-  else
-    assert_equal 'true', expr, insn, *a
-  end
+  # with trace
+  progn = "set_trace_func(proc{})\n" + expr
+  assert_equal 'true', progn, 'trace_' + insn, *a, **kw
 end
 
-# with trace
-tests.compact.each {|(insn, expr, *a)|
-  progn = "set_trace_func(proc{})\n" + expr
-  if a.last.is_a?(Hash)
-    a = a.dup
-    kw = a.pop
-    assert_equal 'true', progn, 'trace_' + insn, *a, **kw
-  else
-    assert_equal 'true', progn, 'trace_' + insn, *a
+assert_insn('nop',   %q{ raise rescue true })
+
+assert_insn('setlocal *, 0', %q{ x = true })
+assert_insn('setlocal *, 1', %q{ x = nil; -> { x = true }.call })
+assert_insn('setlocal',      %q{ x = nil; -> { -> { x = true }.() }.() })
+assert_insn('getlocal *, 0', %q{ x = true; x })
+assert_insn('getlocal *, 1', %q{ x = true; -> { x }.call })
+assert_insn('getlocal',      %q{ x = true; -> { -> { x }.() }.() })
+
+assert_insn('setblockparam', "#{<<'{'}#{<<'}'}")
+{
+  def m&b
+    b = # here
+      proc { true }
   end
+  m { false }.call
+}
+assert_insn('getblockparam', "#{<<'{'}#{<<'}'}")
+{
+  def m&b
+    b # here
+  end
+  m { true }.call
+}
+assert_insn('getblockparamproxy', "#{<<'{'}#{<<'}'}")
+{
+  def m&b
+    b # here
+      .call
+  end
+  m { true }
+}
+
+assert_insn('setspecial', %q{ true if true..true })
+assert_insn('getspecial', %q{ $&.nil? })
+assert_insn('getspecial', %q{ $`.nil? })
+assert_insn('getspecial', %q{ $'.nil? })
+assert_insn('getspecial', %q{ $+.nil? })
+assert_insn('getspecial', %q{ $1.nil? })
+assert_insn('getspecial', %q{ $128.nil? })
+
+assert_insn('getglobal', %q{ String === $0 })
+assert_insn('getglobal', %q{ $_.nil? })
+assert_insn('setglobal', %q{ $0 = "true" })
+
+assert_insn('setinstancevariable', %q{ @x = true })
+assert_insn('getinstancevariable', %q{ @x = true; @x })
+
+assert_insn('setclassvariable', %q{ class A; @@x = true; end })
+assert_insn('getclassvariable', %q{ class A; @@x = true; @@x end })
+
+assert_insn('setconstant', %q{ X = true })
+assert_insn('setconstant', %q{ Object::X = true })
+assert_insn('getconstant', %q{ X = true; X })
+assert_insn('getconstant', %q{ X = true; Object::X })
+
+assert_insn('getinlinecache / setinlinecache', %q{ def x; X; end; X = true; x; x; x })
+
+assert_insn('putnil',               %q{ $~ == nil })
+assert_insn('putself',              %q{ $~ != self })
+assert_insn('putobject INT2FIX(0)', %q{ $~ != 0 })
+assert_insn('putobject INT2FIX(1)', %q{ $~ != 1 })
+assert_insn('putobject',            %q{ $~ != -1 })
+assert_insn('putobject',            %q{ $~ != /x/ })
+assert_insn('putobject',            %q{ $~ != :x })
+assert_insn('putobject',            %q{ $~ != (1..2) })
+assert_insn('putobject',            %q{ $~ != true })
+assert_insn('putobject',            %q{ /(?<x>x)/ =~ "x"; x == "x" })
+
+assert_insn('putspecialobject',         %q{ {//=>true}[//] })
+assert_insn('putstring',                %q{ "true" })
+assert_insn('tostring / concatstrings', %q{ "#{true}" })
+assert_insn('toregexp',                 %q{ /#{true}/ =~ "true" && $~ })
+assert_insn('intern',                   %q{ :"#{true}" })
+
+assert_insn('newarray',    %q{ ["true"][0] })
+assert_insn('newarraykwsplat', %q{ [**{x:'true'}][0][:x] })
+assert_insn('duparray',    %q{ [ true ][0] })
+assert_insn('expandarray', %q{ y = [ true, false, nil ]; x, = y; x })
+assert_insn('expandarray', %q{ y = [ true, false, nil ]; x, *z = y; x })
+assert_insn('expandarray', %q{ y = [ true, false, nil ]; x, *z, w = y; x })
+assert_insn('splatarray',  %q{ x, = *(y = true), false; x })
+assert_insn('concatarray', %q{ ["t", "r", *x = "u", "e"].join })
+assert_insn('concatarray', "#{<<'{'}#{<<'}'}")
+{
+  class X; def to_a; ['u']; end; end
+  ['t', 'r', *X.new, 'e'].join
+}
+assert_insn('concatarray', "#{<<'{'}#{<<'}'}")
+{
+  r = false
+  t = [true, nil]
+  q, w, e = r, *t             # here
+  w
+}
+
+assert_insn('newhash',  %q{ x = {}; x[x] = true })
+assert_insn('newhash',  %q{ x = true; { x => x }[x] })
+assert_insn('newhashfromarray', %q{ { a: true }[:a] })
+assert_insn('newrange', %q{ x = 1; [*(0..x)][0] == 0 })
+assert_insn('newrange', %q{ x = 1; [*(0...x)][0] == 0 })
+
+assert_insn('pop',     %q{ def x; true; end; x })
+assert_insn('dup',     %q{ x = y = true; x })
+assert_insn('dupn',    %q{ Object::X ||= true })
+assert_insn('reverse', %q{ q, (w, e), r = 1, [2, 3], 4; e == 3 })
+assert_insn('swap',    %q{ !!defined?([[]]) })
+assert_insn('swap',    "#{<<'{'}#{<<'}'}")
+{
+  x = [[false, true]]
+  for i, j in x               # here
+    ;
+  end
+  j
+}
+
+assert_insn('topn',        %q{ x, y = [], 0; x[*y], = [true, false]; x[0] })
+assert_insn('setn',        %q{ x, y = [], 0; x[*y]  =  true        ; x[0] })
+assert_insn('adjuststack', %q{ x = [true]; x[0] ||= nil; x[0] })
+
+assert_insn('defined',      %q{ !defined?(x) })
+assert_insn('checkkeyword', %q{ def x x:rand;x end; x x: true })
+assert_insn('checktype',    %q{ x = true; "#{x}" })
+assert_insn('checkmatch',   "#{<<'{'}#{<<'}'}")
+{
+  x = y = true
+  case x
+  when false
+    y = false
+  when true                   # here
+    y = nil
+  end
+  y == nil
+}
+assert_insn('checkmatch',   "#{<<'{'}#{<<'}'}")
+{
+  x, y = true, [false]
+  case x
+  when *y                     # here
+    z = false
+  else
+    z = true
+  end
+  z
+}
+assert_insn('checkmatch',   "#{<<'{'}#{<<'}'}")
+{
+  x = false
+  begin
+    raise
+  rescue                      # here
+    x = true
+  end
+  x
+}
+
+assert_insn('defineclass', %q{                 module X;    true end })
+assert_insn('defineclass', %q{ X = Module.new; module X;    true end })
+assert_insn('defineclass', %q{                 class X;     true end })
+assert_insn('defineclass', %q{ X = Class.new;  class X;     true end })
+assert_insn('defineclass', %q{ X = Class.new;  class Y < X; true end })
+assert_insn('defineclass', %q{ X = Class.new;  class << X;  true end })
+assert_insn('defineclass', "#{<<'{'}#{<<'}'}")
+{
+  X = Class.new
+  Y = Class.new(X)
+  class Y < X
+    true
+  end
+}
+
+assert_insn('opt_send_without_block', %q{ true.to_s })
+assert_insn('send',                   %q{ true.tap {|i| i.to_s } })
+assert_insn('leave',                  %q{ def x; true; end; x })
+assert_insn('invokesuper',            "#{<<'{'}#{<<'}'}")
+{
+  class X < String
+    def empty?
+      super                   # here
+    end
+  end
+  X.new.empty?
+}
+assert_insn('invokeblock',            "#{<<'{'}#{<<'}'}")
+{
+  def x
+    return yield self         # here
+  end
+  x do
+    true
+  end
+}
+
+assert_insn('opt_str_freeze', %q{ 'true'.freeze })
+assert_insn('opt_nil_p',      %q{ nil.nil? })
+assert_insn('opt_nil_p',      %q{ !Object.nil? })
+assert_insn('opt_nil_p',      %q{ Class.new{def nil?; true end}.new.nil? })
+assert_insn('opt_str_uminus', %q{ -'true' })
+assert_insn('opt_str_freeze', "#{<<'{'}#{<<'}'}")
+{
+  class String
+    def freeze
+      true
+    end
+  end
+  'true'.freeze
+}
+
+assert_insn('opt_newarray_max', %q{ [ ].max.nil? })
+assert_insn('opt_newarray_max', %q{ [1, x = 2, 3].max == 3 })
+assert_insn('opt_newarray_max', "#{<<'{'}#{<<'}'}")
+{
+  class Array
+    def max
+      true
+    end
+  end
+  [1, x = 2, 3].max
+}
+assert_insn('opt_newarray_min', %q{ [ ].min.nil? })
+assert_insn('opt_newarray_min', %q{ [3, x = 2, 1].min == 1 })
+assert_insn('opt_newarray_min', "#{<<'{'}#{<<'}'}")
+{
+  class Array
+    def min
+      true
+    end
+  end
+  [3, x = 2, 1].min
+}
+
+assert_insn('throw',        %q{ false.tap { break true } })
+assert_insn('branchif',     %q{ x = nil;  x ||= true })
+assert_insn('branchif',     %q{ x = true; x ||= nil; x })
+assert_insn('branchunless', %q{ x = 1;    x &&= true })
+assert_insn('branchunless', %q{ x = nil;  x &&= true; x.nil? })
+assert_insn('branchnil',    %q{ x = true; x&.to_s })
+assert_insn('branchnil',    %q{ x = nil;  (x&.to_s).nil? })
+assert_insn('jump',         "#{<<'{'}#{<<'}'}")
+{
+  y = 1
+  x = if y == 0 then nil elsif y == 1 then true else nil end
+  x
+}
+assert_insn('jump',         "#{<<'{'}#{<<'}'}")
+{
+  # ultra complicated situation: this ||= assignment only generates
+  # 15 instructions, not including the class definition.
+  class X; attr_accessor :x; end
+  x = X.new
+  x&.x ||= true               # here
+}
+
+assert_insn('once', %q{ /#{true}/o =~ "true" && $~ })
+assert_insn('once', "#{<<'{'}#{<<'}'}")
+{
+  def once expr
+    return /#{expr}/o         # here
+  end
+  x = once(true); x = once(false); x = once(nil);
+  x =~ "true" && $~
+}
+assert_insn('once', "#{<<'{'}#{<<'}'}")
+{
+  # recursive once
+  def once n
+    return %r/#{
+      if n == 0
+        true
+      else
+        once(n-1)             # here
+      end
+    }/ox
+  end
+  x = once(128); x = once(7); x = once(16);
+  x =~ "true" && $~
+}
+assert_insn('once', "#{<<'{'}#{<<'}'}")
+{
+  # inter-thread lockup situation
+  def once n
+    return Thread.start n do |m|
+      Thread.pass
+      next %r/#{
+        sleep m               # here
+        true
+      }/ox
+    end
+  end
+  x = once(1); y = once(0.1); z = y.value
+  z =~ "true" && $~
+}
+
+assert_insn('opt_case_dispatch', %q{ case   0 when 1.1 then false else true end })
+assert_insn('opt_case_dispatch', %q{ case 1.0 when 1.1 then false else true end })
+
+assert_insn('opt_plus',    %q{ 1 + 1 == 2 })
+if defined? $FIXNUM_MAX then
+  assert_insn('opt_plus',  %Q{ #{ $FIXNUM_MAX } + 1 == #{ $FIXNUM_MAX + 1 } })
+end
+assert_insn('opt_plus',    %q{ 1.0 + 1.0 == 2.0 })
+assert_insn('opt_plus',    %q{ x = +0.0.next_float; x + x >= x })
+assert_insn('opt_plus',    %q{ 't' + 'rue' })
+assert_insn('opt_plus',    %q{ ( ['t'] + ['r', ['u', ['e'], ], ] ).join })
+assert_insn('opt_plus',    %q{ Time.at(1) + 1 == Time.at(2) })
+assert_insn('opt_minus',   %q{ 1 - 1 == 0 })
+if defined? $FIXNUM_MIN then
+  assert_insn('opt_minus', %Q{ #{ $FIXNUM_MIN } - 1 == #{ $FIXNUM_MIN - 1 } })
+end
+assert_insn('opt_minus',   %q{ 1.0 - 1.0 == 0.0 })
+assert_insn('opt_minus',   %q{ x = -0.0.prev_float; x - x == 0.0 })
+assert_insn('opt_minus',   %q{ ( [false, true] - [false] )[0] })
+assert_insn('opt_mult',    %q{ 1 * 1 == 1 })
+assert_insn('opt_mult',    %q{ 1.0 * 1.0 == 1.0 })
+assert_insn('opt_mult',    %q{ x = +0.0.next_float; x * x <= x })
+assert_insn('opt_mult',    %q{ ( "ruet" * 3 )[7,4] })
+assert_insn('opt_div',     %q{ 1 / 1 == 1 })
+assert_insn('opt_div',     %q{ 1.0 / 1.0 == 1.0 })
+assert_insn('opt_div',     %q{ x = +0.0.next_float; x / x >= x })
+assert_insn('opt_div',     %q{ x = 1/2r; x / x == 1 })
+assert_insn('opt_mod',     %q{ 1 % 1 == 0 })
+assert_insn('opt_mod',     %q{ 1.0 % 1.0 == 0.0 })
+assert_insn('opt_mod',     %q{ x = +0.0.next_float; x % x == 0.0 })
+assert_insn('opt_mod',     %q{ '%s' % [ true ] })
+
+assert_insn('opt_eq', %q{ 1 == 1 })
+assert_insn('opt_eq', "#{<<'{'}#{<<'}'}")
+{
+  class X; def == other; true; end; end
+  X.new == true
+}
+assert_insn('opt_neq', %q{ 1 != 0 })
+assert_insn('opt_neq', "#{<<'{'}#{<<'}'}")
+{
+  class X; def != other; true; end; end
+  X.new != true
+}
+
+assert_insn('opt_lt', %q{            -1   <  0 })
+assert_insn('opt_lt', %q{            -1.0 <  0.0 })
+assert_insn('opt_lt', %q{ -0.0.prev_float <  0.0 })
+assert_insn('opt_lt', %q{              ?a <  ?z })
+assert_insn('opt_le', %q{            -1   <= 0 })
+assert_insn('opt_le', %q{            -1.0 <= 0.0 })
+assert_insn('opt_le', %q{ -0.0.prev_float <= 0.0 })
+assert_insn('opt_le', %q{              ?a <= ?z })
+assert_insn('opt_gt', %q{             1   >  0 })
+assert_insn('opt_gt', %q{             1.0 >  0.0 })
+assert_insn('opt_gt', %q{ +0.0.next_float >  0.0 })
+assert_insn('opt_gt', %q{              ?z >  ?a })
+assert_insn('opt_ge', %q{             1   >= 0 })
+assert_insn('opt_ge', %q{             1.0 >= 0.0 })
+assert_insn('opt_ge', %q{ +0.0.next_float >= 0.0 })
+assert_insn('opt_ge', %q{              ?z >= ?a })
+
+assert_insn('opt_ltlt', %q{  '' << 'true' })
+assert_insn('opt_ltlt', %q{ ([] << 'true').join })
+assert_insn('opt_ltlt', %q{ (1 << 31) == 2147483648 })
+
+assert_insn('opt_aref', %q{ ['true'][0] })
+assert_insn('opt_aref', %q{ { 0 => 'true'}[0] })
+assert_insn('opt_aref', %q{ 'true'[0] == ?t })
+assert_insn('opt_aset', %q{ [][0] = true })
+assert_insn('opt_aset', %q{ {}[0] = true })
+assert_insn('opt_aset', %q{ x = 'frue'; x[0] = 't'; x })
+assert_insn('opt_aset', "#{<<'{'}#{<<'}'}")
+{
+  # opt_aref / opt_aset mixup situation
+  class X; def x; {}; end; end
+  x = X.new
+  x&.x[true] ||= true         # here
+}
+
+assert_insn('opt_aref_with', %q{ { 'true' => true }['true'] })
+assert_insn('opt_aref_with', %q{ Struct.new(:nil).new['nil'].nil? })
+assert_insn('opt_aset_with', %q{ {}['true'] = true })
+assert_insn('opt_aset_with', %q{ Struct.new(:true).new['true'] = true })
+
+assert_insn('opt_length',  %q{   'true'       .length == 4 })
+assert_insn('opt_length',  %q{   :true        .length == 4 })
+assert_insn('opt_length',  %q{ [ 'true' ]     .length == 1 })
+assert_insn('opt_length',  %q{ { 'true' => 1 }.length == 1 })
+assert_insn('opt_size',    %q{   'true'       .size   == 4 })
+assert_insn('opt_size',    %q{               1.size   >= 4 })
+assert_insn('opt_size',    %q{ [ 'true' ]     .size   == 1 })
+assert_insn('opt_size',    %q{ { 'true' => 1 }.size   == 1 })
+assert_insn('opt_empty_p', %q{ ''.empty? })
+assert_insn('opt_empty_p', %q{ [].empty? })
+assert_insn('opt_empty_p', %q{ {}.empty? })
+assert_insn('opt_empty_p', %q{ Thread::Queue.new.empty? })
+
+assert_insn('opt_succ',  %q{ 1.succ == 2 })
+if defined? $FIXNUM_MAX then
+  assert_insn('opt_succ',%Q{ #{ $FIXNUM_MAX }.succ == #{ $FIXNUM_MAX + 1 } })
+end
+assert_insn('opt_succ',  %q{ '1'.succ == '2' })
+
+assert_insn('opt_not',  %q{ ! false })
+assert_insn('opt_neq', "#{<<'{'}#{<<'}'}")
+{
+  class X; def !; true; end; end
+  ! X.new
+}
+
+assert_insn('opt_regexpmatch2',  %q{ /true/ =~ 'true' && $~ })
+assert_insn('opt_regexpmatch2', "#{<<'{'}#{<<'}'}")
+{
+  class Regexp; def =~ other; true; end; end
+  /true/ =~ 'true'
+}
+assert_insn('opt_regexpmatch2',  %q{ 'true' =~ /true/ && $~ })
+assert_insn('opt_regexpmatch2', "#{<<'{'}#{<<'}'}")
+{
+  class String; def =~ other; true; end; end
+  'true' =~ /true/
 }
 
 assert_normal_exit("#{<<-"begin;"}\n#{<<-'end;'}")
