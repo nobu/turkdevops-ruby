@@ -560,7 +560,16 @@ class Assertion < Struct.new(:src, :path, :lineno, :proc)
 end
 
 def add_assertion src, pr
-  loc = caller_locations(2, 1).first
+  loc = nil
+  toploc = nil # for show_limit in test_fiber.rb
+  tag = "assert_"
+  caller_locations.each do |l|
+    label = l.base_label
+    loc = l if label.start_with?(tag)...!label.start_with?(tag)
+    toploc = l if %r{/test_[^/]*\.rb\z}.match?(l.path)
+  end
+  loc ||= toploc
+
   lineno = loc.lineno
   path = File.basename(loc.path)
 
