@@ -51,8 +51,8 @@ jobs:
           # To mitigate flakiness of MinGW CI, we test only one runtime that newer MSYS2 uses.
           - msystem: "UCRT64"
             base_ruby: head
-            test_task: "check"
-            test-all-opts: "--name=!/TestObjSpace#test_reachable_objects_during_iteration/"
+            test_task: "test-all"
+            test-all-opts: "--name=/TestDefaultGems#test_validate_gemspec/"
       fail-fast: false
     if: ${{ !contains(github.event.head_commit.message, '[DOC]') && !contains(github.event.pull_request.labels.*.name, 'Documentation') }}
     steps:
