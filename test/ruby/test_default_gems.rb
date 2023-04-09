@@ -2,22 +2,24 @@
 require 'rubygems'
 
 class TestDefaultGems < Test::Unit::TestCase
+  def self.load(file)
+    code = File.read(file, encoding: Encoding::UTF_8)
+    code.sub!(/`git .*?`/, '""')
+    eval code, binding, file
+  end
 
   def test_validate_gemspec
-    srcdir = File.expand_path('../../..', __FILE__)
     specs = 0
-    Dir.chdir(srcdir) do
+    Dir.chdir(File.expand_path('../../..', __FILE__)) do
       unless system("git", "rev-parse", %i[out err]=>IO::NULL)
         omit "git not found"
       end
-      Dir.glob("#{srcdir}/{lib,ext}/**/*.gemspec").map do |src|
+      Dir.glob("{lib,ext}/**/*.gemspec").map do |file|
         specs += 1
-        assert_nothing_raised do
-          raise("invalid spec in #{src}") unless Gem::Specification.load(src)
-        end
+        assert_kind_of(Gem::Specification, self.class.load(file))
       end
     end
-    assert specs > 0, "gemspecs not found"
+    assert_operator specs, :>, 0, "gemspecs not found"
   end
 
 end
