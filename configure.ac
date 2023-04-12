@@ -974,7 +974,6 @@ AS_IF([test "x$OPT_DIR" != x], [
 
 test -z "${ac_env_CFLAGS_set}" -a -n "${cflags+set}" && eval CFLAGS="\"$cflags $ARCH_FLAG\""
 test -z "${ac_env_CXXFLAGS_set}" -a -n "${cxxflags+set}" && eval CXXFLAGS="\"$cxxflags $ARCH_FLAG\""
-}
 
 AC_CACHE_CHECK([whether compiler has statement and declarations in expressions],
   rb_cv_have_stmt_and_decl_in_expr,
@@ -984,6 +983,7 @@ AC_CACHE_CHECK([whether compiler has statement and declarations in expressions],
 AS_IF([test "$rb_cv_have_stmt_and_decl_in_expr" = yes], [
   AC_DEFINE(HAVE_STMT_AND_DECL_IN_EXPR)
 ])
+}
 
 : "header and library section" && {
 AC_ARG_WITH(winnt-ver,
