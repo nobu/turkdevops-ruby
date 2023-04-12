@@ -264,10 +264,6 @@ AC_CHECK_TOOLS([OBJCOPY], [gobjcopy objcopy], [:])
 AC_CHECK_TOOLS([OBJDUMP], [gobjdump objdump])
 AC_CHECK_TOOLS([STRIP],   [gstrip strip], [:])
 
-# nm errors with Rust's LLVM bitcode when Rust uses a newer LLVM version than nm.
-# In case we're working with llvm-nm, tell it to not worry about the bitcode.
-AS_IF([${NM} --help | grep -q 'llvm-bc'], [NM="$NM --no-llvm-bc"])
-
 AS_IF([test ! $rb_test_CFLAGS], [AS_UNSET(CFLAGS)]); AS_UNSET(rb_test_CFLAGS)
 AS_IF([test ! $rb_test_CXXFLAGS], [AS_UNSET(CXXFLAGS)]); AS_UNSET(rb_save_CXXFLAGS)
 
@@ -3917,6 +3913,16 @@ AC_ARG_ENABLE(install-static-library,
 	    [INSTALL_STATIC_LIBRARY=no],
 	    [INSTALL_STATIC_LIBRARY=yes]))
 AC_SUBST(INSTALL_STATIC_LIBRARY)
+
+# nm errors with Rust's LLVM bitcode when Rust uses a newer LLVM version than nm.
+# In case we're working with llvm-nm, tell it to not worry about the bitcode.
+AC_MSG_CHECKING([if nm accepts --no-llvm-bc])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[]])],[
+    AS_IF([$NM --no-llvm-bc conftest.$ac_objext], [
+        NM="$NM --no-llvm-bc"
+    ])
+])
+AS_CASE([$NM], [*" --no-llvm-bc"], [AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
 
 AC_CACHE_CHECK([for prefix of external symbols], rb_cv_symbol_prefix, [
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[extern void conftest_external(void) {}]], [[]])],[
