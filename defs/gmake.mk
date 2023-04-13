@@ -15,6 +15,8 @@ ifneq ($(filter darwin%,$(target_os)),)
 # Remove debug option not to generate thousands of .dSYM
 RJIT_DEBUGFLAGS := $(filter-out -g%,$(RJIT_DEBUGFLAGS))
 
+$(foreach prog,AR LD NM,$(eval override $(value prog) := $(shell $(CC) -print-prog-name=$(value prog))))
+
 INSTRUBY_ENV += SDKROOT=
 endif
 INSTRUBY_ARGS += --gnumake
