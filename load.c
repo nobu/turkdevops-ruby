@@ -1032,8 +1032,8 @@ search_required(rb_vm_t *vm, VALUE fname, volatile VALUE *path, feature_func rb_
     }
     tmp = fname;
     type = rb_find_file_ext(&tmp, ft == 's' ? ruby_ext : loadable_ext);
-#if EXTSTATIC
-    if (!ft && type != 1) { // not already a feature and not found as a dynamic library
+    if (!ft && type != 1 && vm->static_ext_inits) {
+        // not already a feature and not found as a dynamic library and static exts is enabled
         VALUE lookup_name = tmp;
         // Append ".so" if not already present so for example "etc" can find "etc.so".
         // We always register statically linked extensions with a ".so" extension.
@@ -1048,7 +1048,6 @@ search_required(rb_vm_t *vm, VALUE fname, volatile VALUE *path, feature_func rb_
             return 's';
         }
     }
-#endif
     switch (type) {
       case 0:
         if (ft)
@@ -1087,19 +1086,22 @@ load_ext(VALUE path)
     return (VALUE)dln_load(RSTRING_PTR(path));
 }
 
-#if EXTSTATIC
 static bool
 run_static_ext_init(rb_vm_t *vm, const char *feature)
 {
     st_data_t key = (st_data_t)feature;
     st_data_t init_func;
+    if (!vm->static_ext_inits) return false;
     if (st_delete(vm->static_ext_inits, &key, &init_func)) {
+        if (vm->static_ext_inits->num_entries == 0) {
+            st_free_table(vm->static_ext_inits);
+            vm->static_ext_inits = 0;
+        }
         ((void (*)(void))init_func)();
         return true;
     }
     return false;
 }
-#endif
 
 static int
 no_feature_p(rb_vm_t *vm, const char *feature, const char *ext, int rb, int expanded, const char **fn)
@@ -1203,11 +1205,9 @@ require_internal(rb_execution_context_t *ec, VALUE fname, int exception, bool wa
             else if (!*ftptr) {
                 result = TAG_RETURN;
             }
-#if EXTSTATIC
             else if (found == 's' && run_static_ext_init(th->vm, RSTRING_PTR(path))) {
                 result = TAG_RETURN;
             }
-#endif
             else if (RTEST(rb_hash_aref(realpaths,
                                         realpath = rb_realpath_internal(Qnil, path, 1)))) {
                 result = 0;
@@ -1326,7 +1326,6 @@ rb_require(const char *fname)
     return rb_require_string(rb_str_new_cstr(fname));
 }
 
-#if EXTSTATIC
 static int
 register_init_ext(st_data_t *key, st_data_t *value, st_data_t init, int existing)
 {
@@ -1351,7 +1350,6 @@ ruby_init_ext(const char *name, void (*init)(void))
         return;
     st_update(inits_table, (st_data_t)name, register_init_ext, (st_data_t)init);
 }
-#endif
 
 /*
  *  call-seq:
