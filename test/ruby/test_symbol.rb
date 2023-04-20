@@ -618,4 +618,13 @@ class TestSymbol < Test::Unit::TestCase
     bug5536 = '[ruby-core:40623]'
     assert_raise(TypeError, bug5536) {:str.end_with? :not_convertible_to_string}
   end
+
+  def test_try_convert
+    assert_equal(:foo, Symbol.try_convert(:foo))
+    assert_equal(:foo, Symbol.try_convert("foo"))
+    c = Struct.new(:to_sym)
+    assert_equal(:foo, Symbol.try_convert(c.new(:foo)))
+    assert_nil(Symbol.try_convert(42))
+    assert_raise(TypeError) {Symbol.try_convert(c.new("foo"))}
+  end
 end

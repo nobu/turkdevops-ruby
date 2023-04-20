@@ -11857,6 +11857,29 @@ sym_all_symbols(VALUE _)
     return rb_sym_all_symbols();
 }
 
+/*
+ * call-seq:
+ *   Symbol.try_convert(object) -> object, symbol, or nil
+ *
+ * If +object+ is a \Symbol object, returns +object+.
+ * If +object+ is a \String object, returns a \Symbol corresponding to +object+.
+ *
+ * Otherwise if +object+ responds to +:to_sym+,
+ * calls +object.to_sym+ and returns the result.
+ *
+ * Returns +nil+ if +object+ does not respond to +:to_sym+.
+ *
+ * Raises an exception unless +object.to_sym+ returns a \Symbol object.
+ */
+
+static VALUE
+sym_s_try_convert(VALUE self, VALUE obj)
+{
+    if (SYMBOL_P(obj)) return obj;
+    if (RB_TYPE_P(obj, T_STRING)) return rb_str_intern(obj);
+    return rb_check_convert_type_with_id(obj, T_SYMBOL, "Symbol", idTo_sym);
+}
+
 VALUE
 rb_str_to_interned_str(VALUE str)
 {
@@ -12068,6 +12091,7 @@ Init_String(void)
     rb_undef_alloc_func(rb_cSymbol);
     rb_undef_method(CLASS_OF(rb_cSymbol), "new");
     rb_define_singleton_method(rb_cSymbol, "all_symbols", sym_all_symbols, 0);
+    rb_define_singleton_method(rb_cSymbol, "try_convert", sym_s_try_convert, 1);
 
     rb_define_method(rb_cSymbol, "==", sym_equal, 1);
     rb_define_method(rb_cSymbol, "===", sym_equal, 1);
