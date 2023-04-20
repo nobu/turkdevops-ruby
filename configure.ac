@@ -141,6 +141,17 @@ AS_CASE(["$target_cpu-$target_os"],
         AS_IF([test -n "$target_alias"], [target_alias="arm64-${target_alias@%:@aarch64-}"])
     ])
 
+AS_CASE([$build_os],
+    [darwin*], [
+        # dsymutil in Xcode 14.3 does not clean temporary directory
+        ruby_build_tmpdir=`/usr/bin/mktemp -d -t ruby`
+        AS_IF([test -d "$ruby_build_tmpdir"], [
+            export TMPDIR="$ruby_build_tmpdir"
+            trap 'rm -fr "$ruby_build_tmpdir"' 0 2
+        ])
+    ]
+)
+
 AC_ARG_PROGRAM
 RUBY_RM_RECURSIVE
 AC_ARG_WITH(gcc,
@@ -1093,7 +1104,14 @@ main()
 		    POSTLINK="{ test -z '\$(RUBY_CODESIGN)' || $codesign -s '\$(RUBY_CODESIGN)' -f \$@; }${POSTLINK:+; $POSTLINK}"
 		])
 		AS_IF([test -n "$dsymutil"], [
-		    POSTLINK="$dsymutil \$@${POSTLINK:+; $POSTLINK}"
+		    # dsymutil in Xcode 14.3 does not clean temporary directory
+		    dsymutil="(\
+export TMPDIR=\`/usr/bin/mktemp -d -t ruby-dsymutil\`; \
+trap 'rm -fr \"\$TMPDIR\"' 0 2; \
+$dsymutil \$@; \
+exec rm -fr \"\$\$TMPDIR\"\
+)"
+		    POSTLINK="$dsymutil${POSTLINK:+; $POSTLINK}"
 		])
 		AS_IF([test -n "${POSTLINK}"], [
 		    LINK_SO="$LINK_SO
