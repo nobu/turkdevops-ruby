@@ -12637,12 +12637,14 @@ new_args_tail(struct parser_params *p, NODE *kw_args, ID kw_rest_arg, ID block, 
 
         args->kw_rest_arg = NEW_DVAR(kw_rest_arg, kw_rest_loc);
         args->kw_rest_arg->nd_cflag = kw_bits;
+        if (!dyna_in_block(p)) nd_set_type(args->kw_rest_arg, NODE_LVAR);
     }
     else if (kw_rest_arg == idNil) {
         args->no_kwarg = 1;
     }
     else if (kw_rest_arg) {
         args->kw_rest_arg = NEW_DVAR(kw_rest_arg, kw_rest_loc);
+        if (!dyna_in_block(p)) nd_set_type(args->kw_rest_arg, NODE_LVAR);
     }
 
     p->ruby_sourceline = saved_line;
