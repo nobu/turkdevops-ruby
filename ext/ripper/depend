@@ -11,9 +11,8 @@ ripper.o: ripper.c
 
 .y.c:
 	$(ECHO) compiling compiler $<
-	echo BASERUBY=$(BASERUBY)
-	$(BISON) -t -v -oy.tab.c $<
-	sed -e "/^#/s!y\.tab\.c!$@!" -f $(top_srcdir)/tool/ytab.sed y.tab.c > $@
+	$(Q) $(BISON) -t -v -oy.tab.c $<
+	$(Q) sed -e "/^#/s!y\.tab\.c!$@!" -f $(top_srcdir)/tool/ytab.sed y.tab.c > $@
 	@$(RM) y.tab.c
 
 all: check
