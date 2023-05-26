@@ -2887,6 +2887,15 @@ obj_respond_to_missing(VALUE obj, VALUE mid, VALUE priv)
     return Qfalse;
 }
 
+bool
+rb_mod_cfunc_boundp(VALUE klass, ID mid, VALUE (*func)(ANYARGS))
+{
+    const rb_callable_method_entry_t *cme = rb_callable_method_entry(klass, mid);
+    if (!cme) return false;
+    if (cme->def->type != VM_METHOD_TYPE_CFUNC) return false;
+    return cme->def->body.cfunc.func == func;
+}
+
 void
 Init_Method(void)
 {

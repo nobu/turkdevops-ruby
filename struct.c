@@ -301,6 +301,9 @@ rb_struct_s_inspect(VALUE klass)
     return inspect;
 }
 
+static VALUE rb_data_initialize_m(int argc, const VALUE *argv, VALUE self);
+bool rb_mod_cfunc_boundp(VALUE klass, ID mid, VALUE (*func)(ANYARGS));
+
 static VALUE
 rb_data_s_new(int argc, const VALUE *argv, VALUE klass)
 {
@@ -313,6 +316,16 @@ rb_data_s_new(int argc, const VALUE *argv, VALUE klass)
     else {
         VALUE members = struct_ivar_get(klass, id_members);
         int num_members = RARRAY_LENINT(members);
+
+        if (argc == num_members &&
+            rb_mod_cfunc_boundp(klass, idInitialize, rb_data_initialize_m)) {
+            VALUE obj = rb_obj_alloc(klass);
+            for (int i = 0; i < argc; ++i) {
+                RSTRUCT_SET(obj, i, argv[i]);
+            }
+            OBJ_FREEZE_RAW(obj);
+            return obj;
+        }
 
         rb_check_arity(argc, 0, num_members);
         VALUE arg_hash = rb_hash_new_with_size(argc);
