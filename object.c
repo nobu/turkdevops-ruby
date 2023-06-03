@@ -2217,12 +2217,27 @@ rb_is_attr_id(ID id)
 }
 
 static ID
-id_for_attr(VALUE obj, VALUE name)
+id_for_attr(VALUE obj, VALUE name, ID *read_id)
 {
-    ID id = id_for_var(obj, name, attr);
-    if (!id) id = rb_intern_str(name);
+    ID id = rb_check_id(&name);
+    const VALUE attrname = id ? rb_id2str(id) : name;
+    VALUE attriv = attrname;
+    if (read_id && RSTRING_LEN(attriv) > 1 && RSTRING_END(attriv)[-1] == '?') {
+        /* chomp '?' */
+        attriv = rb_str_subseq(attriv, 0, RSTRING_LEN(attriv)-1);
+        id = rb_check_id(&attriv);
+    }
+    if (id ? !rb_is_attr_id(id) : !rb_is_attr_name(attriv)) {
+        rb_name_err_raise_str(rb_fstring_cstr(bad_attr_name), obj, name);
+    }
+    if (!id) id = rb_intern_str(attriv);
+    if (read_id) {
+        *read_id = attriv == attrname ? id : rb_intern_str(attrname);
+    }
     return id;
 }
+
+void rb_define_attr_id(VALUE klass, ID var_id, ID read_id, ID write_id, int ex);
 
 /*
  *  call-seq:
@@ -2245,9 +2260,9 @@ rb_mod_attr_reader(int argc, VALUE *argv, VALUE klass)
     VALUE names = rb_ary_new2(argc);
 
     for (i=0; i<argc; i++) {
-        ID id = id_for_attr(klass, argv[i]);
-        rb_attr(klass, id, TRUE, FALSE, TRUE);
-        rb_ary_push(names, ID2SYM(id));
+        ID read_id, id = id_for_attr(klass, argv[i], &read_id);
+        rb_define_attr_id(klass, id, read_id, (ID)0, TRUE);
+        rb_ary_push(names, ID2SYM(read_id));
     }
     return names;
 }
@@ -2271,13 +2286,14 @@ VALUE
 rb_mod_attr(int argc, VALUE *argv, VALUE klass)
 {
     if (argc == 2 && (argv[1] == Qtrue || argv[1] == Qfalse)) {
-        ID id = id_for_attr(klass, argv[0]);
+        ID read_id, id = id_for_attr(klass, argv[0], &read_id);
+        ID write_id = argv[1] == Qtrue ? rb_id_attrset(id) : 0;
         VALUE names = rb_ary_new();
 
         rb_category_warning(RB_WARN_CATEGORY_DEPRECATED, "optional boolean argument is obsoleted");
-        rb_attr(klass, id, 1, RTEST(argv[1]), TRUE);
-        rb_ary_push(names, ID2SYM(id));
-        if (argv[1] == Qtrue) rb_ary_push(names, ID2SYM(rb_id_attrset(id)));
+        rb_define_attr_id(klass, id, read_id, write_id, TRUE);
+        rb_ary_push(names, ID2SYM(read_id));
+        if (write_id) rb_ary_push(names, ID2SYM(write_id));
         return names;
     }
     return rb_mod_attr_reader(argc, argv, klass);
@@ -2301,7 +2317,7 @@ rb_mod_attr_writer(int argc, VALUE *argv, VALUE klass)
     VALUE names = rb_ary_new2(argc);
 
     for (i=0; i<argc; i++) {
-        ID id = id_for_attr(klass, argv[i]);
+        ID id = id_for_attr(klass, argv[i], NULL);
         rb_attr(klass, id, FALSE, TRUE, TRUE);
         rb_ary_push(names, ID2SYM(rb_id_attrset(id)));
     }
@@ -2333,11 +2349,12 @@ rb_mod_attr_accessor(int argc, VALUE *argv, VALUE klass)
     VALUE names = rb_ary_new2(argc * 2);
 
     for (i=0; i<argc; i++) {
-        ID id = id_for_attr(klass, argv[i]);
+        ID read_id, id = id_for_attr(klass, argv[i], &read_id);
+        ID write_id = rb_id_attrset(id);
 
-        rb_attr(klass, id, TRUE, TRUE, TRUE);
-        rb_ary_push(names, ID2SYM(id));
-        rb_ary_push(names, ID2SYM(rb_id_attrset(id)));
+        rb_define_attr_id(klass, id, read_id, write_id, TRUE);
+        rb_ary_push(names, ID2SYM(read_id));
+        rb_ary_push(names, ID2SYM(write_id));
     }
     return names;
 }

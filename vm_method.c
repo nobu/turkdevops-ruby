@@ -1737,40 +1737,74 @@ rb_scope_module_func_set(void)
 }
 
 const rb_cref_t *rb_vm_cref_in_context(VALUE self, VALUE cbase);
-void
-rb_attr(VALUE klass, ID id, int read, int write, int ex)
+
+static rb_method_visibility_t
+current_visibility_for_attr(VALUE klass, int ex)
 {
-    ID attriv;
-    rb_method_visibility_t visi;
+    if (!ex) return METHOD_VISI_PUBLIC;
+
     const rb_execution_context_t *ec = GET_EC();
     const rb_cref_t *cref = rb_vm_cref_in_context(klass, klass);
-
-    if (!ex || !cref) {
-        visi = METHOD_VISI_PUBLIC;
-    }
-    else {
+    if (cref) {
         switch (vm_scope_visibility_get(ec)) {
           case METHOD_VISI_PRIVATE:
             if (vm_scope_module_func_check(ec)) {
                 rb_warning("attribute accessor as module_function");
             }
-            visi = METHOD_VISI_PRIVATE;
-            break;
+            return METHOD_VISI_PRIVATE;
           case METHOD_VISI_PROTECTED:
-            visi = METHOD_VISI_PROTECTED;
-            break;
+            return METHOD_VISI_PROTECTED;
           default:
-            visi = METHOD_VISI_PUBLIC;
             break;
         }
     }
 
-    attriv = rb_intern_str(rb_sprintf("@%"PRIsVALUE, rb_id2str(id)));
+    return METHOD_VISI_PUBLIC;
+}
+
+static ID
+attr_ivar_id(VALUE id)
+{
+    return rb_intern_str(rb_sprintf("@%"PRIsVALUE, rb_id2str(id)));
+}
+
+static void
+define_attr_reader(VALUE klass, ID id, ID attriv, rb_method_visibility_t visi)
+{
+    rb_add_method(klass, id, VM_METHOD_TYPE_IVAR, (void *)attriv, visi);
+}
+
+static void
+define_attr_writer(VALUE klass, ID id, ID attriv, rb_method_visibility_t visi)
+{
+    rb_add_method(klass, id, VM_METHOD_TYPE_ATTRSET, (void *)attriv, visi);
+}
+
+void
+rb_define_attr_id(VALUE klass, ID var_id, ID read_id, ID write_id, int ex)
+{
+    rb_method_visibility_t visi = current_visibility_for_attr(klass, ex);
+    ID attriv = attr_ivar_id(var_id);
+
+    if (read_id) {
+        define_attr_reader(klass, read_id, attriv, visi);
+    }
+    if (write_id) {
+        define_attr_writer(klass, write_id, attriv, visi);
+    }
+}
+
+void
+rb_attr(VALUE klass, ID id, int read, int write, int ex)
+{
+    rb_method_visibility_t visi = current_visibility_for_attr(klass, ex);
+    ID attriv = attr_ivar_id(id);
+
     if (read) {
-        rb_add_method(klass, id, VM_METHOD_TYPE_IVAR, (void *)attriv, visi);
+        define_attr_reader(klass, id, attriv, visi);
     }
     if (write) {
-        rb_add_method(klass, rb_id_attrset(id), VM_METHOD_TYPE_ATTRSET, (void *)attriv, visi);
+        define_attr_writer(klass, rb_id_attrset(id), attriv, visi);
     }
 }
 

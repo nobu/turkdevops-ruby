@@ -2871,7 +2871,6 @@ class TestModule < Test::Unit::TestCase
   def test_invalid_attr
     %W[
       foo=
-      foo?
       @foo
       @@foo
       $foo
@@ -2882,6 +2881,18 @@ class TestModule < Test::Unit::TestCase
       end
       assert_equal(name, e.name.to_s)
     end
+  end
+
+  def test_attr_query
+    obj = Class.new { attr_reader "foo?"; def initialize = @foo = "ok" }.new
+    assert_not_respond_to(obj, :foo)
+    assert_equal("ok", obj.foo?)
+
+    obj = Class.new { attr_accessor "foo?"; def initialize = @foo = "ok" }.new
+    assert_not_respond_to(obj, :foo)
+    assert_equal("ok", obj.foo?)
+    obj.foo = "OK"
+    assert_equal("OK", obj.foo?)
   end
 
   class AttrTest
