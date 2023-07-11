@@ -1629,7 +1629,7 @@ static int looking_at_eol_p(struct parser_params *p);
 %token <id> '\13'	"escaped vertical tab"
 %token tUPLUS		RUBY_TOKEN(UPLUS)  "unary+"
 %token tUMINUS		RUBY_TOKEN(UMINUS) "unary-"
-%token tPOW		RUBY_TOKEN(POW)    "**"
+%token <num> tPOW	RUBY_TOKEN(POW)    "**"
 %token tCMP		RUBY_TOKEN(CMP)    "<=>"
 %token tEQ		RUBY_TOKEN(EQ)     "=="
 %token tEQQ		RUBY_TOKEN(EQQ)    "==="
@@ -2888,7 +2888,15 @@ arg		: lhs '=' lex_ctxt arg_rhs
                     }
                 | tUMINUS_NUM simple_numeric tPOW arg
                     {
-                        $$ = call_uni_op(p, call_bin_op(p, $2, idPow, $4, &@2, &@$), idUMinus, &@1, &@$);
+                        $$ = $2;
+                        if ($3) {
+                            $$ = call_uni_op(p, $$, idUMinus, &@1, &@$);
+                            $$ = call_bin_op(p, $$, idPow, $4, &@2, &@$);
+                        }
+                        else {
+                            $$ = call_bin_op(p, $$, idPow, $4, &@2, &@$);
+                            $$ = call_uni_op(p, $$, idUMinus, &@1, &@$);
+                        }
                     }
                 | tUPLUS arg
                     {
@@ -10022,6 +10030,7 @@ parser_yylex(struct parser_params *p)
             }
             else {
                 c = warn_balanced((enum ruby_method_ids)tPOW, "**", "argument prefix");
+                set_yylval_num(space_seen);
             }
         }
         else {
