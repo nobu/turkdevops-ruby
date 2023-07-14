@@ -264,18 +264,6 @@ ruby_qsort(void* base, const size_t nel, const size_t size, cmpfunc_t *cmp, void
 #endif /* !HAVE_GNU_QSORT_R */
 
 char *
-ruby_strdup(const char *str)
-{
-    char *tmp;
-    size_t len = strlen(str) + 1;
-
-    tmp = xmalloc(len);
-    memcpy(tmp, str, len);
-
-    return tmp;
-}
-
-char *
 ruby_getcwd(void)
 {
 #if defined HAVE_GETCWD

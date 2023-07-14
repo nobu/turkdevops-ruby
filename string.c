@@ -190,6 +190,18 @@ str_enc_fastpath(VALUE str)
 #endif
 
 
+char *
+ruby_strdup(const char *str)
+{
+    char *tmp;
+    size_t len = strlen(str) + 1;
+
+    tmp = xmalloc(len);
+    memcpy(tmp, str, len);
+
+    return tmp;
+}
+
 static inline long
 str_embed_capa(VALUE str)
 {
