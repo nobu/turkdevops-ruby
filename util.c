@@ -263,52 +263,6 @@ ruby_qsort(void* base, const size_t nel, const size_t size, cmpfunc_t *cmp, void
 #endif
 #endif /* !HAVE_GNU_QSORT_R */
 
-char *
-ruby_getcwd(void)
-{
-#if defined HAVE_GETCWD
-# undef RUBY_UNTYPED_DATA_WARNING
-# define RUBY_UNTYPED_DATA_WARNING 0
-# if defined NO_GETCWD_MALLOC
-    VALUE guard = Data_Wrap_Struct((VALUE)0, NULL, RUBY_DEFAULT_FREE, NULL);
-    int size = 200;
-    char *buf = xmalloc(size);
-
-    while (!getcwd(buf, size)) {
-        int e = errno;
-        if (e != ERANGE) {
-            xfree(buf);
-            DATA_PTR(guard) = NULL;
-            rb_syserr_fail(e, "getcwd");
-        }
-        size *= 2;
-        DATA_PTR(guard) = buf;
-        buf = xrealloc(buf, size);
-    }
-# else
-    VALUE guard = Data_Wrap_Struct((VALUE)0, NULL, free, NULL);
-    char *buf, *cwd = getcwd(NULL, 0);
-    DATA_PTR(guard) = cwd;
-    if (!cwd) rb_sys_fail("getcwd");
-    buf = ruby_strdup(cwd);	/* allocate by xmalloc */
-    free(cwd);
-# endif
-    DATA_PTR(RB_GC_GUARD(guard)) = NULL;
-#else
-# ifndef PATH_MAX
-#  define PATH_MAX 8192
-# endif
-    char *buf = xmalloc(PATH_MAX+1);
-
-    if (!getwd(buf)) {
-        int e = errno;
-        xfree(buf);
-        rb_syserr_fail(e, "getwd");
-    }
-#endif
-    return buf;
-}
-
 void
 ruby_each_words(const char *str, void (*func)(const char*, int, void*), void *arg)
 {

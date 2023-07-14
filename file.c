@@ -1592,6 +1592,10 @@ rb_access(VALUE fname, int mode)
  *
  */
 
+#ifndef S_ISDIR
+#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
+#endif
+
 /*
  * Document-method: directory?
  *
@@ -1615,10 +1619,6 @@ rb_access(VALUE fname, int mode)
 VALUE
 rb_file_directory_p(VALUE obj, VALUE fname)
 {
-#ifndef S_ISDIR
-#   define S_ISDIR(m) (((m) & S_IFMT) == S_IFDIR)
-#endif
-
     struct stat st;
 
     if (rb_stat(fname, &st) < 0) return Qfalse;
@@ -3293,6 +3293,52 @@ rb_file_s_umask(int argc, VALUE *argv, VALUE _)
         rb_error_arity(argc, 0, 1);
     }
     return MODET2NUM(omask);
+}
+
+char *
+ruby_getcwd(void)
+{
+#if defined HAVE_GETCWD
+# undef RUBY_UNTYPED_DATA_WARNING
+# define RUBY_UNTYPED_DATA_WARNING 0
+# if defined NO_GETCWD_MALLOC
+    VALUE guard = Data_Wrap_Struct((VALUE)0, NULL, RUBY_DEFAULT_FREE, NULL);
+    int size = 200;
+    char *buf = xmalloc(size);
+
+    while (!getcwd(buf, size)) {
+        int e = errno;
+        if (e != ERANGE) {
+            xfree(buf);
+            DATA_PTR(guard) = NULL;
+            rb_syserr_fail(e, "getcwd");
+        }
+        size *= 2;
+        DATA_PTR(guard) = buf;
+        buf = xrealloc(buf, size);
+    }
+# else
+    VALUE guard = Data_Wrap_Struct((VALUE)0, NULL, free, NULL);
+    char *buf, *cwd = getcwd(NULL, 0);
+    DATA_PTR(guard) = cwd;
+    if (!cwd) rb_sys_fail("getcwd");
+    buf = ruby_strdup(cwd);	/* allocate by xmalloc */
+    free(cwd);
+# endif
+    DATA_PTR(RB_GC_GUARD(guard)) = NULL;
+#else
+# ifndef PATH_MAX
+#  define PATH_MAX 8192
+# endif
+    char *buf = xmalloc(PATH_MAX+1);
+
+    if (!getwd(buf)) {
+        int e = errno;
+        xfree(buf);
+        rb_syserr_fail(e, "getwd");
+    }
+#endif
+    return buf;
 }
 
 #ifdef __CYGWIN__
