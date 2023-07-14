@@ -953,6 +953,23 @@ moreswitches(const char *s, ruby_cmdline_options_t *opt, int envopt)
     rb_str_resize(argstr, 0);
 }
 
+void
+ruby_each_words(const char *str, void (*func)(const char*, int, void*), void *arg)
+{
+    const char *end;
+    int len;
+
+    if (!str) return;
+    for (; *str; str = end) {
+        while (ISSPACE(*str) || *str == ',') str++;
+        if (!*str) break;
+        end = str;
+        while (*end && !ISSPACE(*end) && *end != ',') end++;
+        len = (int)(end - str);	/* assume no string exceeds INT_MAX */
+        (*func)(str, len, arg);
+    }
+}
+
 static int
 name_match_p(const char *name, const char *str, size_t len)
 {

@@ -263,23 +263,6 @@ ruby_qsort(void* base, const size_t nel, const size_t size, cmpfunc_t *cmp, void
 #endif
 #endif /* !HAVE_GNU_QSORT_R */
 
-void
-ruby_each_words(const char *str, void (*func)(const char*, int, void*), void *arg)
-{
-    const char *end;
-    int len;
-
-    if (!str) return;
-    for (; *str; str = end) {
-        while (ISSPACE(*str) || *str == ',') str++;
-        if (!*str) break;
-        end = str;
-        while (*end && !ISSPACE(*end) && *end != ',') end++;
-        len = (int)(end - str);	/* assume no string exceeds INT_MAX */
-        (*func)(str, len, arg);
-    }
-}
-
 #undef strtod
 #define strtod ruby_strtod
 #undef dtoa
