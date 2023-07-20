@@ -36,7 +36,7 @@ module Kernel
   def require(path) # :doc:
     return gem_original_require(path) unless Gem.discover_gems_on_require
 
-    RUBYGEMS_ACTIVATION_MONITOR.mon_synchronize do
+    RUBYGEMS_ACTIVATION_MONITOR.synchronize do
       path = path.to_path if path.respond_to? :to_path
 
       if spec = Gem.find_unresolved_default_spec(path)
@@ -128,7 +128,7 @@ module Kernel
       gem_original_require(path)
     rescue LoadError => load_error
       if load_error.path == path &&
-         RUBYGEMS_ACTIVATION_MONITOR.mon_synchronize { Gem.try_activate(path) }
+         RUBYGEMS_ACTIVATION_MONITOR.synchronize { Gem.try_activate(path) }
 
         return gem_original_require(path)
       end
