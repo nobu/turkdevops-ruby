@@ -174,7 +174,7 @@ pub fn track_stable_constant_names_assumption(uninit_block: BlockRef, idlist: *c
         uninit_block: BlockRef,
         id: ID,
     ) {
-        if id == idNULL as u64 {
+        if id == rust_str_to_id("") {
             // Used for :: prefix
             return;
         }

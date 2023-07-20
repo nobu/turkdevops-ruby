@@ -3362,11 +3362,11 @@ fn gen_opt_newarray_send(
 ) -> Option<CodegenStatus> {
     let method = jit.get_arg(1).as_u32();
 
-    if method == idMin {
+    if method == rust_str_to_id("min") as u32 {
         gen_opt_newarray_min(jit, asm, _ocb)
-    } else if method == idMax {
+    } else if method == rust_str_to_id("max") as u32 {
         gen_opt_newarray_max(jit, asm, _ocb)
-    } else if method == idHash {
+    } else if method == rust_str_to_id("hash") as u32 {
         gen_opt_newarray_hash(jit, asm, _ocb)
     } else {
         None
@@ -4617,9 +4617,10 @@ fn jit_obj_respond_to(
     };
 
     if result != Qtrue {
+        let respond_to_missing = rust_str_to_id("respond_to_missing?");
         // Only if respond_to_missing? hasn't been overridden
         // In the future, we might want to jit the call to respond_to_missing?
-        if !assume_method_basic_definition(jit, asm, ocb, recv_class, idRespond_to_missing.into()) {
+        if !assume_method_basic_definition(jit, asm, ocb, recv_class, respond_to_missing.into()) {
             return false;
         }
     }
