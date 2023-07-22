@@ -1823,8 +1823,8 @@ dir_config(target[, default_include, default_lib]) ::
 
 pkg_config(pkg, option=nil) ::
 
-  pkg-configコマンドからパッケージpkgの情報を [cflags, ldflags, libs]
-  の配列として得る．$CFLAGS, $LDFLAGS, $libs にはそれぞれの値が
+  pkg-configコマンドからパッケージpkgの情報を [cflags, ldflags, libs, libpath]
+  の配列として得る．$CFLAGS, $LDFLAGS, $libs $LIBPATHにはそれぞれの値が
   追加される．
 
   pkg-configの実際のコマンドは，以下の順で試される．

@@ -1886,6 +1886,7 @@ SRC
         }
       end
       orig_ldflags = $LDFLAGS
+      orig_libpath = $LIBPATH
       if get and !options.empty?
         get[options]
       elsif get and try_ldflags(ldflags = get['libs'])
@@ -1895,23 +1896,28 @@ SRC
         else
           cflags = get['cflags']
         end
-        libs = get['libs-only-l']
         if cflags
           $CFLAGS += " " << cflags
           $CXXFLAGS += " " << cflags
         end
+        ldflags = ldflags.shellwords
+        libs = get['libs-only-l']
         if libs
-          ldflags = (Shellwords.shellwords(ldflags) - Shellwords.shellwords(libs)).quote.join(" ")
+          libpath = get['libs-only-L']
+          ldflags = (ldflags - libs.shellwords - libpath.shellwords).quote.join(" ")
         else
-          libs, ldflags = Shellwords.shellwords(ldflags).partition {|s| s =~ /-l([^ ]+)/ }.map {|l|l.quote.join(" ")}
+          libs, ldflags = ldflags.partition {|s| s.start_with?('-l')}
+          libpath, ldflags = ldflags.partition {|s| s.start_with?('-L') || s.start_with?('-R')}
+          libs, libpath, ldflags = [libs, libpath, ldflags].map {|l| l.quote.join(" ")}
         end
         $libs += " " << libs
 
         $LDFLAGS = [orig_ldflags, ldflags].join(' ')
+        $LIBPATH = [orig_libpath, libpath].join(' ')
         Logging::message "package configuration for %s\n", pkg
-        Logging::message "incflags: %s\ncflags: %s\nldflags: %s\nlibs: %s\n\n",
-                         incflags, cflags, ldflags, libs
-        [[incflags, cflags].join(' '), ldflags, libs]
+        Logging::message "incflags: %s\ncflags: %s\nldflags: %s\nlibs: %slibpath: %s\n\n",
+                          incflags, cflags, ldflags, libs, libpath
+        [[incflags, cflags].join(' '), ldflags, libs, libpath]
       else
         Logging::message "package configuration for %s is not found\n", pkg
         nil
