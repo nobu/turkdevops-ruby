@@ -181,7 +181,7 @@ str_enc_fastpath(VALUE str)
 #define STR_ENC_GET(str) get_encoding(str)
 
 #if !defined SHARABLE_MIDDLE_SUBSTRING
-# define SHARABLE_MIDDLE_SUBSTRING 0
+# define SHARABLE_MIDDLE_SUBSTRING 1
 #endif
 #if !SHARABLE_MIDDLE_SUBSTRING
 #define SHARABLE_SUBSTRING_P(beg, len, end) ((beg) + (len) == (end))
