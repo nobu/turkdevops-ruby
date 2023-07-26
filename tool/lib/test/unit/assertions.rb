@@ -746,7 +746,7 @@ EOT
 
       ms = instance_methods(true).map {|sym| sym.to_s }
       ms.grep(/\Arefute_/) do |m|
-        mname = ('assert_not_'.dup << m.to_s[/.*?_(.*)/, 1])
+        mname = "assert_not_#{$~.post_match}"
         alias_method(mname, m) unless ms.include? mname
       end
       alias assert_include assert_includes
