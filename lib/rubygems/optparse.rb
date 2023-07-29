@@ -1,3 +1,4 @@
 # frozen_string_literal: true
 
-require_relative "optparse/lib/optparse"
+path = File.expand_path("../optparse.rb", __dir__)
+Gem.module_eval(File.read(path), path)

@@ -141,6 +141,8 @@ module SyncDefaultGems
       rm_rf(%w[lib/rubygems lib/rubygems.rb test/rubygems])
       cp_r(Dir.glob("#{upstream}/lib/rubygems*"), "lib")
       cp_r("#{upstream}/test/rubygems", "test")
+      rm_rf(%w[lib/rubygems/optparse lib/rubygems/optparse.rb])
+      `git checkout lib/rubygems/optparse.rb`
       rm_rf(%w[lib/bundler lib/bundler.rb libexec/bundler libexec/bundle spec/bundler tool/bundler/*])
       cp_r(Dir.glob("#{upstream}/bundler/lib/bundler*"), "lib")
       cp_r(Dir.glob("#{upstream}/bundler/exe/bundle*"), "libexec")
