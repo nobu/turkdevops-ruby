@@ -623,18 +623,165 @@ rb_bug_reporter_add(void (*func)(FILE *, void *), void *data)
     return 1;
 }
 
+/* returns true if x can not be used as file name */
+static bool
+path_sep_p(char x)
+{
+#if defined __CYGWIN__ || defined DOSISH
+    if (x == ':') return true; // drive letter or ADS
+    if (x == '\\') return true; // assume non-CP932
+#endif
+    return x == '/';
+}
+
+struct path_string {
+    const char *ptr;
+    size_t len;
+};
+
+static const char PATHSEP_REPLACE = '!';
+
+static char *
+append_pathname(char *p, const char *pe, VALUE str)
+{
+    const char *s = RSTRING_PTR(str);
+    const char *const se = s + RSTRING_LEN(str);
+
+    --pe; // for terminator
+
+    if (s + 1 < se && s[0] == '.' && path_sep_p(s[1])) {
+        ++s;
+        while (++s < se && path_sep_p(*s));
+    }
+
+    while (p < pe && s < se) {
+        char c = *s++;
+        if (!c) break;
+        if (c == '.') {
+            if (s == se || !*s) break; // chomp "." basename
+            if (path_sep_p(*s)) goto skipsep; // skip "./"
+        }
+        else if (path_sep_p(c)) {
+            // squeeze successive separators
+            *p++ = PATHSEP_REPLACE;
+          skipsep:
+            while (s < se && path_sep_p(*s)) s++;
+            continue;
+        }
+        *p++ = c;
+        while (p < pe && s < se && *s && !path_sep_p(*s)) {
+            *p++ = *s++;
+        }
+    }
+
+    return p;
+}
+
+static char *
+append_basename(char *p, const char *pe, struct path_string *path, VALUE str)
+{
+    if (!path->ptr) {
+        long l = RSTRING_LEN(str);
+        const char *b = RSTRING_PTR(str), *e = b + l;
+
+        while (e > b && !path_sep_p(e[-1])) --e;
+
+        path->ptr = e;
+        path->len = b + l - e;
+    }
+    size_t n = path->len;
+    if (p + n > pe) n = pe - p;
+    memcpy(p, path->ptr, n);
+    return p + n;
+}
+
+static void
+finish_report(FILE *out)
+{
+    if (out != stdout && out != stderr) fclose(out);
+}
+
+/*
+ * Open a bug report file to write.  The `RUBY_BUGREPORT_PATH`
+ * environment variable can be set to define a template that is used
+ * to name bug report files.  The template can contain % specifiers
+ * which are substituted by the following values when a bug report
+ * file is created:
+ *
+ *   %%    A single % character.
+ *   %e    The base name of the executable filename.
+ *   %E    Pathname of executable, with slashes ('/') replaced by
+ *         exclamation marks ('!').
+ *   %f    Similar to %e with the main script filename.
+ *   %F    Similar to %E with the main script filename.
+ *   %p    PID of dumped process in decimal.
+ *   %t    Time of dump, expressed as seconds since the Epoch,
+ *         1970-01-01 00:00:00 +0000 (UTC).
+ */
+static FILE *
+open_report_path(const char *template, char *buf, size_t size)
+{
+    if (template && *template) {
+        char *p = buf;
+        char *end = buf + size;
+        rb_pid_t pid = 0;
+        struct path_string exe = {0};
+        struct path_string script = {0};
+        time_t t = 0;
+        while (p < end-1 && *template) {
+            char c = *template++;
+            if (c == '%') {
+                switch (c = *template++) {
+                  case 'e':
+                    p = append_basename(p, end, &exe, rb_argv0);
+                    continue;
+                  case 'E':
+                    p = append_pathname(p, end, rb_argv0);
+                    continue;
+                  case 'f':
+                    p = append_basename(p, end, &script, GET_VM()->orig_progname);
+                    continue;
+                  case 'F':
+                    p = append_pathname(p, end, GET_VM()->orig_progname);
+                    continue;
+                  case 'p':
+                    if (!pid) pid = getpid();
+                    snprintf(p, end-p, "%" PRI_PIDT_PREFIX "d", pid);
+                    p += strlen(p);
+                    continue;
+                  case 't':
+                    if (!t) t = time(NULL);
+                    snprintf(p, end-p, "%" PRI_TIMET_PREFIX "d", t);
+                    p += strlen(p);
+                    continue;
+                }
+            }
+            *p++ = c;
+        }
+        *p = '\0';
+        if (0) fprintf(stderr, "RUBY_BUGREPORT_PATH=%s\n", buf);
+        return fopen(buf, "w");
+    }
+    return NULL;
+}
+
 /* SIGSEGV handler might have a very small stack. Thus we need to use it carefully. */
 #define REPORT_BUG_BUFSIZ 256
 static FILE *
 bug_report_file(const char *file, int line)
 {
     char buf[REPORT_BUG_BUFSIZ];
-    FILE *out = stderr;
+    FILE *out = open_report_path(getenv("RUBY_BUGREPORT_PATH"), buf, sizeof(buf));
     int len = err_position_0(buf, sizeof(buf), file, line);
 
-    if ((ssize_t)fwrite(buf, 1, len, out) == (ssize_t)len ||
-        (ssize_t)fwrite(buf, 1, len, (out = stdout)) == (ssize_t)len) {
+    if (out && (ssize_t)fwrite(buf, 1, len, out) == (ssize_t)len) {
         return out;
+    }
+    if ((ssize_t)fwrite(buf, 1, len, stderr) == (ssize_t)len) {
+        return stderr;
+    }
+    if ((ssize_t)fwrite(buf, 1, len, stdout) == (ssize_t)len) {
+        return stdout;
     }
 
     return NULL;
@@ -752,6 +899,7 @@ bug_report_end(FILE *out)
         }
     }
     postscript_dump(out);
+    finish_report(out);
 }
 
 #define report_bug(file, line, fmt, ctx) do { \
@@ -764,7 +912,7 @@ bug_report_end(FILE *out)
 } while (0) \
 
 #define report_bug_valist(file, line, fmt, ctx, args) do { \
-    FILE *out = bug_report_file(file, line); \
+    FILE *out = bug_report_file(file, line);  \
     if (out) { \
         bug_report_begin_valist(out, fmt, args); \
         rb_vm_bugreport(ctx, out); \
