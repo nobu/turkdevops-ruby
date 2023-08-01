@@ -11531,10 +11531,8 @@ rb_f_syscall(int argc, VALUE *argv, VALUE _)
 #endif
     int i;
 
-    if (RTEST(ruby_verbose)) {
-        rb_category_warning(RB_WARN_CATEGORY_DEPRECATED,
+    rb_category_warn(RB_WARN_CATEGORY_DEPRECATED,
             "We plan to remove a syscall function at future release. DL(Fiddle) provides safer alternative.");
-    }
 
     if (argc == 0)
         rb_raise(rb_eArgError, "too few arguments for syscall");
