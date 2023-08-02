@@ -11531,8 +11531,7 @@ rb_f_syscall(int argc, VALUE *argv, VALUE _)
 #endif
     int i;
 
-    rb_category_warn(RB_WARN_CATEGORY_DEPRECATED,
-            "We plan to remove a syscall function at future release. DL(Fiddle) provides safer alternative.");
+    rb_warn_deprecated_to_remove_at(3.4, "syscall", "Fiddle");
 
     if (argc == 0)
         rb_raise(rb_eArgError, "too few arguments for syscall");
