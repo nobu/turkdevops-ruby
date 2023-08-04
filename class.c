@@ -2347,7 +2347,17 @@ VALUE
 rb_keyword_error_new(const char *error, VALUE keys)
 {
     long i = 0, len = RARRAY_LEN(keys);
-    VALUE error_message = rb_sprintf("%s keyword%.*s", error, len > 1, "s");
+    VALUE error_message;
+
+    if (error) {
+        static const char keywords[] = " keywords";
+        int mlen = (int)sizeof(keywords) - 1;
+        error_message = rb_str_new_cstr(error);
+        rb_str_cat(error_message, keywords, mlen - (len == 1));
+    }
+    else {
+        error_message = rb_str_new_cstr("no keywords accepted");
+    }
 
     if (len > 0) {
         rb_str_cat_cstr(error_message, ": ");

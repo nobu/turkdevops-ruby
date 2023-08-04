@@ -1,7 +1,9 @@
 # frozen_string_literal: false
 require 'test/unit'
-require '-test-/rb_call_super_kw'
-require '-test-/iter'
+%w[-test-/rb_call_super_kw -test-/iter].each do |r|
+  require r
+rescue LoadError
+end
 
 class TestKeywordArguments < Test::Unit::TestCase
   def f1(str: "foo", num: 424242)
@@ -138,6 +140,9 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal([], f11)
     assert_equal([], f11(**{}))
     assert_equal([], f11(**h))
+    assert_raise_with_message(ArgumentError, "no keywords accepted: :a") {
+      f11(a: 1)
+    }
   end
 
   def f12(**nil, &b)
@@ -2068,7 +2073,7 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal([1, h2], c.m(**h2))
     assert_equal([1, h3], c.m(**h3))
     assert_equal([1, h3], c.m(a: 1, **h2))
-  end
+  end if defined?(Bug::RbCallSuperKw)
 
   def test_define_method_kwsplat
     kw = {}
@@ -3454,7 +3459,7 @@ class TestKeywordArguments < Test::Unit::TestCase
     assert_equal([h, kw], c.m(:c, h))
     assert_equal([h2, kw], c.m(:c, h2))
     assert_equal([h3, kw], c.m(:c, h3))
-  end
+  end if defined?(Bug::Iter::Yield)
 
   def p1
     Proc.new do |str: "foo", num: 424242|

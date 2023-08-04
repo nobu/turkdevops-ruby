@@ -620,6 +620,9 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
                     given_argc--;
                     keyword_hash = last_arg;
                 }
+                else if (ISEQ_BODY(iseq)->param.flags.accepts_no_kwarg) {
+                    keyword_hash = last_arg;
+                }
             }
         }
     }
@@ -629,7 +632,7 @@ setup_parameters_complex(rb_execution_context_t * const ec, const rb_iseq_t * co
     }
 
     if (kw_flag && ISEQ_BODY(iseq)->param.flags.accepts_no_kwarg) {
-        rb_raise(rb_eArgError, "no keywords accepted");
+        argument_kw_error(ec, iseq, NULL, rb_hash_keys(keyword_hash));
     }
 
     switch (arg_setup_type) {

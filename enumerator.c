@@ -3736,7 +3736,7 @@ enumerator_s_product(int argc, VALUE *argv, VALUE klass)
     rb_scan_args(argc, argv, "*:&", &enums, &options, &block);
 
     if (!NIL_P(options) && !RHASH_EMPTY_P(options)) {
-        rb_exc_raise(rb_keyword_error_new("unknown", rb_hash_keys(options)));
+        rb_exc_raise(rb_keyword_error_new(NULL, rb_hash_keys(options)));
     }
 
     VALUE obj = enum_product_initialize(argc, argv, enum_product_allocate(rb_cEnumProduct));
