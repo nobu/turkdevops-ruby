@@ -8,7 +8,7 @@ MSPECOPT += $(if $(filter -j%,$(MFLAGS)),-j)
 nproc = $(subst -j,,$(filter -j%,$(MFLAGS)))
 
 ifeq ($(GITHUB_ACTIONS),true)
-override ACTIONS_GROUP = @echo "\#\#[group]$(patsubst yes-%,%,$@)"
+override ACTIONS_GROUP = @echo "\#\#[group]$(patsubst yes-%,%,$(@:-actions_group=))"
 override ACTIONS_ENDGROUP = @echo "\#\#[endgroup]"
 endif
 
@@ -116,6 +116,7 @@ prev_test := $(addsuffix -precheck,$(prev_test))
 first_test_prechecks := $(prev_test)
 
 $(foreach test,$(ORDERED_TEST_TARGETS), \
+	$(eval $(TEST_RUNNABLE)-$(value test): $(value prev_test)); \
 	$(eval yes-$(value test): $(addprefix yes-,$(value prev_test))); \
 	$(eval no-$(value test): $(addprefix no-,$(value prev_test))); \
 	$(eval prev_test := $(value test)))

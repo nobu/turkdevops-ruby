@@ -883,6 +883,8 @@ test-sample: test-basic # backward compatibility for mswin-build
 test-short: btest-ruby $(DOT_WAIT) test-knownbug $(DOT_WAIT) test-basic
 test: test-short
 
+test-all-precheck: $(TEST_RUNNABLE)-test-all-precheck
+no-test-all-precheck:
 yes-test-all-precheck: programs encs exts PHONY $(DOT_WAIT)
 
 # $ make test-all TESTOPTS="--help" displays more detail
@@ -930,7 +932,9 @@ $(RBCONFIG): $(tooldir)/mkconfig.rb config.status $(srcdir)/version.h $(srcdir)/
 test-rubyspec: test-spec
 yes-test-rubyspec: yes-test-spec
 
+test-spec-precheck: $(TEST_RUNNABLE)-test-spec-precheck
 yes-test-spec-precheck: yes-test-all-precheck yes-fake
+no-test-spec-precheck:
 
 test-spec: $(TEST_RUNNABLE)-test-spec
 yes-test-spec: yes-test-spec-precheck
@@ -1516,9 +1520,10 @@ BUNDLED_GEMS =
 test-bundled-gems-run: $(PREPARE_BUNDLED_GEMS)
 	$(gnumake_recursive)$(Q) $(XRUBY) $(tooldir)/test-bundled-gems.rb $(BUNDLED_GEMS)
 
+PRECHECK_SYNTAX_SUGGEST = main
 test-syntax-suggest-precheck: $(TEST_RUNNABLE)-test-syntax-suggest-precheck
 no-test-syntax-suggest-precheck:
-yes-test-syntax-suggest-precheck: main
+yes-test-syntax-suggest-precheck: $(PRECHECK_SYNTAX_SUGGEST)
 
 test-syntax-suggest-prepare: $(TEST_RUNNABLE)-test-syntax-suggest-prepare
 no-test-syntax-suggest-prepare: no-test-syntax-suggest-precheck
@@ -1532,8 +1537,9 @@ RSPECOPTS =
 SYNTAX_SUGGEST_SPECS =
 PREPARE_SYNTAX_SUGGEST = $(TEST_RUNNABLE)-test-syntax-suggest-prepare
 test-syntax-suggest: $(TEST_RUNNABLE)-test-syntax-suggest
-yes-test-syntax-suggest: $(PREPARE_SYNTAX_SUGGEST)
+yes-test-syntax-suggest-actions_group:
 	$(ACTIONS_GROUP)
+yes-test-syntax-suggest: yes-test-syntax-suggest-actions_group $(DOT_WAIT) $(PREPARE_SYNTAX_SUGGEST)
 	$(XRUBY) -C $(srcdir) -Ispec/syntax_suggest:spec/lib .bundle/bin/rspec \
 		--require rspec/expectations \
 		--require spec_helper --require formatter_overrides --require spec_coverage \

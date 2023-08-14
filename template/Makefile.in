@@ -639,7 +639,9 @@ un-runnable:
 LIBRUBY_FOR_LEAKED_GLOBALS = $(enable_shared:no=)
 yes-test-basic: $(DOT_WAIT) test-leaked-globals
 leaked-globals: test-leaked-globals
+test-leaked-globals-precheck: $(TEST_RUNNABLE)-test-leaked-globals-precheck
 yes-test-leaked-globals-precheck: $(COMMONOBJS) prog $(tooldir)/leaked-globals
+no-test-leaked-globals-precheck:
 test-leaked-globals: yes-test-leaked-globals
 yes-test-leaked-globals: yes-test-leaked-globals-precheck
 	$(ACTIONS_GROUP)
