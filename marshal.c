@@ -1041,8 +1041,11 @@ w_object(VALUE obj, struct dump_arg *arg, int limit)
           case T_HASH:
             w_uclass(obj, rb_cHash, arg);
             if (rb_hash_compare_by_id_p(obj)) {
+                /* built-in class name IDs are always interned, cache it. */
+                static ID hash_class_id;
+                CONST_ID(hash_class_id, "Hash");
                 w_byte(TYPE_UCLASS, arg);
-                w_symbol(rb_sym_intern_ascii_cstr("Hash"), arg);
+                w_symbol(ID2SYM(hash_class_id), arg);
             }
             if (NIL_P(RHASH_IFNONE(obj))) {
                 w_byte(TYPE_HASH, arg);
