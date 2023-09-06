@@ -161,6 +161,7 @@ rb_ec_finalize(rb_execution_context_t *ec)
 {
     ruby_sig_finalize();
     ec->errinfo = Qnil;
+    rb_vm_clear_traps(rb_ec_vm_ptr(ec));
     rb_objspace_call_finalizer();
 }
 
