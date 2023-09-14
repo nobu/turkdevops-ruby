@@ -747,6 +747,7 @@ typedef struct rb_objspace {
         unsigned int during_compacting : 1;
         unsigned int during_reference_updating : 1;
         unsigned int gc_stressful: 1;
+        unsigned int gc_stress_mode: 3;
         unsigned int has_newobj_hook: 1;
         unsigned int during_minor_gc : 1;
         unsigned int during_incremental_marking : 1;
@@ -832,8 +833,6 @@ typedef struct rb_objspace {
         size_t retained_weak_references_count;
     } profile;
     struct gc_list *global_list;
-
-    VALUE gc_stress_mode;
 
     struct {
         VALUE parent_object;
@@ -1079,7 +1078,7 @@ VALUE *ruby_initial_gc_stress_ptr = &ruby_initial_gc_stress;
 #define finalizer_table 	objspace->finalizer_table
 #define global_list		objspace->global_list
 #define ruby_gc_stressful	objspace->flags.gc_stressful
-#define ruby_gc_stress_mode     objspace->gc_stress_mode
+#define ruby_gc_stress_mode     objspace->flags.gc_stress_mode
 #if GC_DEBUG_STRESS_TO_CLASS
 #define stress_to_class         objspace->stress_to_class
 #define set_stress_to_class(c)  (stress_to_class = (c))
@@ -9132,7 +9131,7 @@ enum {
 };
 
 #define gc_stress_full_mark_after_malloc_p() \
-    (FIXNUM_P(ruby_gc_stress_mode) && (FIX2LONG(ruby_gc_stress_mode) & (1<<gc_stress_full_mark_after_malloc)))
+    (ruby_gc_stress_mode & (1<<gc_stress_full_mark_after_malloc))
 
 static void
 heap_ready_to_gc(rb_objspace_t *objspace, rb_size_pool_t *size_pool, rb_heap_t *heap)
@@ -9284,7 +9283,7 @@ gc_start(rb_objspace_t *objspace, unsigned int reason)
 #endif
 
     if (ruby_gc_stressful) {
-        int flag = FIXNUM_P(ruby_gc_stress_mode) ? FIX2INT(ruby_gc_stress_mode) : 0;
+        unsigned int flag = ruby_gc_stress_mode;
 
         if ((flag & (1<<gc_stress_no_major)) == 0) {
             do_full_mark = TRUE;
@@ -11454,14 +11453,16 @@ static VALUE
 gc_stress_get(rb_execution_context_t *ec, VALUE self)
 {
     rb_objspace_t *objspace = &rb_objspace;
-    return ruby_gc_stress_mode;
+    if (!ruby_gc_stressful) return Qfalse;
+    return UINT2NUM(ruby_gc_stress_mode);
 }
 
 static void
 gc_stress_set(rb_objspace_t *objspace, VALUE flag)
 {
     objspace->flags.gc_stressful = RTEST(flag);
-    objspace->gc_stress_mode = flag;
+    objspace->flags.gc_stress_mode =
+        (flag == Qtrue || flag == Qfalse) ? 0 : NUM2UINT(flag);
 }
 
 static VALUE

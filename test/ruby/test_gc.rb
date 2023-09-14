@@ -717,6 +717,16 @@ class TestGc < Test::Unit::TestCase
     assert_nil(GC.verify_internal_consistency)
   end
 
+  def test_gc_stress
+    prev_stress = GC.stress
+    [false, 0, 1, 2, 4].each do |stress|
+      GC.stress = stress
+      assert_equal(stress, GC.stress)
+    end
+  ensure
+    GC.stress = prev_stress
+  end
+
   def test_gc_stress_on_realloc
     assert_normal_exit(<<-'end;', '[Bug #9859]')
       class C
