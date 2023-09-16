@@ -151,10 +151,13 @@ jobs:
       - name: disable system OpenSSL
         run: |
           for %%I in (libcrypto-1_1-x64 libssl-1_1-x64) do (
-            ren c:\Windows\System32\%%I.dll %%I.dll_
+            if exist c:\Windows\System32\%%I.dll (
+              ren c:\Windows\System32\%%I.dll %%I.dll_
+              echo %%I.dll renamed
+            ) else (
+              echo %%I.dll does not exist
+            )
           )
-        # windows-2019 image doesn't have OpenSSL as of 2023/9/14
-        if: ${{ matrix.vs != 2019 }}
 
       - name: Configure
         run: >-
