@@ -54,6 +54,9 @@
 # define HAVE_CRYPT_R 1
 #endif
 
+static size_t bytecount(const void *haystack, int n, size_t len);
+#include "missing/bytecount.c"
+
 #define BEG(no) (regs->beg[(no)])
 #define END(no) (regs->end[(no)])
 
@@ -8454,10 +8457,7 @@ rb_str_count(int argc, VALUE *argv, VALUE str)
 
             s = RSTRING_PTR(str);
             if (!s || RSTRING_LEN(str) == 0) return INT2FIX(0);
-            send = RSTRING_END(str);
-            while (s < send) {
-                if (*(unsigned char*)s++ == c) n++;
-            }
+            n = bytecount(s, c, RSTRING_LEN(str));
             return SIZET2NUM(n);
         }
     }
