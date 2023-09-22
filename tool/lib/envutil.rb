@@ -108,15 +108,17 @@ module EnvUtil
       rescue Errno::ESRCH
         break
       end
-      if signals.empty? or !reprieve
-        Process.wait(pid)
-      else
-        begin
-          Timeout.timeout(reprieve) {Process.wait(pid)}
-        rescue Timeout::Error
+      begin
+        if signals.empty? or !reprieve
+          Process.wait(pid)
         else
-          break
+          Timeout.timeout(reprieve) {Process.wait(pid)}
         end
+      rescue Errno::ECHILD
+        break
+      rescue Timeout::Error
+      else
+        break
       end
     end
     $?

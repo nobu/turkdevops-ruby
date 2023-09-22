@@ -723,7 +723,7 @@ class TestProcess < Test::Unit::TestCase
     }
   ensure
     if pid
-      assert_raise(Errno::ESRCH) {Process.kill(:KILL, pid)}
+      EnvUtil.terminate(pid)
     end
   end unless windows? # does not support fifo
 
@@ -1841,7 +1841,7 @@ class TestProcess < Test::Unit::TestCase
   def test_system_sigpipe
     return if windows?
 
-    pid = 0
+    pid = nil
 
     with_tmpchdir do
       assert_nothing_raised('[ruby-dev:12261]') do
@@ -1852,7 +1852,7 @@ class TestProcess < Test::Unit::TestCase
       end
     end
   ensure
-    Process.kill(:KILL, pid) if (pid != 0) rescue false
+    EnvUtil.terminate(pid) if pid
   end
 
   if Process.respond_to?(:daemon)
@@ -1983,8 +1983,7 @@ class TestProcess < Test::Unit::TestCase
     assert_match(/\A\d+\Z/, pid)
   ensure
     if pid
-      pid = pid.to_i
-      [:TERM, :KILL].each {|sig| Process.kill(sig, pid) rescue break}
+      EnvUtil.terminate(pid.to_i)
     end
   end
 
@@ -2125,8 +2124,7 @@ EOS
         # test Process.setsid return value and Process::getsid(pid)
         assert_equal(Marshal.load(io), Process.getsid(io.pid))
       ensure
-        Process.kill(:KILL, io.pid) rescue nil
-        Process.wait(io.pid)
+        EnvUtil.terminate(io.pid)
       end
     end
   end
@@ -2481,10 +2479,7 @@ EOS
     end
     assert_predicate status, :success?
   rescue Timeout::Error
-    begin
-      Process.kill(:KILL, pid)
-    rescue Errno::ESRCH
-    end
+    EnvUtil.terminate(pid) if pid
     raise
   ensure
     w.close if w
@@ -2517,10 +2512,7 @@ EOS
     end
     assert_predicate status, :success?
   rescue Timeout::Error
-    begin
-      Process.kill(:KILL, pid)
-    rescue Errno::ESRCH
-    end
+    EnvUtil.terminate(pid) if pid
     raise
   ensure
     w.close if w
