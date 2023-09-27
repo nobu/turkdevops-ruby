@@ -1199,6 +1199,18 @@ $stderr = $stdout; raise "\x82\xa0"') do |outs, errs, status|
     assert_include([true, false], Warning[:experimental])
   end
 
+  def test_warning_category_exchange
+    deprecated = Warning[:deprecated]
+    Warning[:deprecated] = false
+    assert_raise(ArgumentError) {Warning.exchange(1)}
+    assert_equal({deprecated: false}, Warning.exchange(deprecated: false))
+    assert_equal(false, Warning[:deprecated])
+    assert_equal({deprecated: false}, Warning.exchange(deprecated: true))
+    assert_equal(true, Warning[:deprecated])
+  ensure
+    Warning[:deprecated] = deprecated
+  end
+
   def test_warning_category_deprecated
     warning = EnvUtil.verbose_warning do
       deprecated = Warning[:deprecated]

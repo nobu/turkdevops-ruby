@@ -231,6 +231,20 @@ rb_warning_s_aref(VALUE mod, VALUE category)
     return RBOOL(rb_warning_category_enabled_p(cat));
 }
 
+static int
+warning_exchange(VALUE category, VALUE flag)
+{
+    unsigned int mask = rb_warning_category_mask(category);
+    unsigned int disabled = warning_disabled_categories;
+    unsigned int ret = ~disabled & mask;
+    if (!RTEST(flag))
+        disabled |= mask;
+    else
+        disabled &= ~mask;
+    warning_disabled_categories = disabled;
+    return ret;
+}
+
 /*
  * call-seq:
  *    Warning[category] = flag -> flag
@@ -242,14 +256,58 @@ rb_warning_s_aref(VALUE mod, VALUE category)
 static VALUE
 rb_warning_s_aset(VALUE mod, VALUE category, VALUE flag)
 {
-    unsigned int mask = rb_warning_category_mask(category);
-    unsigned int disabled = warning_disabled_categories;
-    if (!RTEST(flag))
-        disabled |= mask;
-    else
-        disabled &= ~mask;
-    warning_disabled_categories = disabled;
+    warning_exchange(category, flag);
     return flag;
+}
+
+static int
+warning_exchange_foreach(VALUE key, VALUE value, VALUE ret)
+{
+    rb_hash_aset(ret, key, RBOOL(warning_exchange(key, value)));
+    return ST_CONTINUE;
+}
+
+/*
+ * call-seq:
+ *   exchange(category: flag, ...)  -> hash
+ *
+ * Sets warning category flags, and returns a hash of the category and
+ * previous flags.
+ *
+ *     Warning[:experimental] = true
+ *     Warning.exchange(experimental: false)    #=> {experimental: true}
+ *     p Warning[:experimental]                 #=> false
+ */
+
+static VALUE
+rb_warning_s_exchange(int argc, VALUE *argv, VALUE mod)
+{
+    VALUE opts = Qnil;
+
+    if (rb_keyword_given_p()) {
+        rb_scan_args(argc, argv, ":", &opts);
+    }
+    else if (argc == 1) {
+        opts = argv[0];
+        if (!rb_type_p(opts, T_HASH)) opts = Qnil;
+    }
+
+    if (!NIL_P(opts)) {
+        VALUE ret = rb_hash_new();
+        rb_hash_foreach(opts, warning_exchange_foreach, ret);
+        return ret;
+    }
+    else if (argc % 2) {
+        rb_raise(rb_eArgError, "category: flag pairs expected");
+        UNREACHABLE_RETURN(Qnil);
+    }
+    else {
+        VALUE ret = rb_hash_new();
+        for (int i = 0; i < argc; i += 2) {
+            warning_exchange_foreach(argv[i], argv[i+1], ret);
+        }
+        return ret;
+    }
 }
 
 /*
@@ -3442,6 +3500,7 @@ Init_Exception(void)
     rb_define_singleton_method(rb_mWarning, "[]", rb_warning_s_aref, 1);
     rb_define_singleton_method(rb_mWarning, "[]=", rb_warning_s_aset, 2);
     rb_define_singleton_method(rb_mWarning, "categories", rb_warning_s_categories, 0);
+    rb_define_singleton_method(rb_mWarning, "exchange", rb_warning_s_exchange, -1);
     rb_define_method(rb_mWarning, "warn", rb_warning_s_warn, -1);
     rb_extend_object(rb_mWarning, rb_mWarning);
 
