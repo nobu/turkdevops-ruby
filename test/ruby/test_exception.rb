@@ -1207,6 +1207,12 @@ $stderr = $stdout; raise "\x82\xa0"') do |outs, errs, status|
     assert_equal(false, Warning[:deprecated])
     assert_equal({deprecated: false}, Warning.exchange(deprecated: true))
     assert_equal(true, Warning[:deprecated])
+
+    assert_equal([true], Warning.exchange(:deprecated, false))
+    assert_equal(false, Warning[:deprecated])
+    assert_equal([false], Warning.exchange(:deprecated, true))
+    assert_equal(true, Warning[:deprecated])
+    assert_raise(ArgumentError) {Warning.exchange(:deprecated)}
   ensure
     Warning[:deprecated] = deprecated
   end

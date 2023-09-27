@@ -277,6 +277,8 @@ warning_exchange_foreach(VALUE key, VALUE value, VALUE ret)
  *     Warning[:experimental] = true
  *     Warning.exchange(experimental: false)    #=> {experimental: true}
  *     p Warning[:experimental]                 #=> false
+ *
+ *     Warning.exchange(:experimental, true)    #=> [:experimental, false]
  */
 
 static VALUE
@@ -302,9 +304,9 @@ rb_warning_s_exchange(int argc, VALUE *argv, VALUE mod)
         UNREACHABLE_RETURN(Qnil);
     }
     else {
-        VALUE ret = rb_hash_new();
+        VALUE ret = rb_ary_new();
         for (int i = 0; i < argc; i += 2) {
-            warning_exchange_foreach(argv[i], argv[i+1], ret);
+            rb_ary_push(ret, RBOOL(warning_exchange(argv[i], argv[i+1])));
         }
         return ret;
     }
