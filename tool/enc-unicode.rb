@@ -234,9 +234,9 @@ class Name2CType
           categories[current] = file[:title]
           (names[file[:title]] ||= []) << current
           cps = []
-        elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\w+)/ =~ line
-          current = $3
+        elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\w(?>[\w\s;]*\w)?)/ =~ line
           $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
+          current = $3.gsub(/\W+/, '_')
         end
       end
     end
