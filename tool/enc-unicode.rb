@@ -21,8 +21,12 @@ while arg = ARGV.shift
     header = true
   when "--diff"
     diff = ARGV.shift or abort "#{$0}: --diff=DIFF-COMMAND"
+  when "--output"
+    output = ARGV.shift or abort "#{$0}: --output=OUTPUT"
   when /\A--diff=(.+)/m
     diff = $1
+  when /\A--output(?:-file)?=(.+)/m
+    output = $1
   when /\A-/
     abort "#{$0}: unknown option #{arg}"
   else
@@ -413,7 +417,7 @@ class Unifdef
   alias << write
 end
 
-output = Unifdef.new($stdout)
+output = Unifdef.new(output ? File.open(output, "w") : $stdout)
 output.kwdonly = !header
 
 puts '%{'
