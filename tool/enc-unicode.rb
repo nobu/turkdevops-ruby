@@ -314,7 +314,7 @@ def constantize_blockname(name)
 end
 
 def get_file(name)
-  File.join(ARGV[name.start_with?("emoji-[stz]") ? 1 : 0], name)
+  File.join(ARGV[name.start_with?(/emoji-[stz]/) ? 1 : 0], name)
 end
 
 def data_foreach(name, &block)
