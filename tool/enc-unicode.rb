@@ -38,10 +38,9 @@ unless ARGV.size == 2
   abort "Usage: #{$0} data_directory emoji_data_directory"
 end
 
-pat = /(?:\A|\/)([.\d]+)\z/
 $versions = {
-  :Unicode => ARGV[0][pat, 1],
-  :Emoji => ARGV[1][pat, 1],
+  Unicode: ARGV[0][%r[(?:\A|/)\K[.\d]+(?=/ucd/?\z)]],
+  Emoji: ARGV[1][%r[(?:\A|/)\K[.\d]+(?=/?\z)]],
 }
 
 POSIX_NAMES = %w[NEWLINE Alpha Blank Cntrl Digit Graph Lower Print XPosixPunct Space Upper XDigit Word Alnum ASCII Punct]
