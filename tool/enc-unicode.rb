@@ -21,12 +21,12 @@ while arg = ARGV.shift
     header = true
   when "--diff"
     diff = ARGV.shift or abort "#{$0}: --diff=DIFF-COMMAND"
-  when "--output"
-    output = ARGV.shift or abort "#{$0}: --output=OUTPUT"
+  when "--output", "--output-file"
+    output_file = ARGV.shift or abort "#{$0}: #{arg}=OUTPUT"
   when /\A--diff=(.+)/m
     diff = $1
   when /\A--output(?:-file)?=(.+)/m
-    output = $1
+    output_file = $1
   when /\A-/
     abort "#{$0}: unknown option #{arg}"
   else
@@ -278,20 +278,20 @@ $const_cache = {}
 # given property, group of paired codepoints, and a human-friendly name for
 # the group
 def make_const(prop, data, name)
-  puts "\n/* '#{prop}': #{name} */" # comment used to generate documentation
+  @output << "\n/* '#{prop}': #{name} */\n" # comment used to generate documentation
   if origprop = $const_cache.key(data)
-    puts "#define CR_#{prop} CR_#{origprop}"
+    @output << "#define CR_#{prop} CR_#{origprop}\n"
   else
     $const_cache[prop] = data
     pairs = pair_codepoints(data)
-    puts "static const OnigCodePoint CR_#{prop}[] = {"
+    @output << "static const OnigCodePoint CR_#{prop}[] = {\n"
     # The first element of the constant is the number of pairs of codepoints
-    puts "\t#{pairs.size},"
+    @output << "\t#{pairs.size},\n"
     pairs.each do |pair|
-      pair.map! { |c|  c == 0 ? '0x0000' : sprintf("%0#6x", c) }
-      puts "\t#{pair.first}, #{pair.last},"
+      pair.map! { |c| c == 0 ? '0x0000' : sprintf("%0#6x", c) }
+      @output << "\t#{pair.first}, #{pair.last},\n"
     end
-    puts "}; /* CR_#{prop} */"
+    @output << "}; /* CR_#{prop} */\n"
   end
 end
 
@@ -356,14 +356,11 @@ class Unifdef
   def initialize(out)
     @top = @output = []
     @stack = []
-    $stdout, @stdout = self, out
-  end
-  def restore
-    $stdout = @stdout
+    @stdout = out
   end
   def ifdef(sym)
     if @kwdonly
-      @stdout.puts "#ifdef #{sym}"
+      @stdout.print "#ifdef #{sym}\n"
     else
       @stack << @top
       @top << tmp = [sym]
@@ -379,10 +376,9 @@ class Unifdef
   end
   def endif(sym)
     if @kwdonly
-      @stdout.puts "#endif /* #{sym} */"
+      @stdout.print "#endif /* #{sym} */\n"
     else
       unless sym == @top[0]
-        restore
         raise ArgumentError, "#{sym} unmatch to #{@top[0]}"
       end
       @top = @stack.pop
@@ -417,10 +413,12 @@ class Unifdef
   alias << write
 end
 
-output = Unifdef.new(output ? File.open(output, "w") : $stdout)
+output_file = output_file ? File.open(output_file, "w") : $stdout
+output = Unifdef.new(output_file)
 output.kwdonly = !header
+@output = output
 
-puts '%{'
+output << "%{\n"
 props, data = parse_unicode_data(get_file('UnicodeData.txt'))
 categories = {}
 props.concat parse_scripts(data, categories)
@@ -450,21 +448,21 @@ output.ifdef :USE_UNICODE_PROPERTIES do
   graphemeBreaks = parse_GraphemeBreakProperty(data)
   blocks = parse_block(data)
 end
-puts(<<'__HEREDOC')
+output << <<'__HEREDOC'
 
 static const OnigCodePoint* const CodeRanges[] = {
 __HEREDOC
-POSIX_NAMES.each{|name|puts"  CR_#{name},"}
+POSIX_NAMES.each{|name| output << "  CR_#{name},\n"}
 output.ifdef :USE_UNICODE_PROPERTIES do
-  props.each{|name| puts"  CR_#{name},"}
+  props.each{|name| output << "  CR_#{name},\n"}
   output.ifdef :USE_UNICODE_AGE_PROPERTIES do
-    ages.each{|name|  puts"  CR_#{constantize_agename(name)},"}
+    ages.each{|name| output << "  CR_#{constantize_agename(name)},\n"}
   end
-  graphemeBreaks.each{|name|  puts"  CR_#{constantize_Grapheme_Cluster_Break(name)},"}
-  blocks.each{|name|puts"  CR_#{name},"}
+  graphemeBreaks.each{|name| output << "  CR_#{constantize_Grapheme_Cluster_Break(name)},\n"}
+  blocks.each{|name| output << "  CR_#{name},\n"}
 end
 
-puts(<<'__HEREDOC')
+output << <<'__HEREDOC'
 };
 struct uniname2ctype_struct {
   short name;
@@ -485,42 +483,42 @@ POSIX_NAMES.each do |name|
   next if name == 'NEWLINE'
   name = normalize_propname(name)
   name_to_index[name] = i
-  puts"%-40s %3d" % [name + ',', i]
+  output << "%-40s %3d\n" % [name + ',', i]
 end
 output.ifdef :USE_UNICODE_PROPERTIES do
   props.each do |name|
     i += 1
     name = normalize_propname(name)
     name_to_index[name] = i
-    puts "%-40s %3d" % [name + ',', i]
+    output << "%-40s %3d\n" % [name + ',', i]
   end
   aliases.each_pair do |k, v|
     next if name_to_index[k]
     next unless v = name_to_index[v]
-    puts "%-40s %3d" % [k + ',', v]
+    output << "%-40s %3d\n" % [k + ',', v]
   end
   output.ifdef :USE_UNICODE_AGE_PROPERTIES do
     ages.each do |name|
       i += 1
       name = "age=#{name}"
       name_to_index[name] = i
-      puts "%-40s %3d" % [name + ',', i]
+      output << "%-40s %3d\n" % [name + ',', i]
     end
   end
   graphemeBreaks.each do |name|
     i += 1
     name = "graphemeclusterbreak=#{name.delete('_').downcase}"
     name_to_index[name] = i
-    puts "%-40s %3d" % [name + ',', i]
+    output << "%-40s %3d\n" % [name + ',', i]
   end
   blocks.each do |name|
     i += 1
     name = normalize_propname(name)
     name_to_index[name] = i
-    puts "%-40s %3d" % [name + ',', i]
+    output << "%-40s %3d\n" % [name + ',', i]
   end
 end
-puts(<<'__HEREDOC')
+output << <<'__HEREDOC'
 %%
 static int
 uniname2ctype(const UChar *name, unsigned int len)
@@ -533,20 +531,18 @@ __HEREDOC
 $versions.each do |type, ver|
   name = type == :Unicode ? "ONIG_UNICODE_VERSION" : "ONIG_UNICODE_EMOJI_VERSION"
   versions = ver.scan(/\d+/)
-  print("#if defined #{name}_STRING && !( \\\n")
+  output << "#if defined #{name}_STRING && !( \\\n"
   versions.zip(%w[MAJOR MINOR TEENY]) do |v, n|
-    print("      #{name}_#{n} == #{v} && \\\n")
+    output << "      #{name}_#{n} == #{v} && \\\n"
   end
-  print("      1)\n")
-  print("# error #{name}_STRING mismatch\n")
-  print("#endif\n")
-  print("#define #{name}_STRING #{ver.dump}\n")
+  output << "      1)\n"
+  output << "# error #{name}_STRING mismatch\n"
+  output << "#endif\n"
+  output << "#define #{name}_STRING #{ver.dump}\n"
   versions.zip(%w[MAJOR MINOR TEENY]) do |v, n|
-    print("#define #{name}_#{n} #{v}\n")
+    output << "#define #{name}_#{n} #{v}\n"
   end
 end
-
-output.restore
 
 if header
   require 'tempfile'
@@ -614,8 +610,9 @@ if header
         if line.start_with?("uniname2ctype_hash\s") ... line.start_with?("}")
           line.sub!(/^( *(?:register\s+)?(.*\S)\s+hval\s*=\s*)(?=len;)/, '\1(\2)')
         end
-        puts line
+        output_file << line
       }
     }
   }
 end
+output_file.close unless output_file == $stdout
