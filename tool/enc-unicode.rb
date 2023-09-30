@@ -13,352 +13,18 @@
 # Or directly run:
 # tool/enc-unicode.rb --header data_dir emoji_data_dir > enc/unicode/<VERSION>/name2ctype.h
 
-while arg = ARGV.shift
-  case arg
-  when "--"
-    break
-  when "--header"
-    header = true
-  when "--diff"
-    diff = ARGV.shift or abort "#{$0}: --diff=DIFF-COMMAND"
-  when "--output", "--output-file"
-    output_file = ARGV.shift or abort "#{$0}: #{arg}=OUTPUT"
-  when /\A--diff=(.+)/m
-    diff = $1
-  when /\A--output(?:-file)?=(.+)/m
-    output_file = $1
-  when /\A-/
-    abort "#{$0}: unknown option #{arg}"
-  else
-    ARGV.unshift(arg)
-    break
-  end
-end
-unless ARGV.size == 2
-  abort "Usage: #{$0} data_directory emoji_data_directory"
-end
-
-$versions = {
-  Unicode: ARGV[0][%r[(?:\A|/)\K[.\d]+(?=/ucd/?\z)]],
-  Emoji: ARGV[1][%r[(?:\A|/)\K[.\d]+(?=/?\z)]],
-}
-
-POSIX_NAMES = %w[NEWLINE Alpha Blank Cntrl Digit Graph Lower Print XPosixPunct Space Upper XDigit Word Alnum ASCII Punct]
-
-def pair_codepoints(codepoints)
-
-  # We have a sorted Array of codepoints that we wish to partition into
-  # ranges such that the start- and endpoints form an inclusive set of
-  # codepoints with property _property_. Note: It is intended that some ranges
-  # will begin with the value with  which they end, e.g. 0x0020 -> 0x0020
-
-  codepoints.sort!
-  last_cp = codepoints.first
-  pairs = [[last_cp, nil]]
-  codepoints[1..-1].each do |codepoint|
-    next if last_cp == codepoint
-
-    # If the current codepoint does not follow directly on from the last
-    # codepoint, the last codepoint represents the end of the current range,
-    # and the current codepoint represents the start of the next range.
-    if last_cp.next != codepoint
-      pairs[-1][-1] = last_cp
-      pairs << [codepoint, nil]
-    end
-    last_cp = codepoint
-  end
-
-  # The final pair has as its endpoint the last codepoint for this property
-  pairs[-1][-1] = codepoints.last
-  pairs
-end
-
-def parse_unicode_data(file)
-  last_cp = 0
-  data = {'Any' => (0x0000..0x10ffff).to_a, 'Assigned' => [],
-    'ASCII' => (0..0x007F).to_a, 'NEWLINE' => [0x0a], 'Cn' => []}
-  beg_cp = nil
-  File.foreach(file) do |line|
-    fields = line.split(';')
-    cp = fields[0].to_i(16)
-
-    case fields[1]
-    when /\A<(.*),\s*First>\z/
-      beg_cp = cp
-      next
-    when /\A<(.*),\s*Last>\z/
-      cps = (beg_cp..cp).to_a
-    else
-      beg_cp = cp
-      cps = [cp]
-    end
-
-    # The Cn category represents unassigned characters. These are not listed in
-    # UnicodeData.txt so we must derive them by looking for 'holes' in the range
-    # of listed codepoints. We increment the last codepoint seen and compare it
-    # with the current codepoint. If the current codepoint is less than
-    # last_cp.next we have found a hole, so we add the missing codepoint to the
-    # Cn category.
-    data['Cn'].concat((last_cp.next...beg_cp).to_a)
-
-    # Assigned - Defined in unicode.c; interpreted as every character in the
-    # Unicode range minus the unassigned characters
-    data['Assigned'].concat(cps)
-
-    # The third field denotes the 'General' category, e.g. Lu
-    (data[fields[2]] ||= []).concat(cps)
-
-    # The 'Major' category is the first letter of the 'General' category, e.g.
-    # 'Lu' -> 'L'
-    (data[fields[2][0,1]] ||= []).concat(cps)
-    last_cp = cp
-  end
-
-  # The last Cn codepoint should be 0x10ffff. If it's not, append the missing
-  # codepoints to Cn and C
-  cn_remainder = (last_cp.next..0x10ffff).to_a
-  data['Cn'] += cn_remainder
-  data['C'] += data['Cn']
-
-  # Special case for LC (Cased_Letter). LC = Ll + Lt + Lu
-  data['LC'] = data['Ll'] + data['Lt'] + data['Lu']
-
-  # Define General Category properties
-  gcps = data.keys.sort - POSIX_NAMES
-
-  # Returns General Category Property names and the data
-  [gcps, data]
-end
-
-def define_posix_props(data)
-  # We now derive the character classes (POSIX brackets), e.g. [[:alpha:]]
-  #
-
-  data['Alpha'] = data['Alphabetic']
-  data['Upper'] = data['Uppercase']
-  data['Lower'] = data['Lowercase']
-  data['Punct'] = data['Punctuation']
-  data['XPosixPunct'] = data['Punctuation'] + [0x24, 0x2b, 0x3c, 0x3d, 0x3e, 0x5e, 0x60, 0x7c, 0x7e]
-  data['Digit'] = data['Decimal_Number']
-  data['XDigit'] = (0x0030..0x0039).to_a + (0x0041..0x0046).to_a +
-                   (0x0061..0x0066).to_a
-  data['Alnum'] = data['Alpha'] + data['Digit']
-  data['Space'] = data['White_Space']
-  data['Blank'] = data['Space_Separator'] + [0x0009]
-  data['Cntrl'] = data['Cc']
-  data['Word'] = data['Alpha'] + data['Mark'] + data['Digit'] + data['Connector_Punctuation']
-  data['Graph'] = data['Any'] - data['Space'] - data['Cntrl'] -
-    data['Surrogate'] - data['Unassigned']
-  data['Print'] = data['Graph'] + data['Space_Separator']
-end
-
-def parse_scripts(data, categories)
-  files = [
-    {:fn => 'DerivedCoreProperties.txt', :title => 'Derived Property'},
-    {:fn => 'Scripts.txt', :title => 'Script'},
-    {:fn => 'PropList.txt', :title => 'Binary Property'},
-    {:fn => 'emoji/emoji-data.txt', :title => 'Emoji'}
-  ]
-  current = nil
-  cps = []
-  names = {}
-  files.each do |file|
-    data_foreach(file[:fn]) do |line|
-      if /^# Total (?:code points|elements): / =~ line
-        data[current] = cps
-        categories[current] = file[:title]
-        (names[file[:title]] ||= []) << current
-        cps = []
-      elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\w+)/ =~ line
-        current = $3
-        $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
-      end
-    end
-  end
-  #  All code points not explicitly listed for Script
-  #  have the value Unknown (Zzzz).
-  data['Unknown'] =  (0..0x10ffff).to_a - data.values_at(*names['Script']).flatten
-  categories['Unknown'] = 'Script'
-  names.values.flatten << 'Unknown'
-end
-
-def parse_aliases(data)
-  kv = {}
-  data_foreach('PropertyAliases.txt') do |line|
-    next unless /^(\w+)\s*; (\w+)/ =~ line
-    data[$1] = data[$2]
-    kv[normalize_propname($1)] = normalize_propname($2)
-  end
-  data_foreach('PropertyValueAliases.txt') do |line|
-    next unless /^(sc|gc)\s*; (\w+)\s*; (\w+)(?:\s*; (\w+))?/ =~ line
-    if $1 == 'gc'
-      data[$3] = data[$2]
-      data[$4] = data[$2]
-      kv[normalize_propname($3)] = normalize_propname($2)
-      kv[normalize_propname($4)] = normalize_propname($2) if $4
-    else
-      data[$2] = data[$3]
-      data[$4] = data[$3]
-      kv[normalize_propname($2)] = normalize_propname($3)
-      kv[normalize_propname($4)] = normalize_propname($3) if $4
-    end
-  end
-  kv
-end
-
-# According to Unicode6.0.0/ch03.pdf, Section 3.1, "An update version
-# never involves any additions to the character repertoire." Versions
-# in DerivedAge.txt should always be /\d+\.\d+/
-def parse_age(data)
-  current = nil
-  last_constname = nil
-  cps = []
-  ages = []
-  data_foreach('DerivedAge.txt') do |line|
-    if /^# Total code points: / =~ line
-      constname = constantize_agename(current)
-      # each version matches all previous versions
-      cps.concat(data[last_constname]) if last_constname
-      data[constname] = cps
-      make_const(constname, cps, "Derived Age #{current}")
-      ages << current
-      last_constname = constname
-      cps = []
-    elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\d+\.\d+)/ =~ line
-      current = $3
-      $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
-    end
-  end
-  ages
-end
-
-def parse_GraphemeBreakProperty(data)
-  current = nil
-  cps = []
-  ages = []
-  data_foreach('auxiliary/GraphemeBreakProperty.txt') do |line|
-    if /^# Total code points: / =~ line
-      constname = constantize_Grapheme_Cluster_Break(current)
-      data[constname] = cps
-      make_const(constname, cps, "Grapheme_Cluster_Break=#{current}")
-      ages << current
-      cps = []
-    elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\w+)/ =~ line
-      current = $3
-      $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
-    end
-  end
-  ages
-end
-
-def parse_block(data)
-  cps = []
-  blocks = []
-  data_foreach('Blocks.txt') do |line|
-    if /^(\h+)\.\.(\h+);\s*(.*)/ =~ line
-      cps = ($1.to_i(16)..$2.to_i(16)).to_a
-      constname = constantize_blockname($3)
-      data[constname] = cps
-      make_const(constname, cps, "Block")
-      blocks << constname
-    end
-  end
-
-  # All code points not belonging to any of the named blocks
-  # have the value No_Block.
-  no_block = (0..0x10ffff).to_a - data.values_at(*blocks).flatten
-  constname = constantize_blockname("No_Block")
-  make_const(constname, no_block, "Block")
-  blocks << constname
-end
-
-$const_cache = {}
-# make_const(property, pairs, name): Prints a 'static const' structure for a
-# given property, group of paired codepoints, and a human-friendly name for
-# the group
-def make_const(prop, data, name)
-  @output << "\n/* '#{prop}': #{name} */\n" # comment used to generate documentation
-  if origprop = $const_cache.key(data)
-    @output << "#define CR_#{prop} CR_#{origprop}\n"
-  else
-    $const_cache[prop] = data
-    pairs = pair_codepoints(data)
-    @output << "static const OnigCodePoint CR_#{prop}[] = {\n"
-    # The first element of the constant is the number of pairs of codepoints
-    @output << "\t#{pairs.size},\n"
-    pairs.each do |pair|
-      pair.map! { |c| c == 0 ? '0x0000' : sprintf("%0#6x", c) }
-      @output << "\t#{pair.first}, #{pair.last},\n"
-    end
-    @output << "}; /* CR_#{prop} */\n"
-  end
-end
-
-def normalize_propname(name)
-  name = name.downcase
-  name.delete!('- _')
-  name
-end
-
-def constantize_agename(name)
-  "Age_#{name.sub(/\./, '_')}"
-end
-
-def constantize_Grapheme_Cluster_Break(name)
-  "Grapheme_Cluster_Break_#{name}"
-end
-
-def constantize_blockname(name)
-  "In_#{name.gsub(/\W/, '_')}"
-end
-
-def get_file(name)
-  File.join(ARGV[name.start_with?(/emoji-[stz]/) ? 1 : 0], name)
-end
-
-def data_foreach(name, &block)
-  fn = get_file(name)
-  warn "Reading #{name}"
-  File.open(fn, 'rb') do |f|
-    if /^emoji/ =~ name
-      line = f.gets("")
-      # Headers till Emoji 13 or 15
-      version = line[/^# #{Regexp.quote(File.basename(name))}.*(?:^# Version:|Emoji Version) ([\d.]+)/m, 1]
-      type = :Emoji
-    else
-      # Headers since Emoji 14 or other Unicode data
-      line = f.gets("\n")
-      type = :Unicode
-    end
-    version ||= line[/^# #{File.basename(name).sub(/\./, '-([\\d.]+)\\.')}/, 1]
-    unless version
-      raise ArgumentError, <<-ERROR
-#{name}: no #{type} version
-#{line.gsub(/^/, '> ')}
-      ERROR
-    end
-    if !(v = $versions[type])
-      $versions[type] = version
-    elsif v != version and "#{v}.0" != version
-      raise ArgumentError, <<-ERROR
-#{name}: #{type} version mismatch: #{version} to #{v}
-#{line.gsub(/^/, '> ')}
-      ERROR
-    end
-    f.each(&block)
-  end
-end
+require 'optparse'
 
 # Write Data
 class Unifdef
-  attr_accessor :output, :top, :stack, :stdout, :kwdonly
+  attr_accessor :output, :top, :stack, :stdout
   def initialize(out)
     @top = @output = []
     @stack = []
     @stdout = out
   end
   def ifdef(sym)
-    if @kwdonly
+    if @stdout
       @stdout.print "#ifdef #{sym}\n"
     else
       @stack << @top
@@ -374,7 +40,7 @@ class Unifdef
     end
   end
   def endif(sym)
-    if @kwdonly
+    if @stdout
       @stdout.print "#endif /* #{sym} */\n"
     else
       unless sym == @top[0]
@@ -402,7 +68,7 @@ class Unifdef
     end
   end
   def write(str)
-    if @kwdonly
+    if @stdout
       @stdout.write(str)
     else
       @top << str
@@ -412,56 +78,391 @@ class Unifdef
   alias << write
 end
 
-output_file = output_file ? File.open(output_file, "w") : $stdout
-output = Unifdef.new(output_file)
-output.kwdonly = !header
-@output = output
+class Name2CType
+  attr_accessor :header, :diff
 
-output << "%{\n"
-props, data = parse_unicode_data(get_file('UnicodeData.txt'))
-categories = {}
-props.concat parse_scripts(data, categories)
-aliases = parse_aliases(data)
-ages = blocks = graphemeBreaks = nil
-define_posix_props(data)
-POSIX_NAMES.each do |name|
-  if name == 'XPosixPunct'
-    make_const(name, data[name], "[[:Punct:]]")
-  else
-    make_const(name, data[name], "[[:#{name}:]]")
+  def define_options(parser)
+    parser.banner << " data_directory emoji_data_directory"
+    @arg_dirs = []
+    parser.define("--header") {@header = true}
+    parser.define("--diff") {|prog| @diff = prog}
+    parser
   end
-end
-output.ifdef :USE_UNICODE_PROPERTIES do
-  props.each do |name|
-    category = categories[name] ||
-               case name.size
-               when 1 then 'Major Category'
-               when 2 then 'General Category'
-               else        '-'
-               end
-    make_const(name, data[name], category)
+
+  def set_args(args)
+    return if args.size < 2
+    @arg_dirs.concat args.shift(2).each {|dir|
+      unless File.directory?(dir)
+        raise OptionParser::InvalidArgument, "Not a directory: #{dir}"
+      end
+    }
+
+    @versions ||= {
+      Unicode: @arg_dirs[0][%r[(?:\A|/)\K[.\d]+(?=/ucd/?\z)]],
+      Emoji: @arg_dirs[1][%r[(?:\A|/)\K[.\d]+(?=/?\z)]],
+    }
+
+    args
   end
-  output.ifdef :USE_UNICODE_AGE_PROPERTIES do
-    ages = parse_age(data)
+
+  POSIX_NAMES = %w[
+    NEWLINE Alpha Blank Cntrl Digit Graph Lower Print XPosixPunct
+    Space Upper XDigit Word Alnum ASCII Punct
+  ]
+
+  def pair_codepoints(codepoints)
+
+    # We have a sorted Array of codepoints that we wish to partition into
+    # ranges such that the start- and endpoints form an inclusive set of
+    # codepoints with property _property_. Note: It is intended that some ranges
+    # will begin with the value with  which they end, e.g. 0x0020 -> 0x0020
+
+    codepoints.sort!
+    last_cp = codepoints.first
+    pairs = [[last_cp, nil]]
+    codepoints[1..-1].each do |codepoint|
+      next if last_cp == codepoint
+
+      # If the current codepoint does not follow directly on from the last
+      # codepoint, the last codepoint represents the end of the current range,
+      # and the current codepoint represents the start of the next range.
+      if last_cp.next != codepoint
+        pairs[-1][-1] = last_cp
+        pairs << [codepoint, nil]
+      end
+      last_cp = codepoint
+    end
+
+    # The final pair has as its endpoint the last codepoint for this property
+    pairs[-1][-1] = codepoints.last
+    pairs
   end
-  graphemeBreaks = parse_GraphemeBreakProperty(data)
-  blocks = parse_block(data)
-end
-output << <<'__HEREDOC'
+
+  def parse_unicode_data(file)
+    last_cp = 0
+    data = {'Any' => (0x0000..0x10ffff).to_a, 'Assigned' => [],
+            'ASCII' => (0..0x007F).to_a, 'NEWLINE' => [0x0a], 'Cn' => []}
+    beg_cp = nil
+    File.foreach(file) do |line|
+      fields = line.split(';')
+      cp = fields[0].to_i(16)
+
+      case fields[1]
+      when /\A<(.*),\s*First>\z/
+        beg_cp = cp
+        next
+      when /\A<(.*),\s*Last>\z/
+        cps = (beg_cp..cp).to_a
+      else
+        beg_cp = cp
+        cps = [cp]
+      end
+
+      # The Cn category represents unassigned characters. These are not listed in
+      # UnicodeData.txt so we must derive them by looking for 'holes' in the range
+      # of listed codepoints. We increment the last codepoint seen and compare it
+      # with the current codepoint. If the current codepoint is less than
+      # last_cp.next we have found a hole, so we add the missing codepoint to the
+      # Cn category.
+      data['Cn'].concat((last_cp.next...beg_cp).to_a)
+
+      # Assigned - Defined in unicode.c; interpreted as every character in the
+      # Unicode range minus the unassigned characters
+      data['Assigned'].concat(cps)
+
+      # The third field denotes the 'General' category, e.g. Lu
+      (data[fields[2]] ||= []).concat(cps)
+
+      # The 'Major' category is the first letter of the 'General' category, e.g.
+      # 'Lu' -> 'L'
+      (data[fields[2][0,1]] ||= []).concat(cps)
+      last_cp = cp
+    end
+
+    # The last Cn codepoint should be 0x10ffff. If it's not, append the missing
+    # codepoints to Cn and C
+    cn_remainder = (last_cp.next..0x10ffff).to_a
+    data['Cn'] += cn_remainder
+    data['C'] += data['Cn']
+
+    # Special case for LC (Cased_Letter). LC = Ll + Lt + Lu
+    data['LC'] = data['Ll'] + data['Lt'] + data['Lu']
+
+    # Define General Category properties
+    gcps = data.keys.sort - POSIX_NAMES
+
+    # Returns General Category Property names and the data
+    [gcps, data]
+  end
+
+  def define_posix_props(data)
+    # We now derive the character classes (POSIX brackets), e.g. [[:alpha:]]
+    #
+
+    data['Alpha'] = data['Alphabetic']
+    data['Upper'] = data['Uppercase']
+    data['Lower'] = data['Lowercase']
+    data['Punct'] = data['Punctuation']
+    data['XPosixPunct'] = data['Punctuation'] + [0x24, 0x2b, 0x3c, 0x3d, 0x3e, 0x5e, 0x60, 0x7c, 0x7e]
+    data['Digit'] = data['Decimal_Number']
+    data['XDigit'] = (0x0030..0x0039).to_a + (0x0041..0x0046).to_a +
+                     (0x0061..0x0066).to_a
+    data['Alnum'] = data['Alpha'] + data['Digit']
+    data['Space'] = data['White_Space']
+    data['Blank'] = data['Space_Separator'] + [0x0009]
+    data['Cntrl'] = data['Cc']
+    data['Word'] = data['Alpha'] + data['Mark'] + data['Digit'] + data['Connector_Punctuation']
+    data['Graph'] = data['Any'] - data['Space'] - data['Cntrl'] -
+                    data['Surrogate'] - data['Unassigned']
+    data['Print'] = data['Graph'] + data['Space_Separator']
+  end
+
+  def parse_scripts(data, categories)
+    files = [
+      {:fn => 'DerivedCoreProperties.txt', :title => 'Derived Property'},
+      {:fn => 'Scripts.txt', :title => 'Script'},
+      {:fn => 'PropList.txt', :title => 'Binary Property'},
+      {:fn => 'emoji/emoji-data.txt', :title => 'Emoji'}
+    ]
+    current = nil
+    cps = []
+    names = {}
+    files.each do |file|
+      data_foreach(file[:fn]) do |line|
+        if /^# Total (?:code points|elements): / =~ line
+          data[current] = cps
+          categories[current] = file[:title]
+          (names[file[:title]] ||= []) << current
+          cps = []
+        elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\w+)/ =~ line
+          current = $3
+          $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
+        end
+      end
+    end
+    #  All code points not explicitly listed for Script
+    #  have the value Unknown (Zzzz).
+    data['Unknown'] =  (0..0x10ffff).to_a - data.values_at(*names['Script']).flatten
+    categories['Unknown'] = 'Script'
+    names.values.flatten << 'Unknown'
+  end
+
+  def parse_aliases(data)
+    kv = {}
+    data_foreach('PropertyAliases.txt') do |line|
+      next unless /^(\w+)\s*; (\w+)/ =~ line
+      data[$1] = data[$2]
+      kv[normalize_propname($1)] = normalize_propname($2)
+    end
+    data_foreach('PropertyValueAliases.txt') do |line|
+      next unless /^(sc|gc)\s*; (\w+)\s*; (\w+)(?:\s*; (\w+))?/ =~ line
+      if $1 == 'gc'
+        data[$3] = data[$2]
+        data[$4] = data[$2]
+        kv[normalize_propname($3)] = normalize_propname($2)
+        kv[normalize_propname($4)] = normalize_propname($2) if $4
+      else
+        data[$2] = data[$3]
+        data[$4] = data[$3]
+        kv[normalize_propname($2)] = normalize_propname($3)
+        kv[normalize_propname($4)] = normalize_propname($3) if $4
+      end
+    end
+    kv
+  end
+
+  # According to Unicode6.0.0/ch03.pdf, Section 3.1, "An update version
+  # never involves any additions to the character repertoire." Versions
+  # in DerivedAge.txt should always be /\d+\.\d+/
+  def parse_age(data)
+    current = nil
+    last_constname = nil
+    cps = []
+    ages = []
+    data_foreach('DerivedAge.txt') do |line|
+      if /^# Total code points: / =~ line
+        constname = constantize_agename(current)
+        # each version matches all previous versions
+        cps.concat(data[last_constname]) if last_constname
+        data[constname] = cps
+        make_const(constname, cps, "Derived Age #{current}")
+        ages << current
+        last_constname = constname
+        cps = []
+      elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\d+\.\d+)/ =~ line
+        current = $3
+        $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
+      end
+    end
+    ages
+  end
+
+  def parse_GraphemeBreakProperty(data)
+    current = nil
+    cps = []
+    ages = []
+    data_foreach('auxiliary/GraphemeBreakProperty.txt') do |line|
+      if /^# Total code points: / =~ line
+        constname = constantize_Grapheme_Cluster_Break(current)
+        data[constname] = cps
+        make_const(constname, cps, "Grapheme_Cluster_Break=#{current}")
+        ages << current
+        cps = []
+      elsif /^(\h+)(?:\.\.(\h+))?\s*;\s*(\w+)/ =~ line
+        current = $3
+        $2 ? cps.concat(($1.to_i(16)..$2.to_i(16)).to_a) : cps.push($1.to_i(16))
+      end
+    end
+    ages
+  end
+
+  def parse_block(data)
+    cps = []
+    blocks = []
+    data_foreach('Blocks.txt') do |line|
+      if /^(\h+)\.\.(\h+);\s*(.*)/ =~ line
+        cps = ($1.to_i(16)..$2.to_i(16)).to_a
+        constname = constantize_blockname($3)
+        data[constname] = cps
+        make_const(constname, cps, "Block")
+        blocks << constname
+      end
+    end
+
+    # All code points not belonging to any of the named blocks
+    # have the value No_Block.
+    no_block = (0..0x10ffff).to_a - data.values_at(*blocks).flatten
+    constname = constantize_blockname("No_Block")
+    make_const(constname, no_block, "Block")
+    blocks << constname
+  end
+
+  $const_cache = {}
+  # make_const(property, pairs, name): Prints a 'static const' structure for a
+  # given property, group of paired codepoints, and a human-friendly name for
+  # the group
+  def make_const(prop, data, name)
+    @output << "\n/* '#{prop}': #{name} */\n" # comment used to generate documentation
+    if origprop = $const_cache.key(data)
+      @output << "#define CR_#{prop} CR_#{origprop}\n"
+    else
+      $const_cache[prop] = data
+      pairs = pair_codepoints(data)
+      @output << "static const OnigCodePoint CR_#{prop}[] = {\n"
+      # The first element of the constant is the number of pairs of codepoints
+      @output << "\t#{pairs.size},\n"
+      pairs.each do |pair|
+        pair.map! { |c| c == 0 ? '0x0000' : sprintf("%0#6x", c) }
+        @output << "\t#{pair.first}, #{pair.last},\n"
+      end
+      @output << "}; /* CR_#{prop} */\n"
+    end
+  end
+
+  def normalize_propname(name)
+    name = name.downcase
+    name.delete!('- _')
+    name
+  end
+
+  def constantize_agename(name)
+    "Age_#{name.sub(/\./, '_')}"
+  end
+
+  def constantize_Grapheme_Cluster_Break(name)
+    "Grapheme_Cluster_Break_#{name}"
+  end
+
+  def constantize_blockname(name)
+    "In_#{name.gsub(/\W/, '_')}"
+  end
+
+  def get_file(name)
+    File.join(@arg_dirs[name.start_with?(/emoji-[stz]/) ? 1 : 0], name)
+  end
+
+  def data_foreach(name, &block)
+    fn = get_file(name)
+    warn "Reading #{name}"
+    File.open(fn, 'rb') do |f|
+      if /^emoji/ =~ name
+        line = f.gets("")
+        # Headers till Emoji 13 or 15
+        version = line[/^# #{Regexp.quote(File.basename(name))}.*(?:^# Version:|Emoji Version) ([\d.]+)/m, 1]
+        type = :Emoji
+      else
+        # Headers since Emoji 14 or other Unicode data
+        line = f.gets("\n")
+        type = :Unicode
+      end
+      version ||= line[/^# #{File.basename(name).sub(/\./, '-([\\d.]+)\\.')}/, 1]
+      unless version
+        raise ArgumentError, <<-ERROR
+#{name}: no #{type} version
+#{line.gsub(/^/, '> ')}
+      ERROR
+      end
+      if !(v = @versions[type])
+        @versions[type] = version
+      elsif v != version and "#{v}.0" != version
+        raise ArgumentError, <<-ERROR
+#{name}: #{type} version mismatch: #{version} to #{v}
+#{line.gsub(/^/, '> ')}
+      ERROR
+      end
+      f.each(&block)
+    end
+  end
+
+  def build_tables(stdout = nil)
+    output = Unifdef.new(stdout)
+    @output = output
+
+    output << "%{\n"
+    props, data = parse_unicode_data(get_file('UnicodeData.txt'))
+    categories = {}
+    props.concat parse_scripts(data, categories)
+    aliases = parse_aliases(data)
+    ages = blocks = graphemeBreaks = nil
+    define_posix_props(data)
+    POSIX_NAMES.each do |name|
+      if name == 'XPosixPunct'
+        make_const(name, data[name], "[[:Punct:]]")
+      else
+        make_const(name, data[name], "[[:#{name}:]]")
+      end
+    end
+    output.ifdef :USE_UNICODE_PROPERTIES do
+      props.each do |name|
+        category = categories[name] ||
+                   case name.size
+                   when 1 then 'Major Category'
+                   when 2 then 'General Category'
+                   else        '-'
+                   end
+        make_const(name, data[name], category)
+      end
+      output.ifdef :USE_UNICODE_AGE_PROPERTIES do
+        ages = parse_age(data)
+      end
+      graphemeBreaks = parse_GraphemeBreakProperty(data)
+      blocks = parse_block(data)
+    end
+    output << <<'__HEREDOC'
 
 static const OnigCodePoint* const CodeRanges[] = {
 __HEREDOC
-POSIX_NAMES.each{|name| output << "  CR_#{name},\n"}
-output.ifdef :USE_UNICODE_PROPERTIES do
-  props.each{|name| output << "  CR_#{name},\n"}
-  output.ifdef :USE_UNICODE_AGE_PROPERTIES do
-    ages.each{|name| output << "  CR_#{constantize_agename(name)},\n"}
-  end
-  graphemeBreaks.each{|name| output << "  CR_#{constantize_Grapheme_Cluster_Break(name)},\n"}
-  blocks.each{|name| output << "  CR_#{name},\n"}
-end
+    POSIX_NAMES.each{|name| output << "  CR_#{name},\n"}
+    output.ifdef :USE_UNICODE_PROPERTIES do
+      props.each{|name| output << "  CR_#{name},\n"}
+      output.ifdef :USE_UNICODE_AGE_PROPERTIES do
+        ages.each{|name| output << "  CR_#{constantize_agename(name)},\n"}
+      end
+      graphemeBreaks.each{|name| output << "  CR_#{constantize_Grapheme_Cluster_Break(name)},\n"}
+      blocks.each{|name| output << "  CR_#{name},\n"}
+    end
 
-output << <<'__HEREDOC'
+    output << <<'__HEREDOC'
 };
 struct uniname2ctype_struct {
   short name;
@@ -475,49 +476,49 @@ struct uniname2ctype_struct;
 %%
 __HEREDOC
 
-i = -1
-name_to_index = {}
-POSIX_NAMES.each do |name|
-  i += 1
-  next if name == 'NEWLINE'
-  name = normalize_propname(name)
-  name_to_index[name] = i
-  output << "%-40s %3d\n" % [name + ',', i]
-end
-output.ifdef :USE_UNICODE_PROPERTIES do
-  props.each do |name|
-    i += 1
-    name = normalize_propname(name)
-    name_to_index[name] = i
-    output << "%-40s %3d\n" % [name + ',', i]
-  end
-  aliases.each_pair do |k, v|
-    next if name_to_index[k]
-    next unless v = name_to_index[v]
-    output << "%-40s %3d\n" % [k + ',', v]
-  end
-  output.ifdef :USE_UNICODE_AGE_PROPERTIES do
-    ages.each do |name|
+    i = -1
+    name_to_index = {}
+    POSIX_NAMES.each do |name|
       i += 1
-      name = "age=#{name}"
+      next if name == 'NEWLINE'
+      name = normalize_propname(name)
       name_to_index[name] = i
       output << "%-40s %3d\n" % [name + ',', i]
     end
-  end
-  graphemeBreaks.each do |name|
-    i += 1
-    name = "graphemeclusterbreak=#{name.delete('_').downcase}"
-    name_to_index[name] = i
-    output << "%-40s %3d\n" % [name + ',', i]
-  end
-  blocks.each do |name|
-    i += 1
-    name = normalize_propname(name)
-    name_to_index[name] = i
-    output << "%-40s %3d\n" % [name + ',', i]
-  end
-end
-output << <<'__HEREDOC'
+    output.ifdef :USE_UNICODE_PROPERTIES do
+      props.each do |name|
+        i += 1
+        name = normalize_propname(name)
+        name_to_index[name] = i
+        output << "%-40s %3d\n" % [name + ',', i]
+      end
+      aliases.each_pair do |k, v|
+        next if name_to_index[k]
+        next unless v = name_to_index[v]
+        output << "%-40s %3d\n" % [k + ',', v]
+      end
+      output.ifdef :USE_UNICODE_AGE_PROPERTIES do
+        ages.each do |name|
+          i += 1
+          name = "age=#{name}"
+          name_to_index[name] = i
+          output << "%-40s %3d\n" % [name + ',', i]
+        end
+      end
+      graphemeBreaks.each do |name|
+        i += 1
+        name = "graphemeclusterbreak=#{name.delete('_').downcase}"
+        name_to_index[name] = i
+        output << "%-40s %3d\n" % [name + ',', i]
+      end
+      blocks.each do |name|
+        i += 1
+        name = normalize_propname(name)
+        name_to_index[name] = i
+        output << "%-40s %3d\n" % [name + ',', i]
+      end
+    end
+    output << <<'__HEREDOC'
 %%
 static int
 uniname2ctype(const UChar *name, unsigned int len)
@@ -527,26 +528,25 @@ uniname2ctype(const UChar *name, unsigned int len)
   return -1;
 }
 __HEREDOC
-$versions.each do |type, ver|
-  name = type == :Unicode ? "ONIG_UNICODE_VERSION" : "ONIG_UNICODE_EMOJI_VERSION"
-  versions = ver.scan(/\d+/)
-  output << "#if defined #{name}_STRING && !( \\\n"
-  versions.zip(%w[MAJOR MINOR TEENY]) do |v, n|
-    output << "      #{name}_#{n} == #{v} && \\\n"
+    @versions.each do |type, ver|
+      name = type == :Unicode ? "ONIG_UNICODE_VERSION" : "ONIG_UNICODE_EMOJI_VERSION"
+      versions = ver.scan(/\d+/)
+      output << "#if defined #{name}_STRING && !( \\\n"
+      versions.zip(%w[MAJOR MINOR TEENY]) do |v, n|
+        output << "      #{name}_#{n} == #{v} && \\\n"
+      end
+      output << "      1)\n"
+      output << "# error #{name}_STRING mismatch\n"
+      output << "#endif\n"
+      output << "#define #{name}_STRING #{ver.dump}\n"
+      versions.zip(%w[MAJOR MINOR TEENY]) do |v, n|
+        output << "#define #{name}_#{n} #{v}\n"
+      end
+    end
+    output
   end
-  output << "      1)\n"
-  output << "# error #{name}_STRING mismatch\n"
-  output << "#endif\n"
-  output << "#define #{name}_STRING #{ver.dump}\n"
-  versions.zip(%w[MAJOR MINOR TEENY]) do |v, n|
-    output << "#define #{name}_#{n} #{v}\n"
-  end
-end
 
-if header
-  require 'tempfile'
-
-  def diff_args(diff)
+  def self.diff_args(diff)
     ok = IO.popen([diff, "-DDIFF_TEST", IO::NULL, "-"], "r+") do |f|
       f.puts "Test for diffutils 3.8"
       f.close_write
@@ -585,33 +585,62 @@ if header
     end
   end
 
-  ifdef = diff_args(diff || "diff")
-
   NAME2CTYPE = %w[gperf -7 -c -j1 -i1 -t -C -P -T -H uniname2ctype_hash -Q uniname2ctype_pool -N uniname2ctype_p]
 
-  fds = []
-  syms = %i[USE_UNICODE_PROPERTIES USE_UNICODE_AGE_PROPERTIES]
-  begin
-    fds << (tmp = Tempfile.new(%w"name2ctype .h"))
-    IO.popen([*NAME2CTYPE, out: tmp], "w") {|f| output.show(f, *syms)}
-  end while syms.pop
-  fds.each(&:close)
-  IO.popen(ifdef["USE_UNICODE_AGE_PROPERTIES", fds[1].path, fds[0].path], "r") {|age|
-    IO.popen(ifdef["USE_UNICODE_PROPERTIES", fds[2].path, "-"], "r", in: age) {|f|
-      ansi = false
-      f.each {|line|
-        if /ANSI-C code produced by gperf/ =~ line
-          ansi = true
-        end
-        line.sub!(/\/\*ANSI\*\//, '1') if ansi
-        line.gsub!(/\(int\)\((?:long|size_t)\)&\(\(struct uniname2ctype_pool_t \*\)0\)->uniname2ctype_pool_(str\d+),\s+/,
-                   'uniname2ctype_offset(\1), ')
-        if line.start_with?("uniname2ctype_hash\s") ... line.start_with?("}")
-          line.sub!(/^( *(?:register\s+)?(.*\S)\s+hval\s*=\s*)(?=len;)/, '\1(\2)')
-        end
-        output_file << line
-      }
-    }
-  }
+  def generate_header(tables, output)
+    require 'tempfile'
+
+    ifdef = self.class.diff_args(@diff || "diff")
+
+    fds = []
+    syms = %i[USE_UNICODE_PROPERTIES USE_UNICODE_AGE_PROPERTIES]
+    begin
+      fds << (tmp = Tempfile.new(%w"name2ctype_#{syms.size} .h"))
+      IO.popen([*NAME2CTYPE, out: tmp], "w") {|f| tables.show(f, *syms)}
+    end while syms.pop
+    fds.each(&:close)
+    IO.popen(ifdef["USE_UNICODE_AGE_PROPERTIES", fds[1].path, fds[0].path], "r") do |age|
+      IO.popen(ifdef["USE_UNICODE_PROPERTIES", fds[2].path, "-"], "r", in: age) do |f|
+        ansi = false
+        f.each {|line|
+          if /ANSI-C code produced by gperf/ =~ line
+            ansi = true
+          end
+          line.sub!(/\/\*ANSI\*\//, '1') if ansi
+          line.gsub!(/\(int\)\((?:long|size_t)\)&\(\(struct uniname2ctype_pool_t \*\)0\)->uniname2ctype_pool_(str\d+),\s+/,
+                     'uniname2ctype_offset(\1), ')
+          if line.start_with?("uniname2ctype_hash\s") ... line.start_with?("}")
+            line.sub!(/^( *(?:register\s+)?(.*\S)\s+hval\s*=\s*)(?=len;)/, '\1(\2)')
+          end
+          output << line
+        }
+      end
+    end
+    output
+  ensure
+    fds&.each(&:close!)
+  end
+
+  def generate(output = $stdout)
+    if @header
+      generate_header(build_tables, output)
+    else
+      build_tables(output)
+    end
+  end
 end
-output_file.close unless output_file == $stdout
+
+if $0 == __FILE__
+  cv = Name2CType.new
+  output_file = nil
+  ARGV.options do |opt|
+    cv.define_options(opt)
+    opt.define("--output-file=OUTPUT") {|v| output_file = v}
+    cv.set_args(opt.parse!) == []
+  end or abort ARGV.options.banner
+  if output_file
+    File.open(output_file, "w") {|f| cv.generate(f)}
+  else
+    cv.generate
+  end
+end
