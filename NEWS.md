@@ -36,6 +36,11 @@ Note: We're only listing outstanding class updates.
 
   * Range#size now raises TypeError if the range is not iterable. [[Misc #18984]]
 
+* String
+
+    * Update Unicode to Version 15.1.0 and Emoji Version 15.1. [[Feature #19908]]
+      (also applies to Regexp)
+
 ## Stdlib updates
 
 The following default gems are updated.
@@ -134,6 +139,7 @@ See GitHub releases like [GitHub Releases of Logger](https://github.com/ruby/log
 [Feature #18980]: https://bugs.ruby-lang.org/issues/18980
 [Misc #18984]:    https://bugs.ruby-lang.org/issues/18984
 [Feature #19117]: https://bugs.ruby-lang.org/issues/19117
+[Feature #19908]: https://bugs.ruby-lang.org/issues/19908
 [Bug #19918]:     https://bugs.ruby-lang.org/issues/19918
 [Bug #20064]:     https://bugs.ruby-lang.org/issues/20064
 [Feature #20182]: https://bugs.ruby-lang.org/issues/20182
