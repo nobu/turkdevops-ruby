@@ -40,6 +40,7 @@ monitor/lib
 monitor/monitor.c
 nkf/lib
 nkf/nkf.c
+not_implemented/not_implemented.c
 objspace/objspace.c
 objspace/objspace_dump.c
 objspace/object_tracing.c
