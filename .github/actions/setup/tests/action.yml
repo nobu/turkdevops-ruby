@@ -1,0 +1,32 @@
+name: Setup environments for tests.
+description: >-
+  Set up environment variables
+
+inputs:
+  skipped_tests:
+    required: true
+    description:
+      Tests to be skipped first
+
+outputs:
+  first:
+    description:
+      TESTS option without skipped_tests.
+    value: ${{ steps.tests.outputs.first }}
+  skipped:
+    description:
+      TESTS option for skipped_tests only.
+    value: ${{ steps.tests.outputs.skipped }}
+
+runs:
+  using: composite
+
+  steps:
+    - id: tests
+      shell: bash
+      run: |
+        set -x
+        echo "first=${TESTS:+-n!/${TESTS// /$\$/ -n!/}$\$/}" >> "$GITHUB_OUTPUT"
+        echo "skipped=${TESTS:+-n/${TESTS// /$\$/ -n/}$\$/}" >> "$GITHUB_OUTPUT"
+      env:
+        TESTS: ${{ inputs.skipped_tests }}

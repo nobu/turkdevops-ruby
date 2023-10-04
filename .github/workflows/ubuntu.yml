@@ -78,6 +78,11 @@ jobs:
           makeup: true
           dummy-files: ${{ matrix.test_task == 'check' }}
 
+      - id: testopts
+        uses: ./.github/actions/setup/tests
+        with:
+          skipped_tests: ${{ matrix.skipped_tests }}
+
       - name: Run configure
         env:
           arch: ${{ matrix.arch }}
@@ -94,23 +99,23 @@ jobs:
       - name: make ${{ matrix.test_task }}
         run: >-
           $SETARCH make -s ${{ matrix.test_task }}
-          ${TESTS:+TESTS=`echo "$TESTS" | sed 's| |$$/ -n!/|g;s|^|-n!/|;s|$|$$/|'`}
+          ${TESTS:+TESTS="$TESTS"}
           ${{ !contains(matrix.test_task, 'bundle') && 'RUBYOPT=-w' || '' }}
         timeout-minutes: 40
         env:
           RUBY_TESTOPTS: '-q --tty=no'
-          TESTS: ${{ matrix.test_task == 'check' && matrix.skipped_tests || '' }}
+          TESTS: ${{ steps.testopts.outputs.first }}
           TEST_BUNDLED_GEMS_ALLOW_FAILURES: ''
           PRECHECK_BUNDLED_GEMS: 'no'
 
       - name: make skipped tests
         run: |
-          $SETARCH make -s test-all TESTS=`echo "$TESTS" | sed 's| |$$/ -n/|g;s|^|-n/|;s|$|$$/|'`
+          $SETARCH make -s test-all TESTS="$TESTS"
         env:
           GNUMAKEFLAGS: ''
           RUBY_TESTOPTS: '-v --tty=no'
-          TESTS: ${{ matrix.skipped_tests }}
-        if: ${{ matrix.test_task == 'check' && matrix.skipped_tests != '' }}
+          TESTS: ${{ steps.testopts.outputs.skipped }}
+        if: ${{ steps.testopts.outputs.skipped != '' }}
         continue-on-error: ${{ matrix.continue-on-skipped_tests || false }}
 
       - uses: ./.github/actions/slack
