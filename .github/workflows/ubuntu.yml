@@ -40,6 +40,7 @@ jobs:
             configure: '--disable-yjit'
           - test_task: check
             configure: '--enable-shared --enable-load-relative'
+            skipped_tests: getoptlong trick
           - test_task: test-all TESTS=--repeat-count=2
           - test_task: test-all
             configure: 'cppflags=-DUNIVERSAL_PARSER'
