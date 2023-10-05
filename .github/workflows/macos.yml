@@ -80,11 +80,13 @@ jobs:
       - run: make
 
       - name: make ${{ matrix.test_task }}
-        run: |
-          make -s ${{ matrix.test_task }} ${TESTS:+TESTS=`echo "$TESTS" | sed 's| |$$/ -n!/|g;s|^|-n!/|;s|$|$$/|'`}
+        run: >-
+          make -s ${{ matrix.test_task }}
+          ${TESTS:+TESTS=`echo "$TESTS" | sed 's| |$$/ -n!/|g;s|^|-n!/|;s|$|$$/|'`}
         timeout-minutes: 60
         env:
-          RUBY_TESTOPTS: '-q --tty=no'
+          RUBY_TESTOPTS: >-
+            -q --tty=no ${{ matrix.test-all-opts }}
           TESTS: ${{ matrix.test_task == 'check' && matrix.skipped_tests || '' }}
           TEST_BUNDLED_GEMS_ALLOW_FAILURES: ''
           PRECHECK_BUNDLED_GEMS: 'no'
