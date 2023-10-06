@@ -1330,6 +1330,7 @@ static VALUE parser_reg_compile(struct parser_params*, VALUE, int, VALUE *);
 
 static VALUE backref_error(struct parser_params*, NODE *, VALUE);
 #endif /* !RIPPER */
+static int strterm_multiline_p(const rb_strterm_t*);
 
 RUBY_SYMBOL_EXPORT_BEGIN
 VALUE rb_parser_reg_compile(struct parser_params* p, VALUE str, int options);
@@ -1399,6 +1400,7 @@ static void numparam_pop(struct parser_params *p, NODE *prev_inner);
 #endif
 #define FORWARD_ARGS_WITH_RUBY2_KEYWORDS
 
+#define RE_OPTION_ARG_EXTEND 2U
 #define RE_OPTION_ONCE (1<<16)
 #define RE_OPTION_ENCODING_SHIFT 8
 #define RE_OPTION_ENCODING(e) (((e)&0xff)<<RE_OPTION_ENCODING_SHIFT)
@@ -5627,9 +5629,17 @@ xstring		: tXSTRING_BEG xstring_contents tSTRING_END
                     }
                 ;
 
-regexp		: tREGEXP_BEG regexp_contents tREGEXP_END
+regexp		: tREGEXP_BEG[beg]
                     {
-                        $$ = new_regexp(p, $2, $3, &@$);
+                        $<strterm>$ = p->lex.strterm;
+                    }[term]
+                  regexp_contents tREGEXP_END[end]
+                    {
+                        if (strterm_multiline_p($<strterm>term) &&
+                            !(get_id($end) & RE_OPTION_ARG_EXTEND)) {
+                            rb_warn0L(@1.beg_pos.lineno, "multi-line regexp without x option");
+                        }
+                        $$ = new_regexp(p, $regexp_contents, $end, &@$);
                     }
                 ;
 
@@ -7495,6 +7505,8 @@ rb_ruby_parser_compile_generic(rb_parser_t *p, VALUE (*lex_gets)(VALUE, int), VA
 #define STR_FUNC_SYMBOL 0x10
 #define STR_FUNC_INDENT 0x20
 #define STR_FUNC_LABEL  0x40
+#define STR_FUNC_LINES  0x1000
+#define STR_FUNC_WARN_LINES 0x2000
 #define STR_FUNC_LIST   0x4000
 #define STR_FUNC_TERM   0x8000
 
@@ -7503,7 +7515,7 @@ enum string_type {
     str_squote = (0),
     str_dquote = (STR_FUNC_EXPAND),
     str_xquote = (STR_FUNC_EXPAND),
-    str_regexp = (STR_FUNC_REGEXP|STR_FUNC_ESCAPE|STR_FUNC_EXPAND),
+    str_regexp = (STR_FUNC_REGEXP|STR_FUNC_ESCAPE|STR_FUNC_EXPAND|STR_FUNC_WARN_LINES),
     str_sword  = (STR_FUNC_QWORDS|STR_FUNC_LIST),
     str_dword  = (STR_FUNC_QWORDS|STR_FUNC_EXPAND|STR_FUNC_LIST),
     str_ssym   = (STR_FUNC_SYMBOL),
@@ -7754,7 +7766,7 @@ tokadd_codepoint(struct parser_params *p, rb_encoding **encp,
     p->lex.pcur += numlen;
     if (p->lex.strterm == NULL ||
         (strterm_is_heredoc((VALUE)p->lex.strterm)) ||
-        (p->lex.strterm->u.literal.u1.func != str_regexp)) {
+        !(p->lex.strterm->u.literal.u1.func & STR_FUNC_REGEXP)) {
         if (wide ? (numlen == 0 || numlen > 6) : (numlen < 4))  {
             literal_flush(p, p->lex.pcur);
             yyerror0("invalid Unicode escape");
@@ -7810,7 +7822,7 @@ tokadd_utf8(struct parser_params *p, rb_encoding **encp,
     if (regexp_literal) { tokadd(p, '\\'); tokadd(p, 'u'); }
 
     if (peek(p, open_brace)) {  /* handle \u{...} form */
-        if (regexp_literal && p->lex.strterm->u.literal.u1.func == str_regexp) {
+        if (regexp_literal && (p->lex.strterm->u.literal.u1.func & STR_FUNC_REGEXP)) {
             /*
              * Skip parsing validation code and copy bytes as-is until term or
              * closing brace, in order to correctly handle extended regexps where
@@ -8331,10 +8343,50 @@ tokadd_string(struct parser_params *p,
 #ifdef RIPPER
         top_of_line = (c == '\n');
 #endif
+        if (func & STR_FUNC_WARN_LINES) {
+            if (c == '\n') {
+                p->lex.strterm->u.literal.u1.func |= STR_FUNC_LINES;
+            }
+            else if (c == '(' && peek(p, '?')) {
+                int opts[2] = {0, 0}, neg = 0;
+                for (int i = 1; (c = peekc_n(p, i)) != -1; ++i) {
+                    int opt, kc;
+                    if (c == ')' || c == ':' || (c & 0x80)) {
+                        break;
+                    }
+                    else if (c == '-') {
+                        neg = 1;
+                    }
+                    else if (c == '#') {
+                        /* comment */
+                        opts[0] |= RE_OPTION_ARG_EXTEND;
+                        opts[1] = 0;
+                        break;
+                    }
+                    else if (rb_char_to_option_kcode(c, &opt, &kc)) {
+                        opts[neg] |= opt;
+                    }
+                    else {
+                        break;
+                    }
+                }
+                if ((opts[0] & ~opts[1]) & RE_OPTION_ARG_EXTEND) {
+                    int mask = ~(STR_FUNC_WARN_LINES | STR_FUNC_LINES);
+                    p->lex.strterm->u.literal.u1.func &= mask;
+                    func &= mask;
+                }
+            }
+        }
     }
   terminate:
     if (*enc) *encp = *enc;
     return c;
+}
+
+static int
+strterm_multiline_p(const rb_strterm_t *term)
+{
+    return (term->u.literal.u1.func & STR_FUNC_LINES) != 0;
 }
 
 /* imemo_parser_strterm for literal */

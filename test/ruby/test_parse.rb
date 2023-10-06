@@ -1216,6 +1216,12 @@ x = __ENCODING__
     assert_not_match(/unexpected tSTRING_END/, e.message)
   end
 
+  def test_multiline_regexp
+    assert_warn(/multi-line regexp/) do
+      eval("/foo\nbar/")
+    end
+  end
+
   def test_lparenarg
     o = Struct.new(:x).new
     def o.i(x)

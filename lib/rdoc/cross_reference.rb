@@ -35,7 +35,7 @@ class RDoc::CrossReference
   METHOD_REGEXP_STR = /(
     (?!\d)[\w#{RDoc::Markup::AttributeManager::PROTECT_ATTR}]+[!?=]?|
     %|=(?:==?|~)|![=~]|\[\]=?|<(?:<|=>?)?|>[>=]?|[-+!]@?|\*\*?|[\/%\`|&^~]
-  )#{METHOD_ARGS_REGEXP_STR}/.source.delete("\n ").freeze
+  )#{METHOD_ARGS_REGEXP_STR}/x.source.delete("\n ").freeze
 
   ##
   # Regular expressions matching text that should potentially have
