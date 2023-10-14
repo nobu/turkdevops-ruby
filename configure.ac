@@ -3956,6 +3956,7 @@ test "x$SYMBOL_PREFIX" = xNONE && SYMBOL_PREFIX=''
 AS_IF([test x"$enable_shared" = xyes], [
     AC_CACHE_CHECK([for default symbols in empty shared library], rb_cv_symbols_in_emptylib, [
         save_CC="$CC"
+        set -x
         eval CC=\"`printf "%s" "${DLDSHARED}" | sed ['s/\$(CC)/${CC}/']`\"
         AC_LINK_IFELSE([AC_LANG_PROGRAM()],[
             rb_cv_symbols_in_emptylib=`$NM -Pgp conftest$ac_exeext |
@@ -3964,6 +3965,7 @@ AS_IF([test x"$enable_shared" = xyes], [
         set ${rb_cv_symbols_in_emptylib}
         rb_cv_symbols_in_emptylib="$*"
         CC="$save_CC"
+        set +x
     ])
 ])
 AC_SUBST(XSYMBOLS_IN_EMPTYLIB, "${rb_cv_symbols_in_emptylib}")
