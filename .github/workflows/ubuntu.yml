@@ -51,15 +51,18 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    if: >-
-      ${{!(false
-      || contains(github.event.head_commit.message, '[DOC]')
-      || contains(github.event.pull_request.title, '[DOC]')
-      || contains(github.event.pull_request.labels.*.name, 'Documentation')
-      || (github.event_name == 'push' && github.actor == 'dependabot[bot]')
-      )}}
-
     steps:
+      - id: doc-only
+        run: false
+        working-directory:
+        if: >-
+          ${{ false
+          || contains(github.event.head_commit.message, '[DOC]')
+          || contains(github.event.pull_request.title, '[DOC]')
+          || contains(github.event.pull_request.labels.*.name, 'Documentation')
+          || (github.event_name == 'push' && github.actor == 'dependabot[bot]')
+          }}
+
       - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
         with:
           sparse-checkout-cone-mode: false
@@ -110,6 +113,11 @@ jobs:
           TESTS: ${{ matrix.skipped_tests }}
         if: ${{ matrix.test_task == 'check' && matrix.skipped_tests != '' }}
         continue-on-error: ${{ matrix.continue-on-skipped_tests || false }}
+
+      - name: doc
+        run: test '${{ steps.doc-only.outcome }}' = failure
+        working-directory:
+        if: ${{ failure() }}
 
       - uses: ./.github/actions/slack
         with:
