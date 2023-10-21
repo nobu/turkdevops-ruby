@@ -116,8 +116,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           gems: ${{ steps.diff.outputs.gems }}
         if: >-
+          # github.repository == 'ruby/ruby' &&
           ${{
-          github.repository == 'ruby/ruby' &&
           !startsWith(github.event_name, 'pull') &&
           (steps.diff.outputs.update)
           }}
