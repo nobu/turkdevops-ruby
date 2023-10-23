@@ -68,6 +68,7 @@ jobs:
           git diff --color --no-ext-diff --ignore-submodules --exit-code -- gems/bundled_gems ||
           gems=true
           git add -- NEWS.md gems/bundled_gems
+          set -x
           echo news=$news >> $GITHUB_OUTPUT
           echo gems=$gems >> $GITHUB_OUTPUT
           echo update=${news:-$gems} >> $GITHUB_OUTPUT
@@ -115,7 +116,6 @@ jobs:
           gems: ${{ steps.diff.outputs.gems }}
         if: >-
           ${{
-          github.repository == 'ruby/ruby' &&
           !startsWith(github.event_name, 'pull') &&
           steps.diff.outputs.update
           }}
