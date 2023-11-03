@@ -10,9 +10,10 @@ END {
   output.print date.strftime("latest_date=%F") if date
 }
 unless /^[^#]/ !~ (gem = $F[0])
-  (gem, src), = Gem::SpecFetcher.fetcher.detect(:latest) {|s|
-    s.platform == "ruby" && s.name == gem
-  }
+  ver = Gem::Version.new($F[1])
+  (gem, src) = Gem::SpecFetcher.fetcher.detect(:abs_latest) {|s|
+    s.platform == "ruby" && s.name == gem && s.version >= ver
+  }.max
   gem = src.fetch_spec(gem)
   if ENV["UPDATE_BUNDLED_GEMS_ALL"]
     uri = gem.metadata["source_code_uri"] || gem.homepage
@@ -29,7 +30,7 @@ unless /^[^#]/ !~ (gem = $F[0])
     end
   end
   f = [gem.name, gem.version.to_s, uri, *$F[3..-1]]
-  $_.gsub!(/\S+\s*/) {|s| (f.shift || "").ljust(s.size)}
+  $_.gsub!(/\S+\s*(?=\s|$)/) {|s| (f.shift || "").ljust(s.size)}
   $_ = [$_, *f].join(" ") unless f.empty?
   $_.rstrip!
 end
