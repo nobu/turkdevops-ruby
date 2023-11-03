@@ -12,6 +12,8 @@ allowed_failures = allowed_failures.split(',').reject(&:empty?)
 
 ENV["GEM_PATH"] = [File.realpath('.bundle'), File.realpath('../.bundle', __dir__)].join(File::PATH_SEPARATOR)
 
+ENV["PATH"] = [File.realpath("libexec", __dir__), ENV["PATH"]].compact.join(File::PATH_SEPARATOR)
+
 colorize = Colorize.new
 rake = File.realpath("../../.bundle/bin/rake", __FILE__)
 gem_dir = File.realpath('../../gems', __FILE__)

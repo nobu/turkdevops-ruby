@@ -1,0 +1,11 @@
+#!/bin/sh
+[ "$1" = exec ] || {
+    echo "tool/libexec/bundle: not supported: $1" 1>&2
+    exit 1
+}
+shift
+[ "${RUBY:+set}" ] || {
+    echo "tool/libexec/bundle: RUBY is not set" 1>&2
+    exit 1
+}
+exec $RUBY --enable=gems ${1+"$@"}
