@@ -48,6 +48,7 @@ static ID size_pool_edge_names[SIZE_POOL_COUNT];
 #define BLACK 0x0
 #define RED 0x1
 
+#ifdef HAVE_MMAP
 static redblack_node_t *
 redblack_left(redblack_node_t * node)
 {
@@ -270,6 +271,7 @@ redblack_insert(redblack_node_t * tree, ID key, rb_shape_t * value)
         return root;
     }
 }
+#endif
 
 rb_shape_tree_t *rb_shape_tree_ptr = NULL;
 

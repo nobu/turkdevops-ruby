@@ -145,8 +145,10 @@ static void rb_check_deadlock(rb_ractor_t *r);
 static int rb_threadptr_pending_interrupt_empty_p(const rb_thread_t *th);
 static const char *thread_status_name(rb_thread_t *th, int detail);
 static int hrtime_update_expire(rb_hrtime_t *, const rb_hrtime_t);
+#ifdef RUBY_THREAD_PTHREAD_H
 NORETURN(static void async_bug_fd(const char *mesg, int errno_arg, int fd));
 static int consume_communication_pipe(int fd);
+#endif
 
 static volatile int system_working = 1;
 
@@ -1662,11 +1664,13 @@ rb_thread_io_wake_pending_closer(struct waiting_fd *wfd)
     }
 }
 
+#ifdef RUBY_THREAD_PTHREAD_H
 static int
 waitfd_to_waiting_flag(int wfd_event)
 {
     return wfd_event << 1;
 }
+#endif
 
 VALUE
 rb_thread_io_blocking_call(rb_blocking_function_t *func, void *data1, int fd, int events)
@@ -1692,7 +1696,7 @@ rb_thread_io_blocking_call(rb_blocking_function_t *func, void *data1, int fd, in
 
     struct waiting_fd waiting_fd = {
         .fd = fd,
-        .th = rb_ec_thread_ptr(ec),
+        .th = th,
         .busy = NULL,
     };
 
@@ -4479,6 +4483,7 @@ rb_threadptr_check_signal(rb_thread_t *mth)
     }
 }
 
+#ifdef RUBY_THREAD_PTHREAD_H
 static void
 async_bug_fd(const char *mesg, int errno_arg, int fd)
 {
@@ -4535,6 +4540,7 @@ consume_communication_pipe(int fd)
         }
     }
 }
+#endif
 
 void
 rb_thread_stop_timer_thread(void)

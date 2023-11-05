@@ -886,11 +886,13 @@ rb_del_running_thread(rb_thread_t *th)
     // do nothing
 }
 
+#if 0
 static bool
 th_has_dedicated_nt(const rb_thread_t *th)
 {
     return true;
 }
+#endif
 
 void
 rb_threadptr_sched_free(rb_thread_t *th)

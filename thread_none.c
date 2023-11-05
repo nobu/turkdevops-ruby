@@ -276,11 +276,13 @@ native_fd_select(int n, rb_fdset_t *readfds, rb_fdset_t *writefds, rb_fdset_t *e
     return rb_fd_select(n, readfds, writefds, exceptfds, timeout);
 }
 
+#if 0
 static bool
 th_has_dedicated_nt(const rb_thread_t *th)
 {
     return true;
 }
+#endif
 
 void
 rb_add_running_thread(rb_thread_t *th){
