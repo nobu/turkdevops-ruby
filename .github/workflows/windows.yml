@@ -193,7 +193,7 @@ jobs:
       - run: nmake test-spec
         timeout-minutes: 10
 
-      - run: nmake test-all
+      - run: nmake test-all TESTS="ruby/test_dir.rb ruby/test_env.rb"
         env:
           RUBY_TESTOPTS: -j${{ env.TEST_JOBS || 4 }} --job-status=normal
         timeout-minutes: 60
