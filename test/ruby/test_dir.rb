@@ -640,6 +640,22 @@ class TestDir < Test::Unit::TestCase
       begin;
         assert_equal("C:/ruby/homepath", Dir.home)
       end;
+
+      env['HOMEDRIVE'] = nil
+      env['HOMEPATH'] = nil
+      args << '-e' << 'p Dir.home'
+      home, err, status = EnvUtil.invoke_ruby(args, "", true, true)
+      all_assertions do |all|
+        all.for("status") {assert_predicate status, :success?}
+        all.for("stderr") {assert_empty err}
+      end
+      env["HOMEDRIVE"] = "no-path"
+      out, err, status = EnvUtil.invoke_ruby(args, "", true, true)
+      all_assertions do |all|
+        all.for("status") {assert_predicate status, :success?}
+        all.for("stderr") {assert_empty err}
+        all.for("home") {assert_equal home, out, "HOMEDRIVE without HOMEPATH"}
+      end
     end
   end
 

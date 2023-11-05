@@ -1485,5 +1485,23 @@ class TestEnv < Test::Unit::TestCase
     ensure
       ENV["test"] = test
     end
+
+    def test_initial_home
+      env = {"HOME"=>nil, "USERPROFILE" => nil, "HOMEPATH" => nil, "HOMEDRIVE" => nil}
+      args = [env, "-"]
+      cmd = 'puts ENV["HOME"].tr(File::ALT_SEPARATOR, File::SEPARATOR)'
+      home, err, status = EnvUtil.invoke_ruby(args, cmd, true, true)
+      all_assertions do |all|
+        all.for("status") {assert_predicate status, :success?}
+        all.for("stderr") {assert_empty err}
+      end
+      env["HOMEDRIVE"] = "no-path"
+      out, err, status = EnvUtil.invoke_ruby(args, cmd, true, true)
+      all_assertions do |all|
+        all.for("status") {assert_predicate status, :success?}
+        all.for("stderr") {assert_empty err}
+        all.for("home") {assert_equal home, out, "HOMEDRIVE without HOMEPATH"}
+      end
+    end
   end
 end
