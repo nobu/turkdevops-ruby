@@ -538,23 +538,13 @@ rb_w32_system_tmpdir(WCHAR *path, UINT len)
     return (UINT)(p - path + numberof(temp) - 1);
 }
 
-/*
-  Return user's home directory using environment variables combinations.
-  Memory allocated by this function should be manually freed
-  afterwards with xfree.
+enum w32_home_env_type {HOME_NONE, ENV_HOME, ENV_USERPROFILE, ENV_DRIVEPATH};
 
-  Try:
-  HOME, USERPROFILE, HOMEDRIVE + HOMEPATH environment variables
-  Special Folders - Profile and Personal
-*/
-WCHAR *
-rb_w32_home_dir(void)
+static enum w32_home_env_type
+search_home_env(size_t *buffer_len_ptr)
 {
-    WCHAR *buffer = NULL;
     size_t buffer_len = MAX_PATH, len = 0;
-    enum {
-        HOME_NONE, ENV_HOME, ENV_USERPROFILE, ENV_DRIVEPATH
-    } home_type = HOME_NONE;
+    enum w32_home_env_type home_type = HOME_NONE;
 
     if ((len = GetEnvironmentVariableW(L"HOME", NULL, 0)) != 0) {
         buffer_len = len;
@@ -570,11 +560,18 @@ rb_w32_home_dir(void)
             buffer_len += len;
             home_type = ENV_DRIVEPATH;
         }
+        else {
+            buffer_len = MAX_PATH;
+        }
     }
+    *buffer_len_ptr = buffer_len;
+    return home_type;
+}
 
-    /* allocate buffer */
-    buffer = ALLOC_N(WCHAR, buffer_len);
-
+static BOOL
+build_home_env(enum w32_home_env_type home_type, WCHAR *const buffer, size_t buffer_len)
+{
+    size_t len;
     switch (home_type) {
       case ENV_HOME:
         GetEnvironmentVariableW(L"HOME", buffer, buffer_len);
@@ -589,16 +586,42 @@ rb_w32_home_dir(void)
       default:
         if (!get_special_folder(CSIDL_PROFILE, buffer, buffer_len) &&
             !get_special_folder(CSIDL_PERSONAL, buffer, buffer_len)) {
-            xfree(buffer);
-            return NULL;
+            return FALSE;
         }
-        REALLOC_N(buffer, WCHAR, lstrlenW(buffer) + 1);
         break;
     }
 
     /* sanitize backslashes with forwardslashes */
     regulate_path(buffer);
 
+    return TRUE;
+}
+
+/*
+  Return user's home directory using environment variables combinations.
+  Memory allocated by this function should be manually freed
+  afterwards with xfree.
+
+  Try:
+  HOME, USERPROFILE, HOMEDRIVE + HOMEPATH environment variables
+  Special Folders - Profile and Personal
+*/
+WCHAR *
+rb_w32_home_dir(void)
+{
+    size_t buffer_len;
+    enum w32_home_env_type home_type = search_home_env(&buffer_len);
+
+    /* allocate buffer */
+    WCHAR *buffer = ALLOC_N(WCHAR, buffer_len);
+
+    if (!build_home_env(home_type, buffer, buffer_len)) {
+        xfree(buffer);
+        return NULL;
+    }
+    if (home_type == HOME_NONE) {
+        REALLOC_N(buffer, WCHAR, lstrlenW(buffer) + 1);
+    }
     return buffer;
 }
 
@@ -609,7 +632,6 @@ init_env(void)
     static const WCHAR TMPDIR[] = L"TMPDIR";
     struct {WCHAR name[6], eq, val[ENV_MAX];} wk;
     DWORD len;
-    BOOL f;
 #define env wk.val
 #define set_env_val(vname) do { \
         typedef char wk_name_offset[(numberof(wk.name) - (numberof(vname) - 1)) * 2 + 1]; \
@@ -620,29 +642,10 @@ init_env(void)
 
     wk.eq = L'=';
 
-    if (!GetEnvironmentVariableW(L"HOME", env, numberof(env))) {
-        f = FALSE;
-        if (GetEnvironmentVariableW(L"USERPROFILE", env, numberof(env))) {
-            f = TRUE;
-        }
-        else {
-            if (GetEnvironmentVariableW(L"HOMEDRIVE", env, numberof(env)))
-                len = lstrlenW(env);
-            else
-                len = 0;
-
-            if (GetEnvironmentVariableW(L"HOMEPATH", env + len, numberof(env) - len) || len) {
-                f = TRUE;
-            }
-            else if (get_special_folder(CSIDL_PROFILE, env, numberof(env))) {
-                f = TRUE;
-            }
-            else if (get_special_folder(CSIDL_PERSONAL, env, numberof(env))) {
-                f = TRUE;
-            }
-        }
-        if (f) {
-            regulate_path(env);
+    size_t homelen;
+    enum w32_home_env_type home_type = search_home_env(&homelen);
+    if (home_type != ENV_HOME) {
+        if (build_home_env(home_type, env, numberof(env))) {
             set_env_val(L"HOME");
         }
     }
