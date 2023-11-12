@@ -20,6 +20,8 @@ mflags = $(MFLAGS)
 gnumake_recursive =
 enable_shared = $(ENABLE_SHARED:no=)
 
+top_libdir = $(srcdir)/lib
+
 UNICODE_VERSION = 15.0.0
 UNICODE_EMOJI_VERSION_0 = $(UNICODE_VERSION)///
 UNICODE_EMOJI_VERSION_1 = $(UNICODE_EMOJI_VERSION_0:.0///=)
@@ -64,12 +66,12 @@ LIBRUBY_EXTS  = ./.libruby-with-ext.time
 REVISION_H    = ./.revision.time
 PLATFORM_D    = $(TIMESTAMPDIR)/.$(PLATFORM_DIR).time
 ENC_TRANS_D   = $(TIMESTAMPDIR)/.enc-trans.time
-RDOC          = $(XRUBY) "$(srcdir)/libexec/rdoc" --root "$(srcdir)" --encoding=UTF-8 --all
+RDOC          = $(XRUBY) "$(top_srcdir)/libexec/rdoc" --root "$(top_srcdir)" --encoding=UTF-8 --all
 RDOCOUT       = $(EXTOUT)/rdoc
 HTMLOUT       = $(EXTOUT)/html
 CAPIOUT       = doc/capi
 INSTALL_DOC_OPTS = --rdoc-output="$(RDOCOUT)" --html-output="$(HTMLOUT)"
-RDOC_GEN_OPTS = --page-dir "$(srcdir)/doc" --no-force-update \
+RDOC_GEN_OPTS = --page-dir "$(top_srcdir)/doc" --no-force-update \
 	--title "Documentation for Ruby $(RUBY_API_VERSION)" \
 	--main README.md
 
@@ -205,40 +207,40 @@ $(PRISM_BUILD_DIR)/.time $(PRISM_BUILD_DIR)/enc/.time $(PRISM_BUILD_DIR)/util/.t
 	$(Q) $(MAKEDIRS) $(@D)
 	@$(NULLCMD) > $@
 
-main: $(srcdir)/lib/prism/compiler.rb
-srcs: $(srcdir)/lib/prism/compiler.rb
-$(srcdir)/lib/prism/compiler.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/compiler.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/compiler.rb $(srcdir)/lib/prism/compiler.rb
+main: $(top_libdir)/prism/compiler.rb
+srcs: $(top_libdir)/prism/compiler.rb
+$(top_libdir)/prism/compiler.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/compiler.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/compiler.rb $(top_libdir)/prism/compiler.rb
 
-main: $(srcdir)/lib/prism/dispatcher.rb
-srcs: $(srcdir)/lib/prism/dispatcher.rb
-$(srcdir)/lib/prism/dispatcher.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/dispatcher.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/dispatcher.rb $(srcdir)/lib/prism/dispatcher.rb
+main: $(top_libdir)/prism/dispatcher.rb
+srcs: $(top_libdir)/prism/dispatcher.rb
+$(top_libdir)/prism/dispatcher.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/dispatcher.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/dispatcher.rb $(top_libdir)/prism/dispatcher.rb
 
-main: $(srcdir)/lib/prism/dsl.rb
-srcs: $(srcdir)/lib/prism/dsl.rb
-$(srcdir)/lib/prism/dsl.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/dsl.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/dsl.rb $(srcdir)/lib/prism/dsl.rb
+main: $(top_libdir)/prism/dsl.rb
+srcs: $(top_libdir)/prism/dsl.rb
+$(top_libdir)/prism/dsl.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/dsl.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/dsl.rb $(top_libdir)/prism/dsl.rb
 
-main: $(srcdir)/lib/prism/mutation_compiler.rb
-srcs: $(srcdir)/lib/prism/mutation_compiler.rb
-$(srcdir)/lib/prism/mutation_compiler.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/mutation_compiler.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/mutation_compiler.rb $(srcdir)/lib/prism/mutation_compiler.rb
+main: $(top_libdir)/prism/mutation_compiler.rb
+srcs: $(top_libdir)/prism/mutation_compiler.rb
+$(top_libdir)/prism/mutation_compiler.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/mutation_compiler.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/mutation_compiler.rb $(top_libdir)/prism/mutation_compiler.rb
 
-main: $(srcdir)/lib/prism/node.rb
-srcs: $(srcdir)/lib/prism/node.rb
-$(srcdir)/lib/prism/node.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/node.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/node.rb $(srcdir)/lib/prism/node.rb
+main: $(top_libdir)/prism/node.rb
+srcs: $(top_libdir)/prism/node.rb
+$(top_libdir)/prism/node.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/node.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/node.rb $(top_libdir)/prism/node.rb
 
-main: $(srcdir)/lib/prism/serialize.rb
-srcs: $(srcdir)/lib/prism/serialize.rb
-$(srcdir)/lib/prism/serialize.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/serialize.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/serialize.rb $(srcdir)/lib/prism/serialize.rb
+main: $(top_libdir)/prism/serialize.rb
+srcs: $(top_libdir)/prism/serialize.rb
+$(top_libdir)/prism/serialize.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/serialize.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/serialize.rb $(top_libdir)/prism/serialize.rb
 
-main: $(srcdir)/lib/prism/visitor.rb
-srcs: $(srcdir)/lib/prism/visitor.rb
-$(srcdir)/lib/prism/visitor.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/visitor.rb.erb
-	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/visitor.rb $(srcdir)/lib/prism/visitor.rb
+main: $(top_libdir)/prism/visitor.rb
+srcs: $(top_libdir)/prism/visitor.rb
+$(top_libdir)/prism/visitor.rb: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/lib/prism/visitor.rb.erb
+	$(Q) $(BASERUBY) $(PRISM_SRCDIR)/templates/template.rb lib/prism/visitor.rb $(top_libdir)/prism/visitor.rb
 
 srcs: prism/api_node.c
 prism/api_node.c: $(PRISM_SRCDIR)/config.yml $(PRISM_SRCDIR)/templates/template.rb $(PRISM_SRCDIR)/templates/ext/prism/api_node.c.erb
@@ -337,9 +339,9 @@ all: $(SHOWFLAGS) main docs
 main: $(SHOWFLAGS) exts $(ENCSTATIC:static=lib)encs
 	@$(NULLCMD)
 
-main: $(srcdir)/lib/ruby_vm/rjit/instruction.rb
-srcs: $(srcdir)/lib/ruby_vm/rjit/instruction.rb
-$(srcdir)/lib/ruby_vm/rjit/instruction.rb: $(tooldir)/insns2vm.rb $(tooldir)/ruby_vm/views/lib/ruby_vm/rjit/instruction.rb.erb $(srcdir)/insns.def
+main: $(top_libdir)/ruby_vm/rjit/instruction.rb
+srcs: $(top_libdir)/ruby_vm/rjit/instruction.rb
+$(top_libdir)/ruby_vm/rjit/instruction.rb: $(tooldir)/insns2vm.rb $(tooldir)/ruby_vm/views/lib/ruby_vm/rjit/instruction.rb.erb $(srcdir)/insns.def
 	$(ECHO) generating $@
 	$(Q) $(BASERUBY) -Ku $(tooldir)/insns2vm.rb --basedir="$(srcdir)" $(INSNS2VMOPT) $@
 
@@ -883,13 +885,13 @@ btest-ruby: $(TEST_RUNNABLE)-btest-ruby
 no-btest-ruby: PHONY
 yes-btest-ruby: prog PHONY
 	$(ACTIONS_GROUP)
-	$(Q)$(gnumake_recursive)$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(srcdir)/lib $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(BTESTS)
+	$(Q)$(gnumake_recursive)$(exec) $(RUNRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(top_libdir) $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(BTESTS)
 	$(ACTIONS_ENDGROUP)
 
 # runner: BASERUBY, target: ruby
 btest-bruby: prog PHONY
 	$(ACTIONS_GROUP)
-	$(Q)$(gnumake_recursive)$(exec) $(BOOTSTRAPRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(srcdir)/lib $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(BTESTS)
+	$(Q)$(gnumake_recursive)$(exec) $(BOOTSTRAPRUBY) "$(srcdir)/bootstraptest/runner.rb" --ruby="$(PROGRAM) -I$(top_libdir) $(RUN_OPTS)" $(OPTS) $(TESTOPTS) $(BTESTS)
 	$(ACTIONS_ENDGROUP)
 
 rtest: yes-fake miniruby$(EXEEXT) PHONY
@@ -944,7 +946,7 @@ yes-test-all: yes-test-all-precheck
 	$(ACTIONS_ENDGROUP)
 TESTS_BUILD = mkmf
 no-test-all: PHONY
-	$(gnumake_recursive)$(MINIRUBY) -I"$(srcdir)/lib" "$(TESTSDIR)/runner.rb" $(TESTOPTS) $(TESTS_BUILD)
+	$(gnumake_recursive)$(MINIRUBY) -I"$(top_libdir)" "$(TESTSDIR)/runner.rb" $(TESTOPTS) $(TESTS_BUILD)
 
 test-almost: test-all
 yes-test-almost: yes-test-all
@@ -1011,7 +1013,7 @@ libtrans trans: {$(VPATH)}transdb.h
 ENC_HEADERS = $(srcdir)/enc/jis/props.h
 # Use MINIRUBY which loads fake.rb for cross compiling
 $(ENC_MK): $(srcdir)/enc/make_encmake.rb $(srcdir)/enc/Makefile.in $(srcdir)/enc/depend \
-	   $(srcdir)/enc/encinit.c.erb $(ENC_HEADERS) $(srcdir)/lib/mkmf.rb $(RBCONFIG) $(HAVE_BASERUBY)-fake
+	   $(srcdir)/enc/encinit.c.erb $(ENC_HEADERS) $(top_libdir)/mkmf.rb $(RBCONFIG) $(HAVE_BASERUBY)-fake
 	$(ECHO) generating $@
 	$(Q) $(BOOTSTRAPRUBY_COMMAND) $(srcdir)/enc/make_encmake.rb \
 	  --builtin-encs="$(BUILTIN_ENCOBJS)" --builtin-transes="$(BUILTIN_TRANSOBJS)" --module$(ENCSTATIC) $(ENCS) $@
@@ -1220,7 +1222,7 @@ srcs-extra: $(EXTRA_SRCS)
 realclean-srcs-extra::
 	$(Q)$(RM) $(EXTRA_SRCS)
 
-LIB_SRCS = $(srcdir)/lib/unicode_normalize/tables.rb
+LIB_SRCS = $(top_libdir)/unicode_normalize/tables.rb
 
 srcs-lib: $(LIB_SRCS)
 
@@ -1736,7 +1738,7 @@ $(UNICODE_EMOJI_FILES):
 	$(Q) $(MAKEDIRS) "$(UNICODE_SRC_EMOJI_DATA_DIR)"
 	$(Q) $(UNICODE_EMOJI_DOWNLOAD) $(UNICODE_EMOJI_FILES)
 
-$(srcdir)/lib/unicode_normalize/tables.rb: \
+$(top_libdir)/unicode_normalize/tables.rb: \
 	$(UNICODE_SRC_DATA_DIR)/$(HAVE_BASERUBY:yes=.unicode-tables.time)
 
 $(UNICODE_SRC_DATA_DIR)/$(ALWAYS_UPDATE_UNICODE:yes=.unicode-tables.time): \
@@ -1766,7 +1768,7 @@ $(UNICODE_SRC_DATA_DIR)/.unicode-tables.$(UNICODE_TABLES_DEPENDENTS:force=time):
 		$(UNICODE_SRC_DATA_DIR)
 	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb \
 		-c $(UNICODE_TABLES_TIMESTAMP:yes=-t$@) \
-		-o $(srcdir)/lib/unicode_normalize/tables.rb \
+		-o $(top_libdir)/unicode_normalize/tables.rb \
 		-I $(srcdir) \
 		$(template_dir)/unicode_norm_gen.tmpl \
 		$(UNICODE_DATA_DIR) lib/unicode_normalize
