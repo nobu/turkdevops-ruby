@@ -3,7 +3,7 @@ gnumake = yes
 ifeq ($(filter Makefile,$(MAKEFILE_LIST)),)
 include Makefile
 
-GNUmakefile: $(srcdir)/template/GNUmakefile.in
+GNUmakefile: $(template_dir)/GNUmakefile.in
 endif
 
 override silence := $(if $(findstring s,$(firstword $(MFLAGS))),yes,no)
@@ -30,4 +30,4 @@ override UNICODE_TABLES_DEPENDENTS = \
 -include uncommon.mk
 include $(srcdir)/defs/gmake.mk
 
-GNUmakefile: $(srcdir)/template/GNUmakefile.in
+GNUmakefile: $(template_dir)/GNUmakefile.in

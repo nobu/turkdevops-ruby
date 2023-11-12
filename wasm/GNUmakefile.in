@@ -1,5 +1,5 @@
 include Makefile
-include $(srcdir)/template/GNUmakefile.in
+include $(template_dir)/GNUmakefile.in
 
 wasmdir = $(srcdir)/wasm
 GNUmakefile: $(wasmdir)/GNUmakefile.in

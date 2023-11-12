@@ -308,7 +308,7 @@ TESTOPTS      = $(RUBY_TESTOPTS)
 
 TESTRUN_SCRIPT = $(srcdir)/test.rb
 
-COMPILE_PRELUDE = $(tooldir)/generic_erb.rb $(srcdir)/template/prelude.c.tmpl \
+COMPILE_PRELUDE = $(tooldir)/generic_erb.rb $(template_dir)/prelude.c.tmpl \
 	$(tooldir)/ruby_vm/helpers/c_escape.rb
 
 SHOWFLAGS = $(no_silence:no=showflags)
@@ -380,21 +380,21 @@ EXTS_NOTE = -f $(EXTS_MK) $(mflags) RUBY="$(MINIRUBY)" top_srcdir="$(srcdir)" no
 exts: build-ext
 
 EXTS_MK = exts.mk
-$(EXTS_MK): ext/configure-ext.mk $(srcdir)/template/exts.mk.tmpl \
+$(EXTS_MK): ext/configure-ext.mk $(template_dir)/exts.mk.tmpl \
 	    $(TIMESTAMPDIR)/$(arch)/.time $(TIMESTAMPDIR)/.RUBYCOMMONDIR.time
 	$(Q)$(MAKE) -f ext/configure-ext.mk $(mflags) V=$(V) EXTSTATIC=$(EXTSTATIC) \
 		gnumake=$(gnumake) MINIRUBY="$(MINIRUBY)" \
 		EXTLDFLAGS="$(EXTLDFLAGS)" srcdir="$(srcdir)"
 	$(ECHO) generating makefile $@
 	$(Q)$(MINIRUBY) $(tooldir)/generic_erb.rb -o $@ -c \
-	    $(srcdir)/template/exts.mk.tmpl --gnumake=$(gnumake) --configure-exts=ext/configure-ext.mk
+	    $(template_dir)/exts.mk.tmpl --gnumake=$(gnumake) --configure-exts=ext/configure-ext.mk
 
 ext/configure-ext.mk: $(PREP) all-incs $(MKFILES) $(RBCONFIG) $(LIBRUBY) \
-		$(srcdir)/template/configure-ext.mk.tmpl
+		$(template_dir)/configure-ext.mk.tmpl
 	$(ECHO) generating makefiles $@
 	$(Q)$(MAKEDIRS) $(@D)
 	$(Q)$(MINIRUBY) $(tooldir)/generic_erb.rb -o $@ -c \
-	    $(srcdir)/template/$(@F).tmpl --srcdir="$(srcdir)" \
+	    $(template_dir)/$(@F).tmpl --srcdir="$(srcdir)" \
 	    --miniruby="$(MINIRUBY)" --script-args='$(SCRIPT_ARGS)'
 
 configure-ext: $(EXTS_MK)
@@ -408,10 +408,10 @@ build-ext: $(EXTS_MK)
 exts-note: $(EXTS_MK)
 	$(Q)$(MAKE) $(EXTS_NOTE)
 
-ext/extinit.c: $(srcdir)/template/extinit.c.tmpl $(PREP)
+ext/extinit.c: $(template_dir)/extinit.c.tmpl $(PREP)
 	$(MAKEDIRS) $(@D)
 	$(Q)$(MINIRUBY) $(tooldir)/generic_erb.rb -o $@ -c \
-	    $(srcdir)/template/extinit.c.tmpl $(EXTINITS)
+	    $(template_dir)/extinit.c.tmpl $(EXTINITS)
 
 prog: program wprogram
 programs: $(PROGRAM) $(WPROGRAM) $(arch)-fake.rb
@@ -440,9 +440,9 @@ $(CAPIOUT)/.timestamp: Doxyfile $(PREP)
 	-$(Q) $(DOXYGEN) -b
 	$(Q) $(MINIRUBY) -e 'File.open(ARGV[0], "w"){'"|f|"' f.puts(Time.now)}' "$@"
 
-Doxyfile: $(srcdir)/template/Doxyfile.tmpl $(PREP) $(tooldir)/generic_erb.rb $(RBCONFIG)
+Doxyfile: $(template_dir)/Doxyfile.tmpl $(PREP) $(tooldir)/generic_erb.rb $(RBCONFIG)
 	$(ECHO) generating $@
-	$(Q) $(MINIRUBY) $(tooldir)/generic_erb.rb -o $@ $(srcdir)/template/Doxyfile.tmpl \
+	$(Q) $(MINIRUBY) $(tooldir)/generic_erb.rb -o $@ $(template_dir)/Doxyfile.tmpl \
 	--srcdir="$(srcdir)" --miniruby="$(MINIRUBY)"
 
 program: $(SHOWFLAGS) $(DOT_WAIT) $(PROGRAM)
@@ -474,7 +474,7 @@ ruby.imp: $(COMMONOBJS)
 install: install-$(INSTALLDOC)
 docs: srcs-doc $(DOCTARGETS)
 pkgconfig-data: $(ruby_pc)
-$(ruby_pc): $(srcdir)/template/ruby.pc.in config.status
+$(ruby_pc): $(template_dir)/ruby.pc.in config.status
 
 install-all: docs pre-install-all do-install-all post-install-all
 pre-install-all:: all pre-install-local pre-install-ext pre-install-gem pre-install-doc
@@ -860,10 +860,10 @@ $(HAVE_BASERUBY:no=)$(arch)-fake.rb: miniruby$(EXEEXT)
 $(arch:noarch=ignore)-fake.rb: $(top_srcdir)/revision.h $(top_srcdir)/version.h $(srcdir)/version.c
 $(arch:noarch=ignore)-fake.rb: {$(VPATH)}id.h {$(VPATH)}vm_opts.h $(REVISION_H)
 
-$(arch:noarch=ignore)-fake.rb: $(srcdir)/template/fake.rb.in $(tooldir)/generic_erb.rb
+$(arch:noarch=ignore)-fake.rb: $(template_dir)/fake.rb.in $(tooldir)/generic_erb.rb
 	$(ECHO) generating $@
 	$(Q) $(CPP) -DRUBY_EXPORT $(INCFLAGS) $(CPPFLAGS) "$(srcdir)/version.c" | \
-	$(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ "$(srcdir)/template/fake.rb.in" \
+	$(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ "$(template_dir)/fake.rb.in" \
 	    i=- srcdir="$(srcdir)" BASERUBY="$(BASERUBY)" \
 	    LIBPATHENV="$(LIBPATHENV)" PRELOADENV="$(PRELOADENV)" LIBRUBY_SO="$(LIBRUBY_SO)"
 
@@ -1136,9 +1136,9 @@ $(NEWLINE_C): $(srcdir)/enc/trans/newline.trans $(tooldir)/transcode-tblgen.rb
 	$(Q) $(BASERUBY) "$(tooldir)/transcode-tblgen.rb" -vo $@ $(srcdir)/enc/trans/newline.trans
 enc/trans/newline.$(OBJEXT): $(NEWLINE_C)
 
-verconf.h: $(srcdir)/template/verconf.h.tmpl $(tooldir)/generic_erb.rb $(RBCONFIG)
+verconf.h: $(template_dir)/verconf.h.tmpl $(tooldir)/generic_erb.rb $(RBCONFIG)
 	$(ECHO) creating $@
-	$(Q) $(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ $(srcdir)/template/verconf.h.tmpl
+	$(Q) $(BOOTSTRAPRUBY) "$(tooldir)/generic_erb.rb" -o $@ $(template_dir)/verconf.h.tmpl
 
 ruby-glommed.$(OBJEXT): $(OBJS)
 
@@ -1237,47 +1237,47 @@ incs: $(INSNS) {$(VPATH)}node_name.inc {$(VPATH)}known_errors.inc \
 
 insns: $(INSNS)
 
-id.h: $(tooldir)/generic_erb.rb $(srcdir)/template/id.h.tmpl $(srcdir)/defs/id.def
+id.h: $(tooldir)/generic_erb.rb $(template_dir)/id.h.tmpl $(srcdir)/defs/id.def
 	$(ECHO) generating $@
 	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb --output=$@ \
-		$(srcdir)/template/id.h.tmpl
+		$(template_dir)/id.h.tmpl
 
-id.c: $(tooldir)/generic_erb.rb $(srcdir)/template/id.c.tmpl $(srcdir)/defs/id.def
+id.c: $(tooldir)/generic_erb.rb $(template_dir)/id.c.tmpl $(srcdir)/defs/id.def
 	$(ECHO) generating $@
 	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb --output=$@ \
-		$(srcdir)/template/id.c.tmpl
+		$(template_dir)/id.c.tmpl
 
 node_name.inc: $(tooldir)/node_name.rb $(srcdir)/rubyparser.h
 	$(ECHO) generating $@
 	$(Q) $(BASERUBY) -n $(tooldir)/node_name.rb < $(srcdir)/rubyparser.h > $@
 
-encdb.h: $(RBCONFIG) $(tooldir)/generic_erb.rb $(srcdir)/template/encdb.h.tmpl
+encdb.h: $(RBCONFIG) $(tooldir)/generic_erb.rb $(template_dir)/encdb.h.tmpl
 	$(ECHO) generating $@
-	$(Q) $(BOOTSTRAPRUBY) $(tooldir)/generic_erb.rb -c -o $@ $(srcdir)/template/encdb.h.tmpl $(srcdir)/enc enc
+	$(Q) $(BOOTSTRAPRUBY) $(tooldir)/generic_erb.rb -c -o $@ $(template_dir)/encdb.h.tmpl $(srcdir)/enc enc
 
-transdb.h: $(RBCONFIG) srcs-enc $(tooldir)/generic_erb.rb $(srcdir)/template/transdb.h.tmpl
+transdb.h: $(RBCONFIG) srcs-enc $(tooldir)/generic_erb.rb $(template_dir)/transdb.h.tmpl
 	$(ECHO) generating $@
-	$(Q) $(BOOTSTRAPRUBY) $(tooldir)/generic_erb.rb -c -o $@ $(srcdir)/template/transdb.h.tmpl $(srcdir)/enc/trans enc/trans
+	$(Q) $(BOOTSTRAPRUBY) $(tooldir)/generic_erb.rb -c -o $@ $(template_dir)/transdb.h.tmpl $(srcdir)/enc/trans enc/trans
 
 enc/encinit.c: $(ENC_MK) $(srcdir)/enc/encinit.c.erb
 
-known_errors.inc: $(srcdir)/template/known_errors.inc.tmpl $(srcdir)/defs/known_errors.def
+known_errors.inc: $(template_dir)/known_errors.inc.tmpl $(srcdir)/defs/known_errors.def
 	$(ECHO) generating $@
-	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb -c -o $@ $(srcdir)/template/known_errors.inc.tmpl $(srcdir)/defs/known_errors.def
+	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb -c -o $@ $(template_dir)/known_errors.inc.tmpl $(srcdir)/defs/known_errors.def
 
-vm_call_iseq_optimized.inc: $(srcdir)/template/call_iseq_optimized.inc.tmpl
+vm_call_iseq_optimized.inc: $(template_dir)/call_iseq_optimized.inc.tmpl
 	$(ECHO) generating $@
-	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb -c -o $@ $(srcdir)/template/call_iseq_optimized.inc.tmpl
+	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb -c -o $@ $(template_dir)/call_iseq_optimized.inc.tmpl
 
 $(MINIPRELUDE_C): $(COMPILE_PRELUDE) $(BUILTIN_RB_SRCS)
 	$(ECHO) generating $@
 	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb -I$(srcdir) -o $@ \
-		$(srcdir)/template/prelude.c.tmpl $(BUILTIN_RB_SRCS)
+		$(template_dir)/prelude.c.tmpl $(BUILTIN_RB_SRCS)
 
 $(GOLF_PRELUDE_C): $(COMPILE_PRELUDE) {$(srcdir)}golf_prelude.rb
 	$(ECHO) generating $@
 	$(Q) $(BASERUBY) $(tooldir)/generic_erb.rb -I$(srcdir) -c -o $@ \
-		$(srcdir)/template/prelude.c.tmpl golf_prelude.rb
+		$(template_dir)/prelude.c.tmpl golf_prelude.rb
 
 MAINCPPFLAGS = $(ENABLE_DEBUG_ENV:yes=-DRUBY_DEBUG_ENV=1)
 
@@ -1301,9 +1301,9 @@ preludes: {$(srcdir)}golf_prelude.c
 	$(ECHO) making $@
 	$(Q) $(BASERUBY) $(tooldir)/mk_builtin_loader.rb $<
 
-$(BUILTIN_BINARY:yes=built)in_binary.inc: $(PREP) $(BUILTIN_RB_SRCS) $(srcdir)/template/builtin_binary.inc.tmpl
+$(BUILTIN_BINARY:yes=built)in_binary.inc: $(PREP) $(BUILTIN_RB_SRCS) $(template_dir)/builtin_binary.inc.tmpl
 	$(Q) $(MINIRUBY) $(tooldir)/generic_erb.rb -o $@ \
-		$(srcdir)/template/builtin_binary.inc.tmpl
+		$(template_dir)/builtin_binary.inc.tmpl
 	-$(Q) sha256sum $@ 2> $(NULL) || $(NULLCMD)
 
 $(BUILTIN_BINARY:no=builtin)_binary.inc:
@@ -1344,7 +1344,7 @@ $(srcdir)/ext/date/zonetab.h: $(srcdir)/ext/date/zonetab.list $(srcdir)/ext/date
 		Q=$(Q) ECHO=$(ECHO) top_srcdir=../.. srcdir=. VPATH=../.. BASERUBY="$(BASERUBY)"
 
 $(srcdir)/ext/rbconfig/sizeof/sizes.c: $(srcdir)/ext/rbconfig/sizeof/depend \
-		$(tooldir)/generic_erb.rb $(srcdir)/template/sizes.c.tmpl $(srcdir)/configure.ac
+		$(tooldir)/generic_erb.rb $(template_dir)/sizes.c.tmpl $(srcdir)/configure.ac
 	$(ECHO) generating $@
 	$(Q) $(CHDIR) $(@D) && \
 	$(CAT_DEPEND) depend | \
@@ -1352,7 +1352,7 @@ $(srcdir)/ext/rbconfig/sizeof/sizes.c: $(srcdir)/ext/rbconfig/sizeof/depend \
 		Q=$(Q) ECHO=$(ECHO) top_srcdir=../../.. srcdir=. VPATH=../../.. RUBY="$(BASERUBY)" $(@F)
 
 $(srcdir)/ext/rbconfig/sizeof/limits.c: $(srcdir)/ext/rbconfig/sizeof/depend \
-		$(tooldir)/generic_erb.rb $(srcdir)/template/limits.c.tmpl
+		$(tooldir)/generic_erb.rb $(template_dir)/limits.c.tmpl
 	$(ECHO) generating $@
 	$(Q) $(CHDIR) $(@D) && \
 	$(CAT_DEPEND) depend | \
@@ -1760,7 +1760,7 @@ $(UNICODE_SRC_DATA_DIR)/.unicode-tables.$(UNICODE_TABLES_DEPENDENTS:none=time):
 	$(Q) exit > $(@) || $(NULLCMD)
 $(UNICODE_SRC_DATA_DIR)/.unicode-tables.$(UNICODE_TABLES_DEPENDENTS:force=time): \
 		$(tooldir)/generic_erb.rb \
-		$(srcdir)/template/unicode_norm_gen.tmpl \
+		$(template_dir)/unicode_norm_gen.tmpl \
 		$(UNICODE_TABLES_DATA_FILES) \
 	$(order_only) \
 		$(UNICODE_SRC_DATA_DIR)
@@ -1768,7 +1768,7 @@ $(UNICODE_SRC_DATA_DIR)/.unicode-tables.$(UNICODE_TABLES_DEPENDENTS:force=time):
 		-c $(UNICODE_TABLES_TIMESTAMP:yes=-t$@) \
 		-o $(srcdir)/lib/unicode_normalize/tables.rb \
 		-I $(srcdir) \
-		$(srcdir)/template/unicode_norm_gen.tmpl \
+		$(template_dir)/unicode_norm_gen.tmpl \
 		$(UNICODE_DATA_DIR) lib/unicode_normalize
 
 $(UNICODE_SRC_DATA_DIR):
@@ -1794,7 +1794,7 @@ $(srcdir)/doc/regexp/$(ALWAYS_UPDATE_UNICODE:yes=unicode_properties.rdoc): \
 
 $(srcdir)/doc/regexp/unicode_properties.rdoc:
 	$(Q) $(BOOTSTRAPRUBY) $(tooldir)/generic_erb.rb -c -o $@ \
-		$(srcdir)/template/unicode_properties.rdoc.tmpl \
+		$(template_dir)/unicode_properties.rdoc.tmpl \
 		$(UNICODE_SRC_DATA_DIR) $(UNICODE_HDR_DIR)/name2ctype.h || \
 	$(TOUCH) $@
 

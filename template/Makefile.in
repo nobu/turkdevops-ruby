@@ -20,7 +20,7 @@ srcdir = @srcdir@
 top_srcdir = $(srcdir)
 hdrdir = $(srcdir)/include
 tooldir = $(srcdir)/tool
-
+template_dir = $(srcdir)/template
 PLATFORM_DIR = @PLATFORM_DIR@
 
 CC_WRAPPER = @XCC_WRAPPER@
@@ -337,7 +337,7 @@ $(LIBRUBY_$(LIBRUBY_WITH_EXT)): $(LIBRUBY_SO_UPDATE)
 PKG_CONFIG = @PKG_CONFIG@
 ruby_pc = @ruby_pc@
 $(ruby_pc): config.status Makefile
-	$(Q)./config.status --file=-:$(srcdir)/template/ruby.pc.in | \
+	$(Q)./config.status --file=-:$(template_dir)/ruby.pc.in | \
 	sed -e 's/\$$(\([A-Za-z_][A-Za-z0-9_]*\))/$${\1}/g' \
 	    -e 's|^prefix=.*|prefix=$(prefix)|' \
 	    > ruby.tmp.pc
@@ -347,7 +347,7 @@ $(ruby_pc): config.status Makefile
 pre-install-local:: pkgconfig-data
 
 ruby-runner.h: template/ruby-runner.h.in config.status
-		@./config.status --file=$@:$(srcdir)/template/$(@F).in
+		@./config.status --file=$@:$(template_dir)/$(@F).in
 
 install-cross: $(arch)-fake.rb $(RBCONFIG) rbconfig.rb $(arch_hdrdir)/ruby/config.h \
 	$(LIBRUBY_A) $(LIBRUBY_SO) $(ARCHFILE) pkgconfig-data
@@ -366,7 +366,7 @@ install-cross: $(arch)-fake.rb $(RBCONFIG) rbconfig.rb $(arch_hdrdir)/ruby/confi
 	$(INSTALL_DATA) $(LIBRUBY) $(LIBRUBY_A) $(XRUBY_RUBYLIBDIR)/$(arch)
 	$(INSTALL_PROGRAM) $(LIBRUBY_SO) $(XRUBY_RUBYLIBDIR)/$(arch)
 
-Makefile:	$(srcdir)/template/Makefile.in $(srcdir)/enc/Makefile.in
+Makefile:	$(template_dir)/Makefile.in $(srcdir)/enc/Makefile.in
 
 $(MKFILES): config.status $(srcdir)/version.h $(ABI_VERSION_HDR)
 		@[ -f $@ ] && mv $@ $@.old
