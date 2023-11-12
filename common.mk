@@ -345,7 +345,7 @@ $(srcdir)/lib/ruby_vm/rjit/instruction.rb: $(tooldir)/insns2vm.rb $(tooldir)/rub
 
 .PHONY: rjit-bindgen
 rjit-bindgen:
-	$(Q) $(BASERUBY) -rrubygems -C $(srcdir)/tool/rjit bindgen.rb $(CURDIR)
+	$(Q) $(BASERUBY) -rrubygems -C $(tooldir)/rjit bindgen.rb $(CURDIR)
 
 .PHONY: showflags
 exts enc trans: $(SHOWFLAGS)
