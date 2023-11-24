@@ -13,4 +13,13 @@
 /* dir.c */
 VALUE rb_dir_getwd_ospath(void);
 
+/* util.c */
+/*
+ * Calls cb function with the pointer to buffer storing current
+ * working directory, and arg.  If cb returns NULL, frees the buffer.
+ * Returns the value returned by cb as-is.
+ */
+RBIMPL_ATTR_NONNULL((1))
+char *ruby_getcwd_internal(char *(*cb)(char *, void *), void *arg);
+
 #endif /* INTERNAL_DIR_H */

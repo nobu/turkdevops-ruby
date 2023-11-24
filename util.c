@@ -544,7 +544,7 @@ ruby_strdup(const char *str)
 }
 
 char *
-ruby_getcwd(void)
+ruby_getcwd_internal(char *(*after)(char *, void *), void *arg)
 {
 #if defined HAVE_GETCWD
 # undef RUBY_UNTYPED_DATA_WARNING
@@ -565,13 +565,14 @@ ruby_getcwd(void)
         DATA_PTR(guard) = buf;
         buf = xrealloc(buf, size);
     }
+    char *cwd = buf;
+    if (!(buf = after(cwd, arg))) xfree(cwd);
 # else
     VALUE guard = Data_Wrap_Struct((VALUE)0, NULL, free, NULL);
     char *buf, *cwd = getcwd(NULL, 0);
     DATA_PTR(guard) = cwd;
     if (!cwd) rb_sys_fail("getcwd");
-    buf = ruby_strdup(cwd);	/* allocate by xmalloc */
-    free(cwd);
+    if (!(buf = after(cwd, arg))) free(cwd);
 # endif
     DATA_PTR(RB_GC_GUARD(guard)) = NULL;
 #else
@@ -585,8 +586,29 @@ ruby_getcwd(void)
         xfree(buf);
         rb_syserr_fail(e, "getwd");
     }
+    char *cwd = buf;
+    if (!(buf = after(cwd, arg))) xfree(cwd);
 #endif
     return buf;
+}
+
+static char *
+dup_path(char *ptr, void *arg)
+{
+#if !defined(HAVE_GETCWD) || defined(NO_GETCWD_MALLOC)
+    return *(char **)arg = xrealloc(ptr, strlen(ptr) + 1);
+#else
+    *(char **)arg = ruby_strdup(ptr); /* allocate by xmalloc */
+    return NULL;
+#endif
+}
+
+char *
+ruby_getcwd(void)
+{
+    char *d;
+    ruby_getcwd_internal(dup_path, &d);
+    return d;
 }
 
 void

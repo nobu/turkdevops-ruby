@@ -1339,26 +1339,24 @@ dir_chdir(VALUE dir)
 }
 
 #ifndef _WIN32
+static char *
+getwd_ospath(char *ptr, void *arg)
+{
+    VALUE cwd;
+#ifdef __APPLE__
+    cwd = rb_str_normalize_ospath(ptr, strlen(ptr));
+#else
+    cwd = rb_str_new_cstr(ptr);
+#endif
+    *(VALUE *)arg = cwd;
+    return NULL;
+}
+
 VALUE
 rb_dir_getwd_ospath(void)
 {
-    char *path;
     VALUE cwd;
-    VALUE path_guard;
-
-#undef RUBY_UNTYPED_DATA_WARNING
-#define RUBY_UNTYPED_DATA_WARNING 0
-    path_guard = Data_Wrap_Struct((VALUE)0, NULL, RUBY_DEFAULT_FREE, NULL);
-    path = ruby_getcwd();
-    DATA_PTR(path_guard) = path;
-#ifdef __APPLE__
-    cwd = rb_str_normalize_ospath(path, strlen(path));
-#else
-    cwd = rb_str_new2(path);
-#endif
-    DATA_PTR(path_guard) = 0;
-
-    xfree(path);
+    ruby_getcwd_internal(getwd_ospath, &cwd);
     return cwd;
 }
 #endif
