@@ -7,10 +7,15 @@ override mflags := $(filter-out -j%,$(MFLAGS))
 MSPECOPT += $(if $(filter -j%,$(MFLAGS)),-j)
 nproc = $(subst -j,,$(filter -j%,$(MFLAGS)))
 
+COLORIZE = $(tooldir)/lib/colorize.rb
+ACTIONS_GROUPECHO = $(ECHO) "$(subst -, ,$(@:yes-%=%))"
 ifeq ($(GITHUB_ACTIONS),true)
 # 93(bright yellow) is copied from .github/workflows/mingw.yml
 override ACTIONS_GROUP = @echo "::group::[93m$(@:yes-%=%)[m"
 override ACTIONS_ENDGROUP = @echo "::endgroup::"
+override ACTIONS_GROUPECHO = @echo "::group::[93m$(subst -, ,$(@:yes-%=%))[m"
+else ifeq ($(NO_COLOR),)
+# override ACTIONS_GROUPECHO = @$(BOOTSTRAPRUBY) $(COLORIZE) note "$(subst -, ,$(@:yes-%=%))"
 endif
 
 ifneq ($(filter darwin%,$(target_os)),)
@@ -36,7 +41,7 @@ TEST_DEPENDS := $(filter-out test-all $(TEST_TARGETS),$(TEST_DEPENDS))
 TEST_TARGETS := $(patsubst test,test-short,$(TEST_TARGETS))
 TEST_DEPENDS := $(filter-out test $(TEST_TARGETS),$(TEST_DEPENDS))
 TEST_TARGETS := $(patsubst test-short,btest-ruby test-knownbug test-basic,$(TEST_TARGETS))
-TEST_TARGETS := $(patsubst test-basic,test-basic test-leaked-globals,$(TEST_TARGETS))
+TEST_TARGETS := $(patsubst test-basic,test-basic test-leaked-globals test-git-srcs,$(TEST_TARGETS))
 TEST_TARGETS := $(patsubst test-bundled-gems,test-bundled-gems-run,$(TEST_TARGETS))
 TEST_TARGETS := $(patsubst test-bundled-gems-run,test-bundled-gems-run $(PREPARE_BUNDLED_GEMS),$(TEST_TARGETS))
 TEST_TARGETS := $(patsubst test-bundled-gems-prepare,test-bundled-gems-prepare $(PRECHECK_BUNDLED_GEMS) test-bundled-gems-fetch,$(TEST_TARGETS))
@@ -91,7 +96,7 @@ $(addprefix yes-,$(TEST_TARGETS)): $(TEST_DEPENDS)
 endif
 
 ORDERED_TEST_TARGETS := $(filter $(TEST_TARGETS), \
-	btest-ruby test-knownbug test-leaked-globals test-basic \
+	btest-ruby test-knownbug test-leaked-globals test-git-srcs test-basic \
 	test-testframework test-tool test-ruby test-all \
 	test-spec test-syntax-suggest-prepare test-syntax-suggest \
 	test-bundler-prepare test-bundler test-bundler-parallel \
@@ -117,6 +122,42 @@ $(foreach test,$(ORDERED_TEST_TARGETS), \
 	$(eval yes-$(value test): $(addprefix yes-,$(value prev_test))); \
 	$(eval no-$(value test): $(addprefix no-,$(value prev_test))); \
 	$(eval prev_test := $(value test)))
+endif
+
+ifneq ("$(GIT)",)
+GIT_GREP = $(in-srcdir) $(GIT) --no-pager grep
+
+test-git-srcs: $(DOT_WAIT) Check-if-C-sources-are-usascii
+Check-if-C-sources-are-usascii:
+	$(ACTIONS_GROUPECHO)
+	@$(GIT_GREP) -r -n '[^	-~]' -- '*.[chyS]' '*.asm' && exit 1 || $(NULLCMD)
+	$(ACTIONS_ENDGROUP)
+
+test-git-srcs: $(DOT_WAIT) Check-for-trailing-spaces
+Check-for-trailing-spaces:
+	$(ACTIONS_GROUPECHO)
+	$(Q)$(GIT_GREP) -I -n '[	 ]$$' -- '*.rb' '*.[chy]' '*.rs' '*.yml' && exit 1 || $(NULLCMD)
+	$(Q)$(GIT_GREP) -n '^[	 ][	 ]*$$' -- '*.md' && exit 1 || $(NULLCMD)
+	$(ACTIONS_ENDGROUP)
+
+test-git-srcs: $(DOT_WAIT) Check-for-bash-specific-substitution-in-configure.ac
+Check-for-bash-specific-substitution-in-configure.ac:
+	$(ACTIONS_GROUPECHO)
+	$(Q)$(GIT_GREP) -n '\$${[A-Za-z_0-9]*/' -- configure.ac && exit 1 || $(NULLCMD)
+	$(ACTIONS_ENDGROUP)
+
+test-git-srcs: $(DOT_WAIT) Check-for-header-macros
+Check-for-header-macros:
+	$(ACTIONS_GROUPECHO)
+	$(Q)$(in-srcdir) $(CHDIR) include && \
+	fail=; \
+	for header in ruby/*.h; do \
+	  $(GIT) grep -l -F -e $$header -e HAVE_`echo $$header | tr a-z./ A-Z__` -- . > $(NULL) && continue; \
+	  fail=1; \
+	  echo $$header; \
+	done; \
+	exit $$fail
+	$(ACTIONS_ENDGROUP)
 endif
 
 ifneq ($(if $(filter install,$(MAKECMDGOALS)),$(filter uninstall,$(MAKECMDGOALS))),)
@@ -477,7 +518,7 @@ clean-srcs-extra::
 
 ifneq ($(filter $(VCS),git),)
 update-src::
-	@$(BASERUBY) $(tooldir)/lib/colorize.rb pass "Latest commit hash = $(shell $(filter-out svn,$(VCS)) -C $(srcdir) rev-parse --short=10 HEAD)"
+	@$(BASERUBY) $(COLORIZE) pass "Latest commit hash = $(shell $(in-srcdir) $(filter-out svn,$(VCS)) rev-parse --short=10 HEAD)"
 endif
 
 # Update dependencies and commit the updates to the current branch.

@@ -635,7 +635,11 @@ un-runnable:
 	$(Q) exit 1
 
 LIBRUBY_FOR_LEAKED_GLOBALS = $(enable_shared:no=)
-yes-test-basic: $(DOT_WAIT) test-leaked-globals
+yes-test-basic: $(DOT_WAIT) test-misc
+
+test-misc: $(DOT_WAIT) test-leaked-globals
+test-misc: $(DOT_WAIT) test-git-srcs
+
 leaked-globals: test-leaked-globals
 yes-test-leaked-globals-precheck: $(COMMONOBJS) prog $(tooldir)/leaked-globals
 test-leaked-globals: yes-test-leaked-globals
@@ -647,3 +651,5 @@ yes-test-leaked-globals: yes-test-leaked-globals-precheck
 	  PLATFORM=$(hdrdir)/ruby/$(PLATFORM_DIR).h $(srcdir)/configure.ac \
 	  $(COMMONOBJS) $(LIBRUBY_FOR_LEAKED_GLOBALS:yes=$(LIBRUBY_SO))
 	$(ACTIONS_ENDGROUP)
+
+test-git-srcs:
