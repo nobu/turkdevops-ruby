@@ -367,6 +367,14 @@ f_infinite_p(VALUE x)
     return RTEST(rb_funcallv(x, id_infinite_p, 0, 0));
 }
 
+static inline VALUE
+f_mod(VALUE x, VALUE y)
+{
+    if (RB_INTEGER_TYPE_P(x))
+        return rb_int_modulo(x, y);
+    return rb_funcall(x, '%', 1, y);
+}
+
 inline static int
 f_kind_of_p(VALUE x, VALUE c)
 {
@@ -571,6 +579,8 @@ static VALUE nucomp_s_convert(int argc, VALUE *argv, VALUE klass);
  *     Complex('+1/2@-3/4') # => (0.36584443443691045-0.34081938001166706i)
  *     Complex('-1/2@+3/4') # => (-0.36584443443691045-0.34081938001166706i)
  *     Complex('-1/2@-3/4') # => (-0.36584443443691045+0.34081938001166706i)
+ *     Complex('-1/2@1pi')  # => (-0.36584443443691045+0.34081938001166706i)
+ *     Complex('-1/2@1pi')  # => ((1/2)+0i)
  *
  */
 static VALUE
@@ -685,6 +695,43 @@ f_complex_polar(VALUE klass, VALUE x, VALUE y)
     x = nucomp_real_check(x);
     y = nucomp_real_check(y);
     return f_complex_polar_real(klass, x, y);
+}
+
+
+static VALUE
+f_complex_polar_pi(VALUE klass, VALUE abs, VALUE ang)
+{
+    if (f_zero_p(abs) || f_zero_p(ang)) {
+        return nucomp_s_new_internal(klass, abs, RFLOAT_0);
+    }
+
+    VALUE ang2 = f_mul(f_mod(ang, INT2FIX(2)), INT2FIX(2));
+    int dir = -1;
+    if (RB_INTEGER_TYPE_P(ang2)) {
+        dir = FIX2INT(ang2); /* 0...4 */
+    }
+    else if (RB_FLOAT_TYPE_P(ang2)) {
+        double a = NUM2DBL(ang2);
+        if (a == (double)(int)a) dir = (int)a;
+    }
+    else if (RB_TYPE_P(ang2, T_RATIONAL)) {
+        ang2 = rb_rational_canonicalize(ang2);
+        if (FIXNUM_P(ang2)) dir = FIX2INT(ang2);
+    }
+
+    switch (dir) {
+      case 0:
+        return abs;
+      case 1:
+        return rb_complex_new(RFLOAT_0, abs);
+      case 2:
+        return f_negate(abs);
+      case 3:
+        return rb_complex_new(RFLOAT_0, f_negate(abs));
+
+      default:
+        return rb_dbl_complex_new_polar_pi(NUM2DBL(abs), NUM2DBL(ang));
+    }
 }
 
 #ifdef HAVE___COSPI
@@ -1763,6 +1810,12 @@ rb_complex_new_polar(VALUE x, VALUE y)
 }
 
 VALUE
+rb_complex_new_polar_pi(VALUE x, VALUE y)
+{
+    return f_complex_polar_pi(rb_cComplex, x, y);
+}
+
+VALUE
 rb_complex_polar(VALUE x, VALUE y)
 {
     return rb_complex_new_polar(x, y);
@@ -2138,7 +2191,18 @@ read_comp(const char **s, int strict,
             return 0; /* e.g. "1@-" */
         }
         num2 = str2num(bb);
-        *ret = rb_complex_new_polar(num, num2);
+# define suffixed(w) (strcasecmp(*s, w) == 0 && (*s += rb_strlen_lit(w), 1))
+        if (suffixed("pi")) {
+            *ret = rb_complex_new_polar_pi(num, num2);
+        }
+        else if (suffixed("g")) {
+            num2 = f_quo(num2, INT2FIX(200));
+            *ret = rb_complex_new_polar_pi(num, num2);
+        }
+# undef suffixed
+        else {
+            *ret = rb_complex_new_polar(num, num2);
+        }
         if (!st)
             return 0; /* e.g. "1@2." */
         else
@@ -2237,6 +2301,7 @@ string_to_c_strict(VALUE self, int raise)
  * Returns +self+ interpreted as a Complex object;
  * leading whitespace and trailing garbage are ignored:
  *
+ * Rectangular form:
  *   '9'.to_c                 # => (9+0i)
  *   '2.5'.to_c               # => (2.5+0i)
  *   '2.5/1'.to_c             # => ((5/2)+0i)
@@ -2247,9 +2312,14 @@ string_to_c_strict(VALUE self, int raise)
  *   '-4e2-4e-2i'.to_c        # => (-400.0-0.04i)
  *   '-0.0-0.0i'.to_c         # => (-0.0-0.0i)
  *   '1/2+3/4i'.to_c          # => ((1/2)+(3/4)*i)
+ *
+ * Polar form:
  *   '1.0@0'.to_c             # => (1+0.0i)
  *   "1.0@#{Math::PI/2}".to_c # => (0.0+1i)
  *   "1.0@#{Math::PI}".to_c   # => (-1+0.0i)
+ *   '1.0@1/2pi'.to_c         # => (0.0+1i)
+ *   '1.0@1/3pi'.to_c         # => (0.5+0.8660254037844386i)
+ *   '1.0@100g'.to_c          # => (0.0+1i)
  *
  * Returns \Complex zero if the string cannot be converted:
  *

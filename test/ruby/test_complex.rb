@@ -969,8 +969,15 @@ class Complex_Test < Test::Unit::TestCase
     assert_equal(Complex(Rational(1,5),Rational(-3,2)), '1/5-3/2i'.to_c)
     assert_equal(Complex(Rational(-1,5),Rational(3,2)), '-1/5+3/2i'.to_c)
     assert_equal(Complex(Rational(-1,5),Rational(-3,2)), '-1/5-3/2i'.to_c)
+    assert_equal(Complex.polar(Rational(1,5),Rational(3,2)), '1/5@3/2'.to_c)
+    assert_equal(Complex.polar(Rational(-1,5),Rational(-3,2)), '-1/5@-3/2'.to_c)
+    assert_equal(Complex(Rational(-1,5), 0), '1/5@1pi'.to_c)
+    assert_equal(Complex(0, Rational(-1,5)), '-1/5@1/2pi'.to_c)
+
     assert_equal(Complex.polar(Rational(1,5),Rational(3,2)), Complex('1/5@3/2'))
     assert_equal(Complex.polar(Rational(-1,5),Rational(-3,2)), Complex('-1/5@-3/2'))
+    assert_equal(Complex(Rational(-1,5), 0), Complex('1/5@1pi'))
+    assert_equal(Complex(0, Rational(-1,5)), Complex('-1/5@1/2pi'))
 
   end
 
