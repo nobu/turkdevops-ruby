@@ -175,15 +175,9 @@ jobs:
 
       - run: nmake
 
-      - run: nmake test
-        timeout-minutes: 5
-
-      - run: nmake test-spec
-        timeout-minutes: 10
-
-      - run: nmake test-all
+      - run: nmake test-all TESTS=objspace
         env:
-          RUBY_TESTOPTS: -j${{ env.TEST_JOBS || 4 }} --job-status=normal
+          RUBY_TESTOPTS: -j${{ env.TEST_JOBS || 4 }} --job-status=normal --repeat=200
         timeout-minutes: 60
 
       - uses: ./.github/actions/slack

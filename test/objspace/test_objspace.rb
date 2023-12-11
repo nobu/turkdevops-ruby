@@ -141,7 +141,6 @@ class TestObjSpace < Test::Unit::TestCase
   end
 
   def test_reachable_objects_during_iteration
-    omit 'flaky on Visual Studio with: [BUG] Unnormalized Fixnum value' if /mswin/ =~ RUBY_PLATFORM
     opts = %w[--disable-gem --disable=frozen-string-literal -robjspace]
     assert_separately opts, "#{<<-"begin;"}\n#{<<-'end;'}"
     begin;
