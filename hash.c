@@ -3408,6 +3408,15 @@ inspect_i(VALUE key, VALUE value, VALUE str)
     }
     rb_str_buf_append(str, str2);
     rb_str_buf_cat_ascii(str, "=>");
+#if SIZEOF_LONG < SIZEOF_VOIDP && SIZEOF_VOIDP == SIZEOF_LONG_LONG
+    if (FIXNUM_P(value)) {
+        long val = FIX2LONG(value);
+        if ((val >= 0 && (value & 0xFFFFFFFF00000000ull)) ||
+            (val < 0 && (value & 0xFFFFFFFF00000000ull) != 0xFFFFFFFF00000000ull)) {
+            rb_raise(rb_eRuntimeError, "Unnormalized Fixnum value: %s %p", RSTRING_PTR(str), (void *)value);
+        }
+    }
+#endif
     str2 = rb_inspect(value);
     rb_str_buf_append(str, str2);
 
