@@ -32,6 +32,11 @@ jobs:
         run: |
           grep -r -n --include='*.[chyS]' --include='*.asm' $'[^\t-~]' -- . && exit 1 || :
 
+      # This should be able to be removed once VC2013 is dropped.
+      - name: Check C99 features which may not be supported
+        run: |
+          grep -r -n --include='*.[chyS]' '%[0-9]*z[diux]' -- . && exit 1 || :
+
       - name: Check for trailing spaces
         run: |
           git grep -I -n $'[\t ]$' -- '*.rb' '*.[chy]' '*.rs' '*.yml' && exit 1 || :
