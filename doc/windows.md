@@ -61,7 +61,7 @@ make
 
 1.  Windows 7 or later.
 
-2.  Visual C++ 12.0 (2013) or later.
+2.  Visual C++ 14.0 (2015) or later.
 
     **Note** if you want to build x64 version, use native compiler for
     x64.
@@ -80,13 +80,15 @@ make
 4.  If you want to build from GIT source, following commands are required.
     * patch
     * sed
-    * ruby 2.0 or later
+    * ruby (see [dependencies] about the required version)
 
     You can use [scoop](https://scoop.sh/) to install them like:
 
     ```
     scoop install git ruby sed patch
     ```
+
+[dependencies]: contributing/building_ruby.md#label-Dependencies
 
 5. You need to install required libraries using [vcpkg](https://vcpkg.io/) like:
 
