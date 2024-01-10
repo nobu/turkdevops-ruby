@@ -19,9 +19,19 @@ describe "Kernel#__dir__" do
     end
   end
 
-  context "when used in eval with top level binding" do
-    it "returns nil" do
-      eval("__dir__", binding).should == nil
+  ruby_version_is ""..."3.4" do
+    context "when used in eval with top level binding" do
+      it "returns nil" do
+        eval("__dir__", binding).should == nil
+      end
+    end
+  end
+
+  ruby_version_is "3.4" do
+    context "when used in eval with top level binding" do
+      it "returns the same path of __dir__ in the binding" do
+        eval("__dir__", binding).should == __dir__
+      end
     end
   end
 end

@@ -2524,10 +2524,9 @@ rb_f_iterator_p(VALUE self)
     return rb_f_block_given_p(self);
 }
 
-VALUE
-rb_current_realfilepath(void)
+static VALUE
+current_realfilepath(const rb_execution_context_t *ec)
 {
-    const rb_execution_context_t *ec = GET_EC();
     rb_control_frame_t *cfp = ec->cfp;
     cfp = vm_get_ruby_level_caller_cfp(ec, RUBY_VM_PREVIOUS_CONTROL_FRAME(cfp));
     if (cfp != NULL) {
@@ -2539,19 +2538,55 @@ rb_current_realfilepath(void)
             return Qnil;
         }
 
-        // [Feature #19755] implicit eval location is "(eval at #{__FILE__}:#{__LINE__})"
-        const long len = RSTRING_LEN(path);
-        if (len > EVAL_LOCATION_MARK_LEN+1) {
-            const char *const ptr = RSTRING_PTR(path);
-            if (ptr[len - 1] == ')' &&
-                memcmp(ptr, "("EVAL_LOCATION_MARK, EVAL_LOCATION_MARK_LEN+1) == 0) {
-                return Qnil;
-            }
-        }
-
         return path;
     }
     return Qnil;
+}
+
+static long
+eval_location_part(VALUE path, long *length)
+{
+    // [Feature #19755] implicit eval location is "(eval at #{__FILE__}:#{__LINE__})"
+    const long len = RSTRING_LEN(path);
+    const int mark_len = EVAL_LOCATION_MARK_LEN+1;
+    if (len > mark_len) {
+        const char *const ptr = RSTRING_PTR(path);
+        const char *end = &ptr[len - 1];
+        if (*end == ')' && memcmp(ptr, "("EVAL_LOCATION_MARK, mark_len) == 0) {
+            if (length) {
+                const char *const beg = ptr + mark_len;
+                while (beg < end && ISDIGIT(end[-1])) --end;
+                if (beg >= end || *--end != ':') return 0;
+                *length = end - beg;
+            }
+            return mark_len;
+        }
+    }
+    return 0;
+}
+
+VALUE
+rb_current_realfilepath(void)
+{
+    VALUE path = current_realfilepath(GET_EC());
+    if (!NIL_P(path) && eval_location_part(path, NULL)) {
+        path = Qnil;
+    }
+    return path;
+}
+
+VALUE
+rb_current_realdirpath(void)
+{
+    VALUE path = current_realfilepath(GET_EC());
+    VALUE base = path;
+    if (!NIL_P(path)) {
+        long len, pos = eval_location_part(path, &len);
+        if (pos) {
+            base = rb_str_subseq(path, pos, len);
+        }
+    }
+    return rb_file_dirname(base);
 }
 
 void

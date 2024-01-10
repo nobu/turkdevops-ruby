@@ -1985,12 +1985,7 @@ rb_f_callee_name(VALUE _)
 static VALUE
 f_current_dirname(VALUE _)
 {
-    VALUE base = rb_current_realfilepath();
-    if (NIL_P(base)) {
-        return Qnil;
-    }
-    base = rb_file_dirname(base);
-    return base;
+    return rb_current_realdirpath();
 }
 
 /*
