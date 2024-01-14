@@ -20,15 +20,20 @@
 #define SHAPE_DEBUG (VM_CHECK_MODE > 0)
 #endif
 
+#define SHAPE_BUFFER_SIZE_MIN 0x800
+#define SHAPE_BUFFER_SIZE_MAX 0x80000
+
+static unsigned int SHAPE_BUFFER_SIZE =
 #if SIZEOF_SHAPE_T == 4
 #if RUBY_DEBUG
-#define SHAPE_BUFFER_SIZE 0x8000
+    0x8000
 #else
-#define SHAPE_BUFFER_SIZE 0x80000
+    0x80000
 #endif
 #else
-#define SHAPE_BUFFER_SIZE 0x8000
+    0x8000
 #endif
+    ;
 
 #define REDBLACK_CACHE_SIZE (SHAPE_BUFFER_SIZE * 32)
 
@@ -1208,6 +1213,13 @@ rb_shape_find_by_id(VALUE mod, VALUE id)
 void
 Init_default_shapes(void)
 {
+    const char *shape_buffer_size = getenv("RUBY_SHAPE_BUFFER_SIZE");
+    if (shape_buffer_size && ISDIGIT(shape_buffer_size[0])) {
+        errno = 0;
+        unsigned long size = strtoul(shape_buffer_size, 0, 0);
+        if (!errno && size >= SHAPE_BUFFER_SIZE_MIN && size <= SHAPE_BUFFER_SIZE_MAX)
+            SHAPE_BUFFER_SIZE = (unsigned int)size;
+    }
     rb_shape_tree_t *st = ruby_mimmalloc(sizeof(rb_shape_tree_t));
     memset(st, 0, sizeof(rb_shape_tree_t));
     rb_shape_tree_ptr = st;
