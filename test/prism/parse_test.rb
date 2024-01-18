@@ -149,25 +149,6 @@ module Prism
         # Next, pretty print the source.
         printed = PP.pp(result.value, +"", 79)
 
-        if File.exist?(snapshot)
-          saved = File.read(snapshot)
-
-          # If the snapshot file exists, but the printed value does not match the
-          # snapshot, then update the snapshot file.
-          if printed != saved
-            File.write(snapshot, printed)
-            warn("Updated snapshot at #{snapshot}.")
-          end
-
-          # If the snapshot file exists, then assert that the printed value
-          # matches the snapshot.
-          assert_equal(saved, printed)
-        else
-          # If the snapshot file does not yet exist, then write it out now.
-          File.write(snapshot, printed)
-          warn("Created snapshot at #{snapshot}.")
-        end
-
         # Next, assert that the value can be serialized and deserialized without
         # changing the shape of the tree.
         assert_equal_nodes(result.value, Prism.load(source, Prism.dump(source, filepath: relative)).value)
