@@ -10,6 +10,7 @@ on:
       - '**.rdoc'
       - '**/.document'
       - '.*.yml'
+      - 'lib/*/vendor/**'
   pull_request:
     paths-ignore:
       - 'doc/**'
@@ -18,6 +19,7 @@ on:
       - '**.rdoc'
       - '**/.document'
       - '.*.yml'
+      - 'lib/*/vendor/**'
   schedule:
     - cron: '0 12 * * *'
   workflow_dispatch:
@@ -100,8 +102,7 @@ jobs:
             +**/*.rb
             -lib/uri/mailto.rb:rb/overly-large-range
             -lib/uri/rfc3986_parser.rb:rb/overly-large-range
-            -lib/bundler/vendor/uri/lib/uri/mailto.rb:rb/overly-large-range
-            -lib/bundler/vendor/uri/lib/uri/rfc3986_parser.rb:rb/overly-large-range
+            -lib/*/vendor/**/*.rb
             -test/ruby/test_io.rb:rb/non-constant-kernel-open
             -test/open-uri/test_open-uri.rb:rb/non-constant-kernel-open
             -test/open-uri/test_ssl.rb:rb/non-constant-kernel-open
