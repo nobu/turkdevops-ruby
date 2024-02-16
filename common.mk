@@ -296,9 +296,22 @@ INSTALL_DATA_MODE = 0644
 BOOTSTRAPRUBY_COMMAND = $(BOOTSTRAPRUBY) $(BOOTSTRAPRUBY_OPT)
 TESTSDIR      = $(srcdir)/test
 TOOL_TESTSDIR = $(tooldir)/test
-TEST_EXCLUDES = --excludes-dir=$(TESTSDIR)/.excludes --name=!/memory_leak/
+TEST_EXCLUDES = \
+	--excludes-dir=$(TESTSDIR)/.excludes \
+	--exclude='rubygems/test_gem_package_task\.rb' \
+	--name=!/memory_leak/ \
+	$(empty)
 TESTWORKDIR   = testwork
 TESTOPTS      = $(RUBY_TESTOPTS)
+TEST_PARSER =
+TEST_PRISM_EXCLUDES = \
+	--excludes-dir=$(TESTSDIR)/.excludes-prism \
+	--exclude=test_ast.rb --exclude=test_regexp.rb \
+	--exclude=error_highlight/test_error_highlight.rb \
+	--exclude=irb/test_context.rb \
+	--exclude=prism/encoding_test.rb \
+	--exclude=prism/unescape_test.rb \
+	$(empty)
 
 TESTRUN_SCRIPT = $(srcdir)/test.rb
 
@@ -943,11 +956,15 @@ test-all: $(TEST_RUNNABLE)-test-all
 yes-test-all: $(PRECHECK_TEST_ALL)
 	$(ACTIONS_GROUP)
 	$(gnumake_recursive)$(Q)$(exec) $(RUNRUBY) "$(TESTSDIR)/runner.rb" --ruby="$(RUNRUBY)" \
-	$(TEST_EXCLUDES) $(TESTOPTS) $(TESTS) --exclude='rubygems/test_gem_package_task\.rb'
+	$(TEST_EXCLUDES) $(TEST_GEM_EXCLUDES) $(TESTOPTS) $(TESTS)
 	$(ACTIONS_ENDGROUP)
 TESTS_BUILD = mkmf
 no-test-all: PHONY
 	$(gnumake_recursive)$(MINIRUBY) -I"$(srcdir)/lib" "$(TESTSDIR)/runner.rb" $(TESTOPTS) $(TESTS_BUILD)
+
+yes-$(TEST_PARSER:prism=test): RUN_OPTS += --parser=prism
+yes-$(TEST_PARSER:prism=test-all): RUN_OPTS += --parser=prism
+yes-$(TEST_PARSER:prism=test-all): TEST_EXCLUDES += $(TEST_PRISM_EXCLUDES)
 
 test-almost: test-all
 yes-test-almost: yes-test-all
