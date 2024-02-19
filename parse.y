@@ -11291,6 +11291,7 @@ parser_yylex(struct parser_params *p)
                 space_seen = 1;
                 break;
               case '#':
+              case ',':
                 pushback(p, c);
                 if (space_seen) {
                     dispatch_scan_event(p, tSP);
