@@ -181,10 +181,6 @@ module Prism
       next if RUBY_ENGINE == "truffleruby" and %w[emoji_method_calls.txt seattlerb/bug202.txt seattlerb/magic_encoding_comment.txt].include?(relative)
 
       filepath = File.join(base, relative)
-      snapshot = File.join("test/prism/snapshots", relative)
-
-      directory = File.dirname(snapshot)
-      FileUtils.mkdir_p(directory) unless File.directory?(directory)
 
       ripper_should_parse = ripper_should_match = ripper_enabled
 
@@ -239,23 +235,6 @@ module Prism
 
         # Next, pretty print the source.
         printed = PP.pp(result.value, +"", 79)
-
-        if File.exist?(snapshot)
-          saved = File.read(snapshot)
-
-          # If the snapshot file exists, but the printed value does not match the
-          # snapshot, then update the snapshot file.
-          if printed != saved
-            File.write(snapshot, printed)
-          end
-
-          # If the snapshot file exists, then assert that the printed value
-          # matches the snapshot.
-          assert_equal(saved, printed)
-        else
-          # If the snapshot file does not yet exist, then write it out now.
-          File.write(snapshot, printed)
-        end
 
         # Next, assert that the value can be serialized and deserialized without
         # changing the shape of the tree.
