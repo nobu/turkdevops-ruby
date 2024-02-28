@@ -181,7 +181,7 @@ module Prism
       next if RUBY_ENGINE == "truffleruby" and %w[emoji_method_calls.txt seattlerb/bug202.txt seattlerb/magic_encoding_comment.txt].include?(relative)
 
       filepath = File.join(base, relative)
-      snapshot = File.expand_path(File.join("snapshots", relative), __dir__)
+      snapshot = File.join("test/prism/snapshots", relative)
 
       directory = File.dirname(snapshot)
       FileUtils.mkdir_p(directory) unless File.directory?(directory)
@@ -247,7 +247,6 @@ module Prism
           # snapshot, then update the snapshot file.
           if printed != saved
             File.write(snapshot, printed)
-            warn("Updated snapshot at #{snapshot}.")
           end
 
           # If the snapshot file exists, then assert that the printed value
@@ -256,7 +255,6 @@ module Prism
         else
           # If the snapshot file does not yet exist, then write it out now.
           File.write(snapshot, printed)
-          warn("Created snapshot at #{snapshot}.")
         end
 
         # Next, assert that the value can be serialized and deserialized without
