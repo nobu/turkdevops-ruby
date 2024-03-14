@@ -31,6 +31,8 @@ class TestArithmeticSequence < Test::Unit::TestCase
     assert_equal(4, (4...).step(7).begin)
     assert_equal(nil, (..10).step(9).begin)
     assert_equal(nil, (...11).step(5).begin)
+
+    assert_instance_of(Integer, (3..).step(2).begin)
   end
 
   def test_end
@@ -176,16 +178,23 @@ class TestArithmeticSequence < Test::Unit::TestCase
     assert_equal(nil, seq.first)
     assert_raise(TypeError) { seq.first(1) }
     assert_raise(TypeError) { seq.first(3) }
+
+    seq = 0.step(Float::INFINITY, 10)
+    assert_equal(0, seq.first)
+    assert_instance_of(Integer, seq.first)
+    assert_equal([0], seq.first(1))
+    assert_instance_of(Integer, seq.first(1)[0])
   end
 
   def test_first_bug15518
     bug15518 = '[Bug #15518]'
     seq = (1 .. 10.0).step(1)
     five_float_classes = Array.new(5) { Float }
+    five_integer_classes = Array.new(5) { Integer }
     assert_equal(five_float_classes, seq.first(5).map(&:class), bug15518)
     assert_equal([1.0, 2.0, 3.0, 4.0, 5.0], seq.first(5), bug15518)
     seq = (1 .. Float::INFINITY).step(1)
-    assert_equal(five_float_classes, seq.first(5).map(&:class), bug15518)
+    assert_equal(five_integer_classes, seq.first(5).map(&:class), bug15518)
     assert_equal([1.0, 2.0, 3.0, 4.0, 5.0], seq.first(5), bug15518)
     seq = (1 .. Float::INFINITY).step(1r)
     assert_equal(five_float_classes, seq.first(5).map(&:class), bug15518)
