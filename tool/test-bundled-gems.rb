@@ -23,10 +23,16 @@ File.foreach("#{gem_dir}/bundled_gems") do |line|
   next if /^\s*(?:#|$)/ =~ line
   gem = line.split.first
   next if ARGV.any? {|pat| !File.fnmatch?(pat, gem)}
-  # 93(bright yellow) is copied from .github/workflows/mingw.yml
-  puts "#{github_actions ? "::group::\e\[93m" : "\n"}Testing the #{gem} gem#{github_actions ? "\e\[m" : ""}"
 
-  test_command = "#{ruby} -C #{gem_dir}/src/#{gem} #{rake} test"
+  test_dir = "#{gem_dir}/src/#{gem}"
+  unless File.directory?(test_dir)
+    puts colorize.delete("Skipping the #{gem} gem", "skip")
+    next
+  end
+
+  puts (github_actions ? "::group::" : "\n") + colorize.decorate("Testing the #{gem} gem", "note")
+
+  test_command = "#{ruby} -C #{test_dir}" #{rake} test"
   first_timeout = 600 # 10min
 
   toplib = gem

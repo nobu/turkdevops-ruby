@@ -6,6 +6,12 @@ BEGIN {
   ARGF.eof?
   FileUtils.mkdir_p(dir)
   Dir.chdir(dir)
+  failed = []
+}
+END {
+  unless failed.empty?
+    echo "failed-gems=#{failed.join(' ')}"
+  end
 }
 
 n, v, u, r = $F
@@ -15,22 +21,22 @@ next if n =~ /^#/
 
 if File.directory?(n)
   puts "updating #{n} ..."
-  system("git", "fetch", "--all", chdir: n) or abort
+  system("git", "fetch", "--all", chdir: n) or next failed << n
 else
   puts "retrieving #{n} ..."
-  system(*%W"git clone #{u} #{n}") or abort
+  system(*%W"git clone #{u} #{n}") or next failed << n
 end
 
 if r
   puts "fetching #{r} ..."
-  system("git", "fetch", "origin", r, chdir: n) or abort
+  system("git", "fetch", "origin", r, chdir: n) or next failed << n
 end
 
 c = r || "v#{v}"
 checkout = %w"git -c advice.detachedHead=false checkout"
 puts "checking out #{c} (v=#{v}, r=#{r}) ..."
 unless system(*checkout, c, "--", chdir: n)
-  abort if r or !system(*checkout, v, "--", chdir: n)
+  next failed << n if r or !system(*checkout, v, "--", chdir: n)
 end
 
 if r
