@@ -1566,7 +1566,7 @@ no-test-bundled-gems-precheck:
 test-bundled-gems-fetch: yes-test-bundled-gems-fetch
 yes-test-bundled-gems-fetch:
 	$(ACTIONS_GROUP)
-	$(Q) $(BASERUBY) -C $(srcdir)/gems ../tool/fetch-bundled_gems.rb src bundled_gems
+	$(Q) $(BASERUBY) -C $(srcdir) tool/fetch-bundled_gems.rb gems/src gems/bundled_gems
 	$(ACTIONS_ENDGROUP)
 no-test-bundled-gems-fetch:
 
