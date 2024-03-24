@@ -29,4 +29,10 @@
 # define RBIMPL_ATTR_WEAKREF(sym) /* void */
 #endif
 
+#if RBIMPL_HAS_ATTRIBUTE(weak)
+# define RBIMPL_DYNAMIC_HOOK RUBY_FUNC_EXPORTED __attribute__((weak))
+#else
+# define RBIMPL_DYNAMIC_HOOK static inline
+#endif
+
 #endif /* RBIMPL_ATTR_WEAKREF_H */

@@ -1731,9 +1731,7 @@ void rb_call_builtin_inits(void);
 
 // Initialize extra optional exts linked statically.
 // This empty definition will be replaced with the actual strong symbol by linker.
-#if RBIMPL_HAS_ATTRIBUTE(weak)
-__attribute__((weak))
-#endif
+RBIMPL_DYNAMIC_HOOK
 void
 Init_extra_exts(void)
 {
