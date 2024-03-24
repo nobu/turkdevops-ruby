@@ -93,9 +93,16 @@ ruby_setup(void)
     return state;
 }
 
+RBIMPL_DYNAMIC_HOOK
+void
+ruby_init_hook(void)
+{
+}
+
 void
 ruby_init(void)
 {
+    ruby_init_hook();
     int state = ruby_setup();
     if (state) {
         if (RTEST(ruby_debug)) {
