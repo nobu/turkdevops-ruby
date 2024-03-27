@@ -1,12 +1,19 @@
 # This file includes the settings for "make test-all".
 # Note that this file is loaded not only by test/runner.rb but also by tool/lib/test/unit/parallel.rb.
 
-ENV["GEM_SKIP"] = ENV["GEM_HOME"] = ENV["GEM_PATH"] = "".freeze
+ENV["GEM_SKIP"] = "".freeze
 ENV.delete("RUBY_CODESIGN")
 
 Warning[:experimental] = false
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+
+gem_path = [
+  File.realdirpath(".bundle"),
+  File.realdirpath("../.bundle", __dir__),
+]
+ENV["GEM_PATH"] = gem_path.join(File::PATH_SEPARATOR)
+ENV["GEM_HOME"] = gem_path.first
 
 require 'test/unit'
 

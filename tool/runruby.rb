@@ -115,7 +115,12 @@ runner = File.join(abs_archdir, "exe/#{install_name}")
 runner = nil unless File.exist?(runner)
 abs_ruby = runner || File.expand_path(ruby)
 env["RUBY"] = abs_ruby
-env["GEM_PATH"] = env["GEM_HOME"] = File.expand_path(".bundle", srcdir)
+gem_path = [
+  File.expand_path(".bundle", abs_archdir),
+  File.expand_path(".bundle", srcdir),
+]
+ENV["GEM_PATH"] = gem_path.join(File::PATH_SEPARATOR)
+ENV["GEM_HOME"] = gem_path.first
 env["GEM_COMMAND"] = "#{abs_ruby} -rrubygems #{srcdir}/bin/gem --backtrace"
 env["PATH"] = [File.dirname(abs_ruby), abs_archdir, ENV["PATH"]].compact.join(File::PATH_SEPARATOR)
 
