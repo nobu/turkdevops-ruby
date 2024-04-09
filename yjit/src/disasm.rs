@@ -322,7 +322,7 @@ fn insns_compiled(iseq: IseqPtr) -> Vec<(String, u16)> {
             // Get the current pc and opcode
             let pc = unsafe { rb_iseq_pc_at_idx(iseq, insn_idx.into()) };
             // try_into() call below is unfortunate. Maybe pick i32 instead of usize for opcodes.
-            let opcode: usize = unsafe { rb_iseq_opcode_at_pc(iseq, pc) }
+            let opcode = unsafe { rb_iseq_opcode_at_pc(iseq, pc) }
                 .try_into()
                 .unwrap();
 

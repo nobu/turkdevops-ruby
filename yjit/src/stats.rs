@@ -792,11 +792,11 @@ fn rb_yjit_gen_stats_dict(context: bool) -> VALUE {
 
         // For each entry in exit_op_count, add a stats entry with key "exit_INSTRUCTION_NAME"
         // and the value is the count of side exits for that instruction.
-        for op_idx in 0..VM_INSTRUCTION_SIZE_USIZE {
+        for op_idx in (0 as ruby_vminsn_type)..VM_INSTRUCTION_SIZE {
             let op_name = insn_name(op_idx);
             let key_string = "exit_".to_owned() + &op_name;
             let key = rust_str_to_sym(&key_string);
-            let value = VALUE::fixnum_from_usize(EXIT_OP_COUNT[op_idx] as usize);
+            let value = VALUE::fixnum_from_usize(EXIT_OP_COUNT[op_idx as usize] as usize);
             rb_hash_aset(hash, key, value);
         }
 

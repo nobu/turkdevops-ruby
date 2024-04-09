@@ -917,7 +917,7 @@ pub const YARVINSN_trace_setlocal_WC_1: ruby_vminsn_type = 209;
 pub const YARVINSN_trace_putobject_INT2FIX_0_: ruby_vminsn_type = 210;
 pub const YARVINSN_trace_putobject_INT2FIX_1_: ruby_vminsn_type = 211;
 pub const VM_INSTRUCTION_SIZE: ruby_vminsn_type = 212;
-pub type ruby_vminsn_type = u32;
+pub type ruby_vminsn_type = i32;
 pub type rb_iseq_callback = ::std::option::Option<
     unsafe extern "C" fn(arg1: *const rb_iseq_t, arg2: *mut ::std::os::raw::c_void),
 >;
@@ -1075,14 +1075,14 @@ extern "C" {
         key: st_data_t,
         pval: *mut st_data_t,
     ) -> ::std::os::raw::c_int;
-    pub fn rb_insn_len(insn: VALUE) -> ::std::os::raw::c_int;
-    pub fn rb_vm_insn_decode(encoded: VALUE) -> ::std::os::raw::c_int;
+    pub fn rb_insn_len(insn: ruby_vminsn_type) -> ::std::os::raw::c_int;
+    pub fn rb_vm_insn_decode(encoded: VALUE) -> ruby_vminsn_type;
     pub fn rb_float_plus(x: VALUE, y: VALUE) -> VALUE;
     pub fn rb_float_minus(x: VALUE, y: VALUE) -> VALUE;
     pub fn rb_float_mul(x: VALUE, y: VALUE) -> VALUE;
     pub fn rb_float_div(x: VALUE, y: VALUE) -> VALUE;
     pub fn rb_fix_aref(fix: VALUE, idx: VALUE) -> VALUE;
-    pub fn rb_vm_insn_addr2opcode(addr: *const ::std::os::raw::c_void) -> ::std::os::raw::c_int;
+    pub fn rb_vm_insn_addr2opcode(addr: *const ::std::os::raw::c_void) -> ruby_vminsn_type;
     pub fn rb_iseq_line_no(iseq: *const rb_iseq_t, pos: usize) -> ::std::os::raw::c_uint;
     pub fn rb_iseqw_to_iseq(iseqw: VALUE) -> *const rb_iseq_t;
     pub fn rb_iseq_label(iseq: *const rb_iseq_t) -> VALUE;
@@ -1115,11 +1115,11 @@ extern "C" {
     pub fn rb_iseq_set_yjit_payload(iseq: *const rb_iseq_t, payload: *mut ::std::os::raw::c_void);
     pub fn rb_iseq_reset_jit_func(iseq: *const rb_iseq_t);
     pub fn rb_iseq_pc_at_idx(iseq: *const rb_iseq_t, insn_idx: u32) -> *mut VALUE;
-    pub fn rb_iseq_opcode_at_pc(iseq: *const rb_iseq_t, pc: *const VALUE) -> ::std::os::raw::c_int;
+    pub fn rb_iseq_opcode_at_pc(iseq: *const rb_iseq_t, pc: *const VALUE) -> ruby_vminsn_type;
     pub fn rb_RSTRING_LEN(str_: VALUE) -> ::std::os::raw::c_ulong;
     pub fn rb_RSTRING_PTR(str_: VALUE) -> *mut ::std::os::raw::c_char;
     pub fn rb_yjit_get_proc_ptr(procv: VALUE) -> *mut rb_proc_t;
-    pub fn rb_insn_name(insn: VALUE) -> *const ::std::os::raw::c_char;
+    pub fn rb_insn_name(insn: ruby_vminsn_type) -> *const ::std::os::raw::c_char;
     pub fn rb_vm_ci_argc(ci: *const rb_callinfo) -> ::std::os::raw::c_uint;
     pub fn rb_vm_ci_mid(ci: *const rb_callinfo) -> ID;
     pub fn rb_vm_ci_flag(ci: *const rb_callinfo) -> ::std::os::raw::c_uint;

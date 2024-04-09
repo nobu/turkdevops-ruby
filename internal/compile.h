@@ -13,19 +13,20 @@
 #include "ruby/ruby.h"          /* for rb_event_flag_t */
 
 struct rb_iseq_struct;          /* in vm_core.h */
+enum ruby_vminsn_type;
 
 /* compile.c */
 int rb_dvar_defined(ID, const struct rb_iseq_struct *);
 int rb_local_defined(ID, const struct rb_iseq_struct *);
-int rb_insn_len(VALUE insn);
+int rb_insn_len(enum ruby_vminsn_type insn);
 const char *rb_insns_name(int i);
 VALUE rb_insns_name_array(void);
 int rb_iseq_cdhash_cmp(VALUE val, VALUE lit);
 st_index_t rb_iseq_cdhash_hash(VALUE a);
 
 /* iseq.c */
-int rb_vm_insn_addr2insn(const void *);
-int rb_vm_insn_decode(const VALUE encoded);
+enum ruby_vminsn_type rb_vm_insn_addr2insn(const void *);
+enum ruby_vminsn_type rb_vm_insn_decode(const VALUE encoded);
 extern bool ruby_vm_keep_script_lines;
 
 /* iseq.c (export) */

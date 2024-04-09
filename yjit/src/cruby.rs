@@ -206,12 +206,12 @@ pub use rb_METHOD_ENTRY_VISI as METHOD_ENTRY_VISI;
 pub use rb_RCLASS_ORIGIN as RCLASS_ORIGIN;
 
 /// Helper so we can get a Rust string for insn_name()
-pub fn insn_name(opcode: usize) -> String {
+pub fn insn_name(opcode: ruby_vminsn_type) -> String {
     use std::ffi::CStr;
 
     unsafe {
         // Look up Ruby's NULL-terminated insn name string
-        let op_name = raw_insn_name(VALUE(opcode));
+        let op_name = raw_insn_name(opcode);
 
         // Convert the op name C string to a Rust string and concat
         let op_name = CStr::from_ptr(op_name).to_str().unwrap();
@@ -222,13 +222,13 @@ pub fn insn_name(opcode: usize) -> String {
 }
 
 #[allow(unused_variables)]
-pub fn insn_len(opcode: usize) -> u32 {
+pub fn insn_len(opcode: ruby_vminsn_type) -> u32 {
     #[cfg(test)]
     panic!("insn_len is a CRuby function, and we don't link against CRuby for Rust testing!");
 
     #[cfg(not(test))]
     unsafe {
-        rb_insn_len(VALUE(opcode)).try_into().unwrap()
+        rb_insn_len(opcode).try_into().unwrap()
     }
 }
 
@@ -258,9 +258,9 @@ pub fn iseq_pc_to_insn_idx(iseq: IseqPtr, pc: *mut VALUE) -> Option<u16> {
 }
 
 /// Given an ISEQ pointer and an instruction index, return an opcode.
-pub fn iseq_opcode_at_idx(iseq: IseqPtr, insn_idx: u32) -> u32 {
+pub fn iseq_opcode_at_idx(iseq: IseqPtr, insn_idx: u32) -> ruby_vminsn_type {
     let pc = unsafe { rb_iseq_pc_at_idx(iseq, insn_idx) };
-    unsafe { rb_iseq_opcode_at_pc(iseq, pc) as u32 }
+    unsafe { rb_iseq_opcode_at_pc(iseq, pc) }
 }
 
 /// Return a poison value to be set above the stack top to verify leafness.

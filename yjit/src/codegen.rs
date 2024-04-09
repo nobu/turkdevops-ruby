@@ -61,7 +61,7 @@ pub struct JITState {
     insn_idx: IseqIdx,
 
     /// Opcode for the instruction being compiled
-    opcode: usize,
+    opcode: ruby_vminsn_type,
 
     /// PC of the instruction being compiled
     pc: *mut VALUE,
@@ -144,7 +144,7 @@ impl JITState {
         self.iseq
     }
 
-    pub fn get_opcode(self: &JITState) -> usize {
+    pub fn get_opcode(self: &JITState) -> ruby_vminsn_type {
         self.opcode
     }
 
@@ -320,7 +320,7 @@ impl JITState {
 
     /// Return true if we're compiling a send-like instruction, not an opt_* instruction.
     pub fn is_sendish(&self) -> bool {
-        match unsafe { rb_iseq_opcode_at_pc(self.iseq, self.pc) } as u32 {
+        match unsafe { rb_iseq_opcode_at_pc(self.iseq, self.pc) } {
             YARVINSN_send |
             YARVINSN_opt_send_without_block |
             YARVINSN_invokesuper => true,
@@ -1106,14 +1106,14 @@ pub fn gen_single_block(
         // Get the current pc and opcode
         let pc = unsafe { rb_iseq_pc_at_idx(iseq, insn_idx.into()) };
         // try_into() call below is unfortunate. Maybe pick i32 instead of usize for opcodes.
-        let opcode: usize = unsafe { rb_iseq_opcode_at_pc(iseq, pc) }
+        let opcode = unsafe { rb_iseq_opcode_at_pc(iseq, pc) }
             .try_into()
             .unwrap();
 
         // We need opt_getconstant_path to be in a block all on its own. Cut the block short
         // if we run into it. This is necessary because we want to invalidate based on the
         // instruction's index.
-        if opcode == YARVINSN_opt_getconstant_path.as_usize() && insn_idx > jit.starting_insn_idx {
+        if opcode == YARVINSN_opt_getconstant_path && insn_idx > jit.starting_insn_idx {
             jump_to_next_insn(&mut jit, &mut asm, ocb);
             break;
         }
@@ -1151,7 +1151,7 @@ pub fn gen_single_block(
 
         // Lookup the codegen function for this instruction
         let mut status = None;
-        if let Some(gen_fn) = get_gen_fn(VALUE(opcode)) {
+        if let Some(gen_fn) = get_gen_fn(opcode) {
             // Add a comment for the name of the YARV instruction
             asm_comment!(asm, "Insn: {:04} {} (stack_size: {})", insn_idx, insn_name(opcode), asm.ctx.get_stack_size());
 
@@ -1201,7 +1201,7 @@ pub fn gen_single_block(
         // Move past next instruction when instructed
         if status == Some(SkipNextInsn) {
             let next_pc = unsafe { rb_iseq_pc_at_idx(iseq, insn_idx.into()) };
-            let next_opcode: usize = unsafe { rb_iseq_opcode_at_pc(iseq, next_pc) }.try_into().unwrap();
+            let next_opcode = unsafe { rb_iseq_opcode_at_pc(iseq, next_pc) }.try_into().unwrap();
             insn_idx += insn_len(next_opcode) as u16;
         }
 
@@ -1354,7 +1354,7 @@ fn gen_putobject_int2fix(
     ocb: &mut OutlinedCb,
 ) -> Option<CodegenStatus> {
     let opcode = jit.opcode;
-    let cst_val: usize = if opcode == YARVINSN_putobject_INT2FIX_0_.as_usize() {
+    let cst_val: usize = if opcode == YARVINSN_putobject_INT2FIX_0_ {
         0
     } else {
         1
@@ -6845,7 +6845,7 @@ fn iseq_get_return_value(iseq: IseqPtr, captured_opnd: Option<Opnd>, ci_flags: u
 
     // Get the first two instructions
     let first_insn = iseq_opcode_at_idx(iseq, 0);
-    let second_insn = iseq_opcode_at_idx(iseq, insn_len(first_insn as usize));
+    let second_insn = iseq_opcode_at_idx(iseq, insn_len(first_insn));
 
     // Extract the return value if known
     if second_insn != YARVINSN_leave {
@@ -9878,9 +9878,7 @@ fn gen_opt_invokebuiltin_delegate(
 }
 
 /// Maps a YARV opcode to a code generation function (if supported)
-fn get_gen_fn(opcode: VALUE) -> Option<InsnGenFn> {
-    let VALUE(opcode) = opcode;
-    let opcode = opcode as ruby_vminsn_type;
+fn get_gen_fn(opcode: ruby_vminsn_type) -> Option<InsnGenFn> {
     assert!(opcode < VM_INSTRUCTION_SIZE);
 
     match opcode {

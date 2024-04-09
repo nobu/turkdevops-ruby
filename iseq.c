@@ -2258,7 +2258,7 @@ VALUE rb_dump_literal(VALUE lit);
 
 VALUE
 rb_insn_operand_intern(const rb_iseq_t *iseq,
-                       VALUE insn, int op_no, VALUE op,
+                       enum ruby_vminsn_type insn, int op_no, VALUE op,
                        int len, size_t pos, const VALUE *pnop, VALUE child)
 {
     const char *types = insn_op_types(insn);
@@ -2460,7 +2460,7 @@ int
 rb_iseq_disasm_insn(VALUE ret, const VALUE *code, size_t pos,
                     const rb_iseq_t *iseq, VALUE child)
 {
-    VALUE insn = code[pos];
+    enum ruby_vminsn_type insn = (enum ruby_vminsn_type)code[pos];
     int len = insn_len(insn);
     int j;
     const char *types = insn_op_types(insn);
@@ -2806,7 +2806,7 @@ iseq_iterate_children(const rb_iseq_t *iseq, void (*iter_func)(const rb_iseq_t *
     }
 
     for (i=0; i<body->iseq_size;) {
-        VALUE insn = code[i];
+        enum ruby_vminsn_type insn = (enum ruby_vminsn_type)code[i];
         int len = insn_len(insn);
         const char *types = insn_op_types(insn);
         int j;
@@ -3192,7 +3192,7 @@ iseq_data_to_ary(const rb_iseq_t *iseq)
     iseq_original = rb_iseq_original_iseq((rb_iseq_t *)iseq);
 
     for (seq = iseq_original; seq < iseq_original + iseq_body->iseq_size; ) {
-        VALUE insn = *seq++;
+        enum ruby_vminsn_type insn = (enum ruby_vminsn_type)*seq++;
         int j, len = insn_len(insn);
         VALUE *nseq = seq + len - 1;
         VALUE ary = rb_ary_new2(len);
@@ -3565,7 +3565,7 @@ rb_iseq_defined_string(enum defined_type type)
 
 static st_table *encoded_insn_data;
 typedef struct insn_data_struct {
-    int insn;
+    enum ruby_vminsn_type insn;
     int insn_len;
     void *notrace_encoded_insn;
     void *trace_encoded_insn;
@@ -3587,14 +3587,14 @@ rb_vm_encoded_insn_data_table_init(void)
 #else
 #define INSN_CODE(insn) (insn)
 #endif
-    st_data_t insn;
+    enum ruby_vminsn_type insn;
     encoded_insn_data = st_init_numtable_with_size(VM_INSTRUCTION_SIZE / 2);
 
     for (insn = 0; insn < VM_INSTRUCTION_SIZE/2; insn++) {
         st_data_t key1 = (st_data_t)INSN_CODE(insn);
         st_data_t key2 = (st_data_t)INSN_CODE(insn + VM_INSTRUCTION_SIZE/2);
 
-        insn_data[insn].insn = (int)insn;
+        insn_data[insn].insn = insn;
         insn_data[insn].insn_len = insn_len(insn);
 
         if (insn != BIN(opt_invokebuiltin_delegate_leave)) {
@@ -3611,7 +3611,7 @@ rb_vm_encoded_insn_data_table_init(void)
     }
 }
 
-int
+enum ruby_vminsn_type
 rb_vm_insn_addr2insn(const void *addr)
 {
     st_data_t key = (st_data_t)addr;
@@ -3619,14 +3619,14 @@ rb_vm_insn_addr2insn(const void *addr)
 
     if (st_lookup(encoded_insn_data, key, &val)) {
         insn_data_t *e = (insn_data_t *)val;
-        return (int)e->insn;
+        return e->insn;
     }
 
     rb_bug("rb_vm_insn_addr2insn: invalid insn address: %p", addr);
 }
 
 // Unlike rb_vm_insn_addr2insn, this function can return trace opcode variants.
-int
+enum ruby_vminsn_type
 rb_vm_insn_addr2opcode(const void *addr)
 {
     st_data_t key = (st_data_t)addr;
@@ -3634,7 +3634,7 @@ rb_vm_insn_addr2opcode(const void *addr)
 
     if (st_lookup(encoded_insn_data, key, &val)) {
         insn_data_t *e = (insn_data_t *)val;
-        int opcode = e->insn;
+        enum ruby_vminsn_type opcode = e->insn;
         if (addr == e->trace_encoded_insn) {
             opcode += VM_INSTRUCTION_SIZE/2;
         }
@@ -3645,13 +3645,14 @@ rb_vm_insn_addr2opcode(const void *addr)
 }
 
 // Decode `ISEQ_BODY(iseq)->iseq_encoded[i]` to an insn.
-int
+enum ruby_vminsn_type
 rb_vm_insn_decode(const VALUE encoded)
 {
+    enum ruby_vminsn_type insn;
 #if OPT_DIRECT_THREADED_CODE || OPT_CALL_THREADED_CODE
-    int insn = rb_vm_insn_addr2insn((void *)encoded);
+    insn = rb_vm_insn_addr2insn((void *)encoded);
 #else
-    int insn = (int)encoded;
+    insn = (int)encoded;
 #endif
     return insn;
 }

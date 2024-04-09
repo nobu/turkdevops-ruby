@@ -182,7 +182,7 @@ int rb_iseq_opt_frozen_string_literal(void);
 unsigned int *rb_iseq_insns_info_decode_positions(const struct rb_iseq_constant_body *body);
 #endif
 
-int rb_vm_insn_addr2opcode(const void *addr);
+enum ruby_vminsn_type rb_vm_insn_addr2opcode(const void *addr);
 
 RUBY_SYMBOL_EXPORT_BEGIN
 

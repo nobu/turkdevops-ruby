@@ -544,7 +544,7 @@ verify_call_cache(rb_iseq_t *iseq)
     VALUE *original = rb_iseq_original_iseq(iseq);
     size_t i = 0;
     while (i < ISEQ_BODY(iseq)->iseq_size) {
-        VALUE insn = original[i];
+        enum ruby_vminsn_type insn = (enum ruby_vminsn_type)original[i];
         const char *types = insn_op_types(insn);
 
         for (int j=0; types[j]; j++) {
@@ -1017,7 +1017,7 @@ rb_iseq_original_iseq(const rb_iseq_t *iseq) /* cold path */
 
         for (i = 0; i < ISEQ_BODY(iseq)->iseq_size; /* */ ) {
             const void *addr = (const void *)original_code[i];
-            const int insn = rb_vm_insn_addr2insn(addr);
+            const enum ruby_vminsn_type insn = rb_vm_insn_addr2insn(addr);
 
             original_code[i] = insn;
             i += insn_len(insn);
@@ -1534,14 +1534,13 @@ update_catch_except_flags(rb_iseq_t *iseq, struct rb_iseq_constant_body *body)
 {
     unsigned int pos;
     size_t i;
-    int insn;
     const struct iseq_catch_table *ct = body->catch_table;
 
     /* This assumes that a block has parent_iseq which may catch an exception from the block, and that
        BREAK/NEXT/REDO catch table entries are used only when `throw` insn is used in the block. */
     pos = 0;
     while (pos < body->iseq_size) {
-        insn = rb_vm_insn_decode(body->iseq_encoded[pos]);
+        enum ruby_vminsn_type insn = rb_vm_insn_decode(body->iseq_encoded[pos]);
         if (insn == BIN(throw)) {
             set_catch_except_p(iseq);
             break;
@@ -2292,9 +2291,6 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
         switch (list->type) {
           case ISEQ_ELEMENT_INSN:
             {
-                int j, len, insn;
-                const char *types;
-                VALUE *operands;
                 INSN *iobj = (INSN *)list;
 
                 /* update sp */
@@ -2311,10 +2307,10 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
 
                 line = iobj->insn_info.line_no;
                 /* fprintf(stderr, "insn: %-16s, sp: %d\n", insn_name(iobj->insn_id), sp); */
-                operands = iobj->operands;
-                insn = iobj->insn_id;
-                types = insn_op_types(insn);
-                len = insn_len(insn);
+                VALUE *operands = iobj->operands;
+                enum ruby_vminsn_type insn = iobj->insn_id;
+                const char *types = insn_op_types(insn);
+                int len = insn_len(insn);
 
                 /* operand check */
                 if (iobj->operand_size != len - 1) {
@@ -2326,7 +2322,7 @@ fix_sp_depth(rb_iseq_t *iseq, LINK_ANCHOR *const anchor)
                     return -1;
                 }
 
-                for (j = 0; types[j]; j++) {
+                for (int j = 0; types[j]; j++) {
                     if (types[j] == TS_OFFSET) {
                         /* label(destination position) */
                         LABEL *lobj = (LABEL *)operands[j];
@@ -3029,7 +3025,7 @@ remove_unreachable_chunk(rb_iseq_t *iseq, LINK_ELEMENT *i)
     do {
         if (IS_INSN(i)) {
             struct rb_iseq_constant_body *body = ISEQ_BODY(iseq);
-            VALUE insn = INSN_OF(i);
+            enum ruby_vminsn_type insn = INSN_OF(i);
             int pos, len = insn_len(insn);
             for (pos = 0; pos < len; ++pos) {
                 switch (insn_op_types(insn)[pos]) {
@@ -11142,7 +11138,7 @@ dump_disasm_list_with_cursor(const LINK_ELEMENT *link, const LINK_ELEMENT *curr,
 }
 
 int
-rb_insn_len(VALUE insn)
+rb_insn_len(enum ruby_vminsn_type insn)
 {
     return insn_len(insn);
 }
@@ -11380,7 +11376,8 @@ iseq_build_from_ary_body(rb_iseq_t *iseq, LINK_ANCHOR *const anchor,
         else if (RB_TYPE_P(obj, T_ARRAY)) {
             VALUE *argv = 0;
             int argc = RARRAY_LENINT(obj) - 1;
-            st_data_t insn_id;
+            st_data_t insn_data;
+            enum ruby_vminsn_type insn_id;
             VALUE insn;
 
             if (node_ids) {
@@ -11388,7 +11385,7 @@ iseq_build_from_ary_body(rb_iseq_t *iseq, LINK_ANCHOR *const anchor,
             }
 
             insn = (argc < 0) ? Qnil : RARRAY_AREF(obj, 0);
-            if (st_lookup(insn_table, (st_data_t)insn, &insn_id) == 0) {
+            if (st_lookup(insn_table, (st_data_t)insn, &insn_data) == 0) {
                 /* TODO: exception */
                 COMPILE_ERROR(iseq, line_no,
                               "unknown instruction: %+"PRIsVALUE, insn);
@@ -11396,7 +11393,8 @@ iseq_build_from_ary_body(rb_iseq_t *iseq, LINK_ANCHOR *const anchor,
                 break;
             }
 
-            if (argc != insn_len((VALUE)insn_id)-1) {
+            insn_id = (enum ruby_vminsn_type)insn_data;
+            if (argc != insn_len(insn_id)-1) {
                 COMPILE_ERROR(iseq, line_no,
                               "operand size mismatch");
                 ret = COMPILE_NG;
@@ -11409,11 +11407,11 @@ iseq_build_from_ary_body(rb_iseq_t *iseq, LINK_ANCHOR *const anchor,
                 // add element before operand setup to make GC root
                 ADD_ELEM(anchor,
                          (LINK_ELEMENT*)new_insn_core(iseq, line_no, node_id,
-                                                      (enum ruby_vminsn_type)insn_id, argc, argv));
+                                                      insn_id, argc, argv));
 
                 for (j=0; j<argc; j++) {
                     VALUE op = rb_ary_entry(obj, j+1);
-                    switch (insn_op_type((VALUE)insn_id, j)) {
+                    switch (insn_op_type(insn_id, j)) {
                       case TS_OFFSET: {
                         LABEL *label = register_label(iseq, labels_table, op);
                         argv[j] = (VALUE)label;
@@ -11511,14 +11509,14 @@ iseq_build_from_ary_body(rb_iseq_t *iseq, LINK_ANCHOR *const anchor,
                         }
                         break;
                       default:
-                        rb_raise(rb_eSyntaxError, "unknown operand: %c", insn_op_type((VALUE)insn_id, j));
+                        rb_raise(rb_eSyntaxError, "unknown operand: %c", insn_op_type(insn_id, j));
                     }
                 }
             }
             else {
                 ADD_ELEM(anchor,
                          (LINK_ELEMENT*)new_insn_core(iseq, line_no, node_id,
-                                                      (enum ruby_vminsn_type)insn_id, argc, NULL));
+                                                      insn_id, argc, NULL));
             }
         }
         else {
@@ -12245,7 +12243,7 @@ ibf_dump_code(struct ibf_dump *dump, const rb_iseq_t *iseq)
     ibf_offset_t offset = ibf_dump_pos(dump);
 
     for (code_index=0; code_index<iseq_size;) {
-        const VALUE insn = orig_code[code_index++];
+        const enum ruby_vminsn_type insn = (enum ruby_vminsn_type)orig_code[code_index++];
         const char *types = insn_op_types(insn);
         int op_index;
 
@@ -12333,7 +12331,8 @@ ibf_load_code(const struct ibf_load *load, rb_iseq_t *iseq, ibf_offset_t bytecod
 
     for (code_index=0; code_index<iseq_size;) {
         /* opcode */
-        const VALUE insn = code[code_index] = ibf_load_small_value(load, &reading_pos);
+        const enum ruby_vminsn_type insn = (enum ruby_vminsn_type)
+            (code[code_index] = ibf_load_small_value(load, &reading_pos));
         const char *types = insn_op_types(insn);
         int op_index;
 

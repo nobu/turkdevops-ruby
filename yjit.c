@@ -442,7 +442,7 @@ rb_iseq_pc_at_idx(const rb_iseq_t *iseq, uint32_t insn_idx)
 }
 
 // Get the opcode given a program counter. Can return trace opcode variants.
-int
+enum ruby_vminsn_type
 rb_iseq_opcode_at_pc(const rb_iseq_t *iseq, const VALUE *pc)
 {
     // YJIT should only use iseqs after AST to bytecode compilation
@@ -478,9 +478,9 @@ rb_yjit_get_proc_ptr(VALUE procv)
 typedef struct rb_iseq_param_keyword rb_seq_param_keyword_struct;
 
 const char *
-rb_insn_name(VALUE insn)
+rb_insn_name(enum ruby_vminsn_type insn)
 {
-    return insn_name(insn);
+    return insn_name((VALUE)insn);
 }
 
 unsigned int
