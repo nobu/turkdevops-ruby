@@ -75,7 +75,9 @@ jobs:
           $SETARCH ../src/configure -C --disable-install-doc cppflags=-DRUBY_DEBUG
           ${arch:+--target=$arch-$OSTYPE --host=$arch-$OSTYPE}
 
-      - run: $SETARCH make
+      - run: |
+          $SETARCH make
+          echo MAKEFLAGS="-o encs -o exts -o programs${MAKEFLAGS:+ $MAKEFLAGS}" >> $GITHUB_ENV
 
       - name: make test
         run: |

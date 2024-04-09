@@ -115,7 +115,9 @@ jobs:
 
       - name: make all
         timeout-minutes: 30
-        run: make
+      - run: |
+          make
+          echo MAKEFLAGS="-o encs -o exts -o programs${MAKEFLAGS:+ $MAKEFLAGS}" >> $GITHUB_ENV
 
       - name: make install
         run: make DESTDIR=../install install-nodoc

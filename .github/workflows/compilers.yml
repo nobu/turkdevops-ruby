@@ -275,7 +275,9 @@ jobs:
 
       - run: make showflags
 
-      - run: make
+      - run: |
+          make
+          echo MAKEFLAGS="-o encs -o exts -o programs${MAKEFLAGS:+ $MAKEFLAGS}" >> $GITHUB_ENV
 
       - run: make test
 

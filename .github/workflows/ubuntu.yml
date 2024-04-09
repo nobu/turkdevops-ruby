@@ -91,7 +91,9 @@ jobs:
       - run: $SETARCH make prepare-gems
         if: ${{ matrix.test_task == 'test-bundled-gems' }}
 
-      - run: $SETARCH make
+      - run: |
+          $SETARCH make
+          echo MAKEFLAGS="-o encs -o exts -o programs${MAKEFLAGS:+ $MAKEFLAGS}" >> $GITHUB_ENV
 
       - name: Set test options for skipped tests
         run: |

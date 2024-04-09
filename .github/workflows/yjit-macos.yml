@@ -102,7 +102,9 @@ jobs:
       - run: make prepare-gems
         if: ${{ matrix.test_task == 'test-bundled-gems' }}
 
-      - run: make
+      - run: |
+          make
+          echo MAKEFLAGS="-o encs -o exts -o programs${MAKEFLAGS:+ $MAKEFLAGS}" >> $GITHUB_ENV
 
       - name: Enable YJIT through ENV
         run: echo "RUBY_YJIT_ENABLE=1" >> $GITHUB_ENV
