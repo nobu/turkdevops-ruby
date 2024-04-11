@@ -1587,7 +1587,7 @@ yes-test-bundled-gems-prepare: yes-test-bundled-gems-precheck
 	$(ACTIONS_ENDGROUP)
 
 PREPARE_BUNDLED_GEMS = test-bundled-gems-prepare
-test-bundled-gems: $(TEST_RUNNABLE)-test-bundled-gems $(TEST_RUNNABLE)-test-bundled-gems-spec
+test-bundled-gems: $(TEST_RUNNABLE)-test-bundled-gems $(DOT) $(TEST_RUNNABLE)-test-bundled-gems-spec
 yes-test-bundled-gems: test-bundled-gems-run
 no-test-bundled-gems:
 
