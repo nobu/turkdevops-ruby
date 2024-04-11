@@ -97,6 +97,7 @@ ORDERED_TEST_TARGETS := $(filter $(TEST_TARGETS), \
 	test-bundler-prepare test-bundler test-bundler-parallel \
 	test-bundled-gems-precheck test-bundled-gems-fetch \
 	test-bundled-gems-prepare test-bundled-gems-run \
+	test-bundled-gems-spec \
 	)
 
 # grep ^yes-test-.*-precheck: template/Makefile.in defs/gmake.mk common.mk
