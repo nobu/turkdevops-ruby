@@ -46,6 +46,7 @@ prehook = proc do |extmk|
     builddir = "." if builddir.empty?
   end
 =end
+  $extmk = true
   join = proc {|*args| File.join(*args).sub!(/\A(?:\.\/)*/, '')}
   $topdir ||= builddir
   $top_srcdir ||= (File.identical?(top_srcdir, dir = join[$topdir, srcdir]) ?
