@@ -1651,12 +1651,16 @@ test-bundler-prepare: $(TEST_RUNNABLE)-test-bundler-prepare
 no-test-bundler-prepare: no-test-bundler-precheck
 yes-test-bundler-prepare: yes-test-bundler-precheck
 	$(ACTIONS_GROUP)
-	$(XRUBY) -C $(srcdir) -Ilib \
-		-e 'ENV["GEM_HOME"] = File.expand_path(".bundle")' \
-		-e 'ENV["BUNDLE_APP_CONFIG"] = File.expand_path(".bundle")' \
+	$(XRUBY) -r./$(arch)-fake -I $(srcdir)/lib \
+		-e 'bundle_dir = File.expand_path(".bundle")' \
+		-e 'Dir.chdir(ARGV.shift)' \
+		-e 'bundle_srcdir = File.expand_path(".bundle")' \
+		-e 'ENV["GEM_HOME"] = bundle_dir' \
+		-e 'ENV["GEM_PATH"] = [bundle_dir, bundle_srcdir].join(File::PATH_SEPARATOR)' \
+		-e 'ENV["BUNDLE_APP_CONFIG"] = bundle_dir' \
 		-e 'ENV["BUNDLE_PATH__SYSTEM"] = "true"' \
 		-e 'ENV["BUNDLE_WITHOUT"] = "lint doc"' \
-		-e 'load "spec/bundler/support/bundle.rb"' -- install --quiet --gemfile=tool/bundler/dev_gems.rb
+		-e 'load "spec/bundler/support/bundle.rb"' -- $(srcdir) install --gemfile=tool/bundler/dev_gems.rb
 	$(ACTIONS_ENDGROUP)
 
 RSPECOPTS =
