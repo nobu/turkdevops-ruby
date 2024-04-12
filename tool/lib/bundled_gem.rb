@@ -115,4 +115,32 @@ module BundledGem
     command = "#{git} checkout --detach #{rev}"
     system(command, chdir: gemdir) or raise "failed: #{command}"
   end
+
+  def load_gemspec(file, base = nil)
+    file = File.realpath(file)
+    code = File.read(file, encoding: "utf-8:-")
+
+    files = []
+    Dir.glob("**/*", File::FNM_DOTMATCH, base: base) do |n|
+      case File.basename(n); when ".", ".."; next; end
+      next if File.directory?(File.join(base, n))
+      files << n.dump
+    end if base
+    code.gsub!(/(?:`git[^\`]*`|%x\[git[^\]]*\])\.split\([^\)]*\)/m) do
+      "[" + files.join(", ") + "]"
+    end
+    code.gsub!(/IO\.popen\(.*git.*?\)/) do
+      "[" + files.join(", ") + "] || itself"
+    end
+
+    spec = eval(code, binding, file)
+    unless Gem::Specification === spec
+      raise TypeError, "[#{file}] isn't a Gem::Specification (#{spec.class} instead)."
+    end
+    spec.loaded_from = base ? File.join(base, File.basename(file)) : file
+    spec.files.reject! {|n| n.end_with?(".gemspec") or n.start_with?(".git")}
+    spec.date = RUBY_RELEASE_DATE
+
+    spec
+  end
 end

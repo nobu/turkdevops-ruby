@@ -29,6 +29,7 @@ rescue LoadError
   $" << "zlib.rb"
 end
 require_relative 'lib/path'
+require_relative 'lib/bundled_gem'
 
 INDENT = " "*36
 STDOUT.sync = true
@@ -636,7 +637,7 @@ module RbInstall
         end
 
         def ext_features
-          loaded_gemspec = load_gemspec("#{root}/#{gemspec}")
+          loaded_gemspec = BundledGem.load_gemspec("#{root}/#{gemspec}")
           extension = loaded_gemspec.extensions.first
           return [] unless extension
 
@@ -764,34 +765,6 @@ module RbInstall
   end
 end
 
-def load_gemspec(file, base = nil)
-  file = File.realpath(file)
-  code = File.read(file, encoding: "utf-8:-")
-
-  files = []
-  Dir.glob("**/*", File::FNM_DOTMATCH, base: base) do |n|
-    case File.basename(n); when ".", ".."; next; end
-    next if File.directory?(File.join(base, n))
-    files << n.dump
-  end if base
-  code.gsub!(/(?:`git[^\`]*`|%x\[git[^\]]*\])\.split\([^\)]*\)/m) do
-    "[" + files.join(", ") + "]"
-  end
-  code.gsub!(/IO\.popen\(.*git.*?\)/) do
-    "[" + files.join(", ") + "] || itself"
-  end
-
-  spec = eval(code, binding, file)
-  unless Gem::Specification === spec
-    raise TypeError, "[#{file}] isn't a Gem::Specification (#{spec.class} instead)."
-  end
-  spec.loaded_from = base ? File.join(base, File.basename(file)) : file
-  spec.files.reject! {|n| n.end_with?(".gemspec") or n.start_with?(".git")}
-  spec.date = RUBY_RELEASE_DATE
-
-  spec
-end
-
 def install_default_gem(dir, srcdir, bindir)
   gem_dir = Gem.default_dir
   install_dir = with_destdir(gem_dir)
@@ -815,7 +788,7 @@ def install_default_gem(dir, srcdir, bindir)
 
   base = "#{srcdir}/#{dir}"
   gems = Dir.glob("**/*.gemspec", base: base).map {|src|
-    spec = load_gemspec("#{base}/#{src}")
+    spec = BundledGem.load_gemspec("#{base}/#{src}")
     file_collector = RbInstall::Specs::FileCollector.for(srcdir, dir, src)
     files = file_collector.collect
     if files.empty?
@@ -1150,7 +1123,7 @@ install?(:ext, :comm, :gem, :'bundled-gems') do
         end
       end
     end
-    spec = load_gemspec(path, "#{srcdir}/.bundle/gems/#{gem_name}")
+    spec = BundledGem.load_gemspec(path, "#{srcdir}/.bundle/gems/#{gem_name}")
     unless spec.platform == Gem::Platform::RUBY
       skipped[gem_name] = "not ruby platform (#{spec.platform})"
       next

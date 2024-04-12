@@ -1573,6 +1573,25 @@ update-bundled_gems: PHONY
 	$(GIT) -C "$(srcdir)" diff --no-ext-diff --ignore-submodules --exit-code || \
 	$(GIT) -C "$(srcdir)" commit -m "Update bundled_gems" gems/bundled_gems
 
+default-gems-prepare: $(PREP)
+	$(ACTIONS_GROUP)
+	$(MAKEDIRS) .bundle/specifications .bundle/gems
+	$(XRUBY) -I "$(tooldir)/lib" -rbundled_gem \
+		-e "srcdir, specdir, gemext = ARGV" \
+		-e "[Gem::Platform.local.to_s, RbConfig::CONFIG['ruby_version']].each do |d|" \
+		-e   "File.directory?(gemext = File.join(gemext, d)) or Dir.mkdir(gemext)" \
+		-e "end" \
+		-e "Dir.glob('{lib,ext}/**/*.gemspec', base: srcdir) {|g|" \
+		-e   "g = BundledGem.load_gemspec(File.join(srcdir, g))" \
+		-e   "gs = File.join(specdir, g.full_name+'.gemspec')" \
+		-e   "File.binwrite(gs, g.to_ruby) unless File.exist?(gs)" \
+		-e   "next if g.extensions.empty?" \
+		-e   "File.directory?(gd = File.join(gemext, g.full_name)) or Dir.mkdir(gd)" \
+		-e   "File.write(File.join(gd, 'gem.build_complete'), '')" \
+		-e   "puts %[complete default gem: #{g.full_name}]" \
+		-e "}" $(srcdir) .bundle/specifications .bundle/extensions
+	$(ACTIONS_ENDGROUP)
+
 PRECHECK_BUNDLED_GEMS = test-bundled-gems-precheck
 test-bundled-gems-precheck: $(TEST_RUNNABLE)-test-bundled-gems-precheck
 yes-test-bundled-gems-precheck: main
@@ -1621,7 +1640,7 @@ yes-test-syntax-suggest-precheck: main
 
 test-syntax-suggest-prepare: $(TEST_RUNNABLE)-test-syntax-suggest-prepare
 no-test-syntax-suggest-prepare: no-test-syntax-suggest-precheck
-yes-test-syntax-suggest-prepare: yes-test-syntax-suggest-precheck
+yes-test-syntax-suggest-prepare: yes-test-syntax-suggest-precheck $(DOT_WAIT) default-gems-prepare
 	$(ACTIONS_GROUP)
 	$(XRUBY) -C "$(srcdir)" bin/gem install --no-document \
 		--install-dir .bundle --conservative "rspec:~> 3"
@@ -1649,7 +1668,7 @@ yes-test-bundler-parallel-precheck: yes-test-bundler-precheck
 
 test-bundler-prepare: $(TEST_RUNNABLE)-test-bundler-prepare
 no-test-bundler-prepare: no-test-bundler-precheck
-yes-test-bundler-prepare: yes-test-bundler-precheck
+yes-test-bundler-prepare: yes-test-bundler-precheck $(DOT_WAIT) default-gems-prepare
 	$(ACTIONS_GROUP)
 	$(XRUBY) -r./$(arch)-fake -I $(srcdir)/lib \
 		-e 'bundle_dir = File.expand_path(".bundle")' \
@@ -1660,7 +1679,8 @@ yes-test-bundler-prepare: yes-test-bundler-precheck
 		-e 'ENV["BUNDLE_APP_CONFIG"] = bundle_dir' \
 		-e 'ENV["BUNDLE_PATH__SYSTEM"] = "true"' \
 		-e 'ENV["BUNDLE_WITHOUT"] = "lint doc"' \
-		-e 'load "spec/bundler/support/bundle.rb"' -- $(srcdir) install --gemfile=tool/bundler/dev_gems.rb
+		-e 'load "spec/bundler/support/bundle.rb"' -- \
+		$(srcdir) install --quiet --gemfile=tool/bundler/dev_gems.rb
 	$(ACTIONS_ENDGROUP)
 
 RSPECOPTS =
