@@ -1674,7 +1674,7 @@ yes-test-bundler-prepare: yes-test-bundler-precheck $(DOT_WAIT) default-gems-pre
 		-e 'bundle_dir = File.expand_path(".bundle")' \
 		-e 'Dir.chdir(ARGV.shift)' \
 		-e 'bundle_srcdir = File.expand_path(".bundle")' \
-		-e 'ENV["GEM_HOME"] = bundle_dir' \
+		-e 'ENV["GEM_HOME"] = bundle_srcdir' \
 		-e 'ENV["GEM_PATH"] = [bundle_dir, bundle_srcdir].join(File::PATH_SEPARATOR)' \
 		-e 'ENV["BUNDLE_APP_CONFIG"] = bundle_dir' \
 		-e 'ENV["BUNDLE_PATH__SYSTEM"] = "true"' \
