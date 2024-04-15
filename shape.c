@@ -728,16 +728,13 @@ rb_shape_get_next(rb_shape_t *shape, VALUE obj, ID id)
 
         if (variation_created) {
             RCLASS_EXT(klass)->variation_count++;
-            if (rb_warning_category_enabled_p(RB_WARN_CATEGORY_PERFORMANCE)) {
-                if (RCLASS_EXT(klass)->variation_count >= SHAPE_MAX_VARIATIONS) {
-                    rb_category_warn(
-                        RB_WARN_CATEGORY_PERFORMANCE,
+            if (RCLASS_EXT(klass)->variation_count >= SHAPE_MAX_VARIATIONS) {
+                rb_category_warn_as(PERFORMANCE,
                         "The class %"PRIsVALUE" reached %d shape variations, instance variables accesses will be slower and memory usage increased.\n"
                         "It is recommended to define instance variables in a consistent order, for instance by eagerly defining them all in the #initialize method.",
                         rb_class_path(klass),
                         SHAPE_MAX_VARIATIONS
                     );
-                }
             }
         }
     }

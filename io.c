@@ -2278,8 +2278,8 @@ rb_io_writev(VALUE io, int argc, const VALUE *argv)
         if (io != rb_ractor_stderr() && RTEST(ruby_verbose)) {
             VALUE klass = CLASS_OF(io);
             char sep = RCLASS_SINGLETON_P(klass) ? (klass = io, '.') : '#';
-            rb_category_warning(
-                RB_WARN_CATEGORY_DEPRECATED, "%+"PRIsVALUE"%c""write is outdated interface"
+            rb_category_warning_as(DEPRECATED,
+                "%+"PRIsVALUE"%c""write is outdated interface"
                 " which accepts just one argument",
                 klass, sep
             );
@@ -11547,10 +11547,8 @@ rb_f_syscall(int argc, VALUE *argv, VALUE _)
 #endif
     int i;
 
-    if (RTEST(ruby_verbose)) {
-        rb_category_warning(RB_WARN_CATEGORY_DEPRECATED,
+    rb_category_warning_as(DEPRECATED,
             "We plan to remove a syscall function at future release. DL(Fiddle) provides safer alternative.");
-    }
 
     if (argc == 0)
         rb_raise(rb_eArgError, "too few arguments for syscall");

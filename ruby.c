@@ -2106,15 +2106,12 @@ prism_opt_init(ruby_cmdline_options_t *opt)
 {
     ruby_opt_init(opt);
 
-    if (rb_warning_category_enabled_p(RB_WARN_CATEGORY_EXPERIMENTAL)) {
-        rb_category_warn(
-            RB_WARN_CATEGORY_EXPERIMENTAL,
+    rb_category_warn_as(EXPERIMENTAL,
             "The compiler based on the Prism parser is currently experimental "
             "and compatibility with the compiler based on parse.y is not yet "
             "complete. Please report any issues you find on the `ruby/prism` "
             "issue tracker."
         );
-    }
 }
 
 /**

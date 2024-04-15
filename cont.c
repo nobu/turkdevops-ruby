@@ -2182,10 +2182,8 @@ fiber_storage_validate(VALUE value)
 static VALUE
 rb_fiber_storage_set(VALUE self, VALUE value)
 {
-    if (rb_warning_category_enabled_p(RB_WARN_CATEGORY_EXPERIMENTAL)) {
-        rb_category_warn(RB_WARN_CATEGORY_EXPERIMENTAL,
+    rb_category_warn_as(EXPERIMENTAL,
           "Fiber#storage= is experimental and may be removed in the future!");
-    }
 
     storage_access_must_be_from_same_fiber(self);
     fiber_storage_validate(value);

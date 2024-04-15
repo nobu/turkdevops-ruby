@@ -170,11 +170,9 @@ io_buffer_experimental(void)
 
     warned = 1;
 
-    if (rb_warning_category_enabled_p(RB_WARN_CATEGORY_EXPERIMENTAL)) {
-        rb_category_warn(RB_WARN_CATEGORY_EXPERIMENTAL,
+    rb_category_warn_as(EXPERIMENTAL,
           "IO::Buffer is experimental and both the Ruby and C interface may change in the future!"
         );
-    }
 }
 
 static void

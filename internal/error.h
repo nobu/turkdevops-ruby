@@ -159,6 +159,14 @@ static inline void Check_Type(VALUE v, enum ruby_value_type t);
 static inline bool rb_typeddata_is_instance_of_inline(VALUE obj, const rb_data_type_t *data_type);
 #define rb_typeddata_is_instance_of rb_typeddata_is_instance_of_inline
 
+#define rb_category_warning_as(cat, ...) \
+    ((rb_warning_category_enabled_p(RB_WARN_CATEGORY_ ## cat) && RTEST(ruby_verbose)) ? \
+     rb_category_warning(RB_WARN_CATEGORY_ ## cat, __VA_ARGS__) : (void)0)
+
+#define rb_category_warn_as(cat, ...) \
+    ((rb_warning_category_enabled_p(RB_WARN_CATEGORY_ ## cat) && !NIL_P(ruby_verbose)) ? \
+     rb_category_warn(RB_WARN_CATEGORY_ ## cat, __VA_ARGS__) : (void)0)
+
 RUBY_SYMBOL_EXPORT_BEGIN
 /* error.c (export) */
 int rb_bug_reporter_add(void (*func)(FILE *, void *), void *data);
