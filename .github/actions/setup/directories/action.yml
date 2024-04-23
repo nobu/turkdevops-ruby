@@ -154,6 +154,11 @@ runs:
         grep -F A.rb a.rb > /dev/null && set "${@:27}"
         echo clean="cd ${{ inputs.builddir }} && rm $*" >> $GITHUB_OUTPUT
 
+    - name: Make home read-only
+      shell: bash
+      run: |
+        chmod a-w $HOME
+
     - if: inputs.clean == 'true'
       shell: bash
       id: clean
