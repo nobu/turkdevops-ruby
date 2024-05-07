@@ -61,7 +61,21 @@ typedef char st_check_for_sizeof_st_index_t[SIZEOF_VOIDP == (int)sizeof(st_index
 struct st_hash_type {
     int (*compare)(st_data_t, st_data_t); /* st_compare_func* */
     st_index_t (*hash)(st_data_t);        /* st_hash_func* */
+    int with_callback_arg;
 };
+
+struct st_hash_with_arg_type {
+    int (*compare)(st_data_t, st_data_t, st_data_t); /* st_compare_func* */
+    st_index_t (*hash)(st_data_t, st_data_t);        /* st_hash_func* */
+    int with_callback_arg;
+};
+
+#define ST_HASH_TYPE(compare_func, hash_func) \
+    { \
+        .compare = (st_compare_func *)(compare_func), \
+        .hash = (st_hash_func *)(hash_func), \
+        .with_callback_arg = 1, \
+    }
 
 #define ST_INDEX_BITS (SIZEOF_ST_INDEX_T * CHAR_BIT)
 
@@ -92,6 +106,7 @@ struct st_table {
     st_index_t entries_start, entries_bound;
     /* Array of size 2^entry_power.  */
     st_table_entry *entries;
+    st_data_t callback_arg;
 };
 
 #define st_is_member(table,key) st_lookup((table),(key),(st_data_t *)0)
@@ -100,6 +115,8 @@ enum st_retval {ST_CONTINUE, ST_STOP, ST_DELETE, ST_CHECK, ST_REPLACE};
 
 size_t rb_st_table_size(const struct st_table *tbl);
 #define st_table_size rb_st_table_size
+st_table *rb_st_init_table_with_arg(const struct st_hash_type *, st_data_t, st_index_t);
+#define st_init_table_with_arg rb_st_init_table_with_arg
 st_table *rb_st_init_table(const struct st_hash_type *);
 #define st_init_table rb_st_init_table
 st_table *rb_st_init_table_with_size(const struct st_hash_type *, st_index_t);

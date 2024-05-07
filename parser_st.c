@@ -74,6 +74,8 @@ nonempty_memcpy(void *dest, const void *src, size_t n)
 #define st_delete rb_parser_st_delete
 #undef st_foreach
 #define st_foreach rb_parser_st_foreach
+#undef st_init_table_with_arg
+#define st_init_table_with_arg rb_parser_st_init_table_with_arg
 #undef st_init_numtable
 #define st_init_numtable rb_parser_st_init_numtable
 #undef st_init_table_with_size

@@ -65,6 +65,7 @@ typedef char st_check_for_sizeof_parser_st_index_t[SIZEOF_VOIDP == (int)sizeof(p
 struct parser_st_hash_type {
     int (*compare)(parser_st_data_t, parser_st_data_t); /* parser_st_compare_func* */
     parser_st_index_t (*hash)(parser_st_data_t);        /* parser_st_hash_func* */
+    int with_callback_arg;
 };
 
 #define ST_INDEX_BITS (SIZEOF_ST_INDEX_T * CHAR_BIT)
@@ -96,6 +97,7 @@ struct parser_st_table {
     parser_st_index_t entries_start, entries_bound;
     /* Array of size 2^entry_power.  */
     parser_st_table_entry *entries;
+    parser_st_data_t callback_arg;
 };
 
 #define parser_st_is_member(table,key) rb_parser_st_lookup((table),(key),(parser_st_data_t *)0)
@@ -104,6 +106,7 @@ enum parser_st_retval {ST2_CONTINUE, ST2_STOP, ST2_DELETE, ST2_CHECK, ST2_REPLAC
 
 size_t rb_parser_st_table_size(const struct parser_st_table *tbl);
 parser_st_table *rb_parser_st_init_table(const struct parser_st_hash_type *);
+parser_st_table *rb_parser_st_init_table_with_arg(const struct parser_st_hash_type *, parser_st_data_t, parser_st_index_t);
 parser_st_table *rb_parser_st_init_table_with_size(const struct parser_st_hash_type *, parser_st_index_t);
 parser_st_table *rb_parser_st_init_existing_table_with_size(parser_st_table *, const struct parser_st_hash_type *, parser_st_index_t);
 parser_st_table *rb_parser_st_init_numtable(void);

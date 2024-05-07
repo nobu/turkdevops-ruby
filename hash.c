@@ -4455,6 +4455,66 @@ rb_ident_hash_new_with_size(st_index_t size)
     return hash;
 }
 
+CONSTFUNC(static int st_cmp_by_method(st_data_t, st_data_t, st_data_t));
+CONSTFUNC(static st_index_t st_hash_by_method(st_data_t, st_data_t));
+
+static ID id_key_cmp, id_key_hash;
+
+static int
+st_cmp_by_method(st_data_t a, st_data_t b, st_data_t h)
+{
+    VALUE hash = (VALUE)h, key_a = (VALUE)a, key_b = (VALUE)b;
+    VALUE cmp = rb_funcall(hash, id_key_cmp, 2, key_a, key_b);
+    switch (cmp) {
+      case Qtrue:
+        return 0;
+      case Qfalse:
+        return 1;
+    }
+    return rb_cmpint(cmp, key_a, key_b);
+}
+
+static st_index_t
+st_hash_by_method(st_data_t k, st_data_t h)
+{
+    VALUE hash = (VALUE)h;
+    VALUE cmp = rb_funcall(hash, id_key_hash, 1, (VALUE)k);
+#if SIZEOF_ST_INDEX_T <= SIZEOF_LONG
+    return (st_index_t)NUM2LONG(cmp);
+#else
+    return (st_index_t)NUM2LL(cmp);
+#endif
+}
+
+const struct st_hash_type rb_hashtype_method = ST_HASH_TYPE(st_cmp_by_method, st_hash_by_method);
+
+VALUE
+rb_hash_compare_by_method_p(VALUE hash)
+{
+    return RBOOL(RHASH_TYPE(hash) == &rb_hashtype_method);
+}
+
+VALUE
+rb_hash_compare_by_method(VALUE hash)
+{
+    if (rb_hash_compare_by_method_p(hash)) return hash;
+
+    rb_hash_modify_check(hash);
+    if (hash_iterating_p(hash)) {
+        rb_raise(rb_eRuntimeError, "compare_by_method during iteration");
+    }
+
+    if (!RHASH_TABLE_EMPTY_P(hash)) {
+        rb_raise(rb_eRuntimeError, "compare_by_method not empty");
+    }
+    ar_force_convert_table(hash, __FILE__, __LINE__);
+    HASH_ASSERT(RHASH_ST_TABLE_P(hash));
+    RHASH_ST_TABLE(hash)->type = &rb_hashtype_method;
+    RHASH_ST_TABLE(hash)->callback_arg = (st_data_t)hash;
+
+    return hash;
+}
+
 st_table *
 rb_init_identtable(void)
 {
@@ -7142,6 +7202,8 @@ Init_Hash(void)
     id_hash = rb_intern_const("hash");
     id_flatten_bang = rb_intern_const("flatten!");
     id_hash_iter_lev = rb_make_internal_id();
+    id_key_cmp = rb_intern_const("key_cmp");
+    id_key_hash = rb_intern_const("key_hash");
 
     rb_cHash = rb_define_class("Hash", rb_cObject);
 
@@ -7225,6 +7287,8 @@ Init_Hash(void)
 
     rb_define_method(rb_cHash, "compare_by_identity", rb_hash_compare_by_id, 0);
     rb_define_method(rb_cHash, "compare_by_identity?", rb_hash_compare_by_id_p, 0);
+    rb_define_method(rb_cHash, "compare_by_method", rb_hash_compare_by_method, 0);
+    rb_define_method(rb_cHash, "compare_by_method?", rb_hash_compare_by_method_p, 0);
 
     rb_define_method(rb_cHash, "any?", rb_hash_any_p, -1);
     rb_define_method(rb_cHash, "dig", rb_hash_dig, -1);

@@ -174,7 +174,13 @@ static const struct st_hash_type type_strcasehash = {
 #define free ruby_xfree
 #endif
 
-#define EQUAL(tab,x,y) ((x) == (y) || (*(tab)->type->compare)((x),(y)) == 0)
+typedef int st_compare_with_arg_func(st_data_t, st_data_t, st_data_t);
+typedef st_index_t st_hash_with_arg_func(st_data_t, st_data_t);
+
+#define EQUAL(tab,x,y) ((x) == (y) || \
+    ((tab)->type->with_callback_arg ? \
+     ((*(st_compare_with_arg_func*)((tab)->type->compare))((x),(y),(tab)->callback_arg) == 0) : \
+     (*(tab)->type->compare)((x),(y)) == 0))
 #define PTR_EQUAL(tab, ptr, hash_val, key_) \
     ((ptr)->hash == (hash_val) && EQUAL((tab), (key_), (ptr)->key))
 
@@ -318,7 +324,9 @@ static const struct st_features features[] = {
 static inline st_hash_t
 do_hash(st_data_t key, st_table *tab)
 {
-    st_hash_t hash = (st_hash_t)(tab->type->hash)(key);
+    st_hash_t hash = (tab->type->with_callback_arg) ?
+        (st_hash_t)(*(st_hash_with_arg_func*)tab->type->hash)(key, tab->callback_arg) :
+        (st_hash_t)(tab->type->hash)(key);
 
     /* RESERVED_HASH_VAL is used for a deleted entry.  Map it into
        another value.  Such mapping should be extremely rare.  */
@@ -510,8 +518,8 @@ stat_col(void)
 }
 #endif
 
-st_table *
-st_init_existing_table_with_size(st_table *tab, const struct st_hash_type *type, st_index_t size)
+static st_table *
+init_existing_table_with_size(st_table *tab, const struct st_hash_type *type, st_data_t callback_arg, st_index_t size)
 {
     int n;
 
@@ -535,6 +543,7 @@ st_init_existing_table_with_size(st_table *tab, const struct st_hash_type *type,
 #endif
 
     tab->type = type;
+    tab->callback_arg = callback_arg;
     tab->entry_power = n;
     tab->bin_power = features[n].bin_power;
     tab->size_ind = features[n].size_ind;
@@ -562,11 +571,25 @@ st_init_existing_table_with_size(st_table *tab, const struct st_hash_type *type,
     return tab;
 }
 
+st_table *
+st_init_existing_table_with_size(st_table *tab, const struct st_hash_type *type, st_index_t size)
+{
+    if (type->with_callback_arg) return NULL;
+    return init_existing_table_with_size(tab, type, 0, size);
+}
+
 /* Create and return table with TYPE which can hold at least SIZE
    entries.  The real number of entries which the table can hold is
    the nearest power of two for SIZE.  */
 st_table *
 st_init_table_with_size(const struct st_hash_type *type, st_index_t size)
+{
+    if (type->with_callback_arg) return NULL;
+    return st_init_table_with_arg(type, 0, size);
+}
+
+st_table *
+st_init_table_with_arg(const struct st_hash_type *type, st_data_t callback_arg, st_index_t size)
 {
     st_table *tab = malloc(sizeof(st_table));
 #ifndef RUBY
@@ -575,9 +598,9 @@ st_init_table_with_size(const struct st_hash_type *type, st_index_t size)
 #endif
 
 #ifdef RUBY
-    st_init_existing_table_with_size(tab, type, size);
+    init_existing_table_with_size(tab, type, callback_arg, size);
 #else
-    if (st_init_existing_table_with_size(tab, type, size) == NULL) {
+    if (init_existing_table_with_size(tab, type, callback_arg, size) == NULL) {
         free(tab);
         return NULL;
     }

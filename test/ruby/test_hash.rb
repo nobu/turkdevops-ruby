@@ -2360,4 +2360,16 @@ class TestHashOnly < Test::Unit::TestCase
       end
     end;
   end
+
+  def test_with_callback_argument
+    hash = Hash.new
+    hash.compare_by_method
+    class << hash
+      def key_hash(k) k.to_s.downcase.hash end
+      def key_cmp(a, b) a.to_s.casecmp(b.to_s) end
+    end
+
+    hash[:a] = 42
+    assert_equal(42, hash["A"])
+  end
 end
