@@ -396,8 +396,12 @@ class TestSyntax < Test::Unit::TestCase
     assert_syntax_error("def foo(var: defined?(var)) var end", message)
     assert_syntax_error("def foo(var: var) var end", message)
     assert_syntax_error("def foo(var: bar(var)) var end", message)
-    assert_syntax_error("def foo(var: bar {var}) var end", message)
     assert_syntax_error("def foo(var: (1 in ^var)); end", message)
+
+    o = Object.new
+    assert_warn("") do
+      o.instance_eval("def foo(var: bar {var}) var end")
+    end
 
     o = Object.new
     assert_warn("") do
@@ -460,10 +464,14 @@ class TestSyntax < Test::Unit::TestCase
     assert_syntax_error("def foo(var = defined?(var)) var end", message)
     assert_syntax_error("def foo(var = var) var end", message)
     assert_syntax_error("def foo(var = bar(var)) var end", message)
-    assert_syntax_error("def foo(var = bar {var}) var end", message)
     assert_syntax_error("def foo(var = (def bar;end; var)) var end", message)
     assert_syntax_error("def foo(var = (def self.bar;end; var)) var end", message)
     assert_syntax_error("def foo(var = (1 in ^var)); end", message)
+
+    o = Object.new
+    assert_warn("") do
+      o.instance_eval("def foo(var = bar {var}) var end")
+    end
 
     o = Object.new
     assert_warn("") do
@@ -478,6 +486,11 @@ class TestSyntax < Test::Unit::TestCase
     o = Object.new
     assert_warn("") do
       o.instance_eval("def foo(var = bar {|| var}) var end")
+    end
+
+    o = Object.new
+    assert_warn("") do
+      o.instance_eval("def foo(var = bar {var}) var end")
     end
 
     o = Object.new

@@ -5212,6 +5212,9 @@ block_param	: f_arg ',' f_optarg(primary_value) ',' f_rest_arg opt_args_tail(blo
                 ;
 
 opt_block_param	: none
+                    {
+                        p->cur_arg = 0;
+                    }
                 | block_param_def
                     {
                         p->command_start = TRUE;
