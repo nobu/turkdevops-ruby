@@ -2721,9 +2721,17 @@ syntax_error_with_path(VALUE exc, VALUE path, VALUE *mesg, rb_encoding *enc)
     else {
         VALUE old_path = rb_attr_get(exc, id_i_path);
         if (old_path != path) {
-            if (rb_str_equal(path, old_path)) {
-                rb_raise(rb_eArgError, "SyntaxError#path changed: %+"PRIsVALUE" (%p->%p)",
-                         old_path, (void *)old_path, (void *)path);
+            if (rb_str_equal(path, old_path) && FL_TEST(old_path, RSTRING_FSTR) && FL_TEST(path, RSTRING_FSTR)) {
+                char old_info[0x100], info[0x100];
+                rb_bug("SyntaxError#path changed: two equal FSTRs\n"
+                       "  %+"PRIsVALUE"\n"
+                       "  %"PRIxVALUE": %s\n"
+                       "  %"PRIxVALUE": %s\n",
+                       old_path,
+                       RBASIC(old_path)->flags,
+                       rb_raw_obj_info(old_info, sizeof(old_info), old_path),
+                       RBASIC(path)->flags,
+                       rb_raw_obj_info(info, sizeof(info), path));
             }
             else {
                 rb_raise(rb_eArgError, "SyntaxError#path changed: %+"PRIsVALUE"(%s%s)->%+"PRIsVALUE"(%s)",
