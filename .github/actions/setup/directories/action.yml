@@ -133,6 +133,21 @@ runs:
       working-directory: ${{ inputs.srcdir }}
       run: rm -f config.status Makefile rbconfig.rb .rbconfig.time
 
+    - name: Make the source directory read-only
+      shell: bash
+      id: read-only
+      working-directory: ${{ inputs.srcdir }}
+      run: |
+        mkdir -p .bundle gems/src
+        tmpdir=`mktemp -d`
+        ln -s "$tmpdir" tmp
+        echo clean='rm -rf "'$tmpdir'" && cd ${{ inputs.srcdir }} && chmod u+w . && rm tmp' >> $GITHUB_OUTPUT
+        chmod -R a-w .
+        chmod u+w gems gems/src
+        chmod -R u+w .bundle
+        find . -name '*.lock' -type f -exec chmod u+w {} +
+      if: ${{ inputs.builddir != inputs.srcdir }}
+
     - if: steps.which.outputs.sudo
       shell: bash
       run: |
@@ -169,6 +184,7 @@ runs:
         working-directory:
         post: |
           ${{ steps.dummy-files.outputs.clean }}
+          ${{ steps.read-only.outputs.clean }}
           ${{ steps.clean.outputs.distclean }}
           ${{ steps.clean.outputs.remained-files }}
           ${{ steps.clean.outputs.final }}
