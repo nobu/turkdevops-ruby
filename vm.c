@@ -3243,21 +3243,18 @@ vm_default_params(void)
 }
 
 static size_t
-get_param(const char *name, size_t default_value, size_t min_value)
+get_envparam_vm_size(const char *name, size_t default_value, size_t min_value)
 {
-    const char *envval;
     size_t result = default_value;
-    if ((envval = getenv(name)) != 0) {
-        long val = atol(envval);
-        if (val < (long)min_value) {
-            val = (long)min_value;
-        }
-        result = (size_t)(((val -1 + RUBY_VM_SIZE_ALIGN) / RUBY_VM_SIZE_ALIGN) * RUBY_VM_SIZE_ALIGN);
+    if (ruby_get_envparam_size(name, &result, min_value, false)) {
+        result = (size_t)(roomof(result, RUBY_VM_SIZE_ALIGN) * RUBY_VM_SIZE_ALIGN);
     }
-    if (0) ruby_debug_printf("%s: %"PRIuSIZE"\n", name, result); /* debug print */
 
     return result;
 }
+
+#define get_envparam_vm_size_with_min(name, default_value) \
+    get_envparam_vm_size(name, default_value, default_value ## _MIN)
 
 static void
 check_machine_stack_size(size_t *sizep)
@@ -3277,24 +3274,20 @@ static void
 vm_default_params_setup(rb_vm_t *vm)
 {
     vm->default_params.thread_vm_stack_size =
-      get_param("RUBY_THREAD_VM_STACK_SIZE",
-                RUBY_VM_THREAD_VM_STACK_SIZE,
-                RUBY_VM_THREAD_VM_STACK_SIZE_MIN);
+        get_envparam_vm_size_with_min("RUBY_THREAD_VM_STACK_SIZE",
+                                      RUBY_VM_THREAD_VM_STACK_SIZE);
 
     vm->default_params.thread_machine_stack_size =
-      get_param("RUBY_THREAD_MACHINE_STACK_SIZE",
-                RUBY_VM_THREAD_MACHINE_STACK_SIZE,
-                RUBY_VM_THREAD_MACHINE_STACK_SIZE_MIN);
+        get_envparam_vm_size_with_min("RUBY_THREAD_MACHINE_STACK_SIZE",
+                                      RUBY_VM_THREAD_MACHINE_STACK_SIZE);
 
     vm->default_params.fiber_vm_stack_size =
-      get_param("RUBY_FIBER_VM_STACK_SIZE",
-                RUBY_VM_FIBER_VM_STACK_SIZE,
-                RUBY_VM_FIBER_VM_STACK_SIZE_MIN);
+        get_envparam_vm_size_with_min("RUBY_FIBER_VM_STACK_SIZE",
+                                      RUBY_VM_FIBER_VM_STACK_SIZE);
 
     vm->default_params.fiber_machine_stack_size =
-      get_param("RUBY_FIBER_MACHINE_STACK_SIZE",
-                RUBY_VM_FIBER_MACHINE_STACK_SIZE,
-                RUBY_VM_FIBER_MACHINE_STACK_SIZE_MIN);
+        get_envparam_vm_size_with_min("RUBY_FIBER_MACHINE_STACK_SIZE",
+                                      RUBY_VM_FIBER_MACHINE_STACK_SIZE);
 
     /* environment dependent check */
     check_machine_stack_size(&vm->default_params.thread_machine_stack_size);

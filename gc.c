@@ -11294,8 +11294,8 @@ gc_get_auto_compact(VALUE _)
 #  define gc_get_auto_compact rb_f_notimplement
 #endif
 
-static int
-get_envparam_size(const char *name, size_t *default_value, size_t lower_bound)
+int
+ruby_get_envparam_size(const char *name, size_t *default_value, size_t lower_bound, bool verbose)
 {
     const char *ptr = getenv(name);
     ssize_t val;
@@ -11324,25 +11324,25 @@ get_envparam_size(const char *name, size_t *default_value, size_t lower_bound)
         }
         while (*end && isspace((unsigned char)*end)) end++;
         if (*end) {
-            if (RTEST(ruby_verbose)) fprintf(stderr, "invalid string for %s: %s\n", name, ptr);
+            if (verbose) fprintf(stderr, "invalid string for %s: %s\n", name, ptr);
             return 0;
         }
         if (unit > 0) {
             if (val < -(ssize_t)(SIZE_MAX / 2 / unit) || (ssize_t)(SIZE_MAX / 2 / unit) < val) {
-                if (RTEST(ruby_verbose)) fprintf(stderr, "%s=%s is ignored because it overflows\n", name, ptr);
+                if (verbose) fprintf(stderr, "%s=%s is ignored because it overflows\n", name, ptr);
                 return 0;
             }
             val *= unit;
         }
         if (val > 0 && (size_t)val > lower_bound) {
-            if (RTEST(ruby_verbose)) {
+            if (verbose) {
                 fprintf(stderr, "%s=%"PRIdSIZE" (default value: %"PRIuSIZE")\n", name, val, *default_value);
             }
             *default_value = (size_t)val;
             return 1;
         }
         else {
-            if (RTEST(ruby_verbose)) {
+            if (verbose) {
                 fprintf(stderr, "%s=%"PRIdSIZE" (default value: %"PRIuSIZE") is ignored because it must be greater than %"PRIuSIZE".\n",
                         name, val, *default_value, lower_bound);
             }
@@ -11350,6 +11350,12 @@ get_envparam_size(const char *name, size_t *default_value, size_t lower_bound)
         }
     }
     return 0;
+}
+
+static int
+get_envparam_size(const char *name, size_t *default_value, size_t lower_bound)
+{
+    return ruby_get_envparam_size(name, default_value, lower_bound, RTEST(ruby_verbose));
 }
 
 static int

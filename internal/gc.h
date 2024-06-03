@@ -269,6 +269,8 @@ int rb_ec_stack_check(struct rb_execution_context_struct *ec);
 void rb_gc_writebarrier_remember(VALUE obj);
 const char *rb_obj_info(VALUE obj);
 
+int ruby_get_envparam_size(const char *name, size_t *default_value, size_t lower_bound, bool verbose);
+
 #if defined(HAVE_MALLOC_USABLE_SIZE) || defined(HAVE_MALLOC_SIZE) || defined(_WIN32)
 
 static inline void *
