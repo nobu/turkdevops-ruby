@@ -392,12 +392,11 @@ class TestSyntax < Test::Unit::TestCase
   end
 
   def test_keyword_self_reference
-    message = /circular argument reference - var/
-    assert_syntax_error("def foo(var: defined?(var)) var end", message)
-    assert_syntax_error("def foo(var: var) var end", message)
-    assert_syntax_error("def foo(var: bar(var)) var end", message)
-    assert_syntax_error("def foo(var: bar {var}) var end", message)
-    assert_syntax_error("def foo(var: (1 in ^var)); end", message)
+    assert_valid_syntax("def foo(var: defined?(var)) var end")
+    assert_valid_syntax("def foo(var: var) var end")
+    assert_valid_syntax("def foo(var: bar(var)) var end")
+    assert_valid_syntax("def foo(var: bar {var}) var end")
+    assert_valid_syntax("def foo(var: (1 in ^var)); end")
 
     o = Object.new
     assert_warn("") do
@@ -456,14 +455,13 @@ class TestSyntax < Test::Unit::TestCase
   end
 
   def test_optional_self_reference
-    message = /circular argument reference - var/
-    assert_syntax_error("def foo(var = defined?(var)) var end", message)
-    assert_syntax_error("def foo(var = var) var end", message)
-    assert_syntax_error("def foo(var = bar(var)) var end", message)
-    assert_syntax_error("def foo(var = bar {var}) var end", message)
-    assert_syntax_error("def foo(var = (def bar;end; var)) var end", message)
-    assert_syntax_error("def foo(var = (def self.bar;end; var)) var end", message)
-    assert_syntax_error("def foo(var = (1 in ^var)); end", message)
+    assert_valid_syntax("def foo(var = defined?(var)) var end")
+    assert_valid_syntax("def foo(var = var) var end")
+    assert_valid_syntax("def foo(var = bar(var)) var end")
+    assert_valid_syntax("def foo(var = bar {var}) var end")
+    assert_valid_syntax("def foo(var = (def bar;end; var)) var end")
+    assert_valid_syntax("def foo(var = (def self.bar;end; var)) var end")
+    assert_valid_syntax("def foo(var = (1 in ^var)); end")
 
     o = Object.new
     assert_warn("") do

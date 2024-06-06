@@ -14392,13 +14392,6 @@ parse_parameters(
                     }
                     pm_parameters_node_optionals_append(params, param);
 
-                    // If the value of the parameter increased the number of
-                    // reads of that parameter, then we need to warn that we
-                    // have a circular definition.
-                    if (pm_locals_reads(&parser->current_scope->locals, name_id) != reads) {
-                        PM_PARSER_ERR_TOKEN_FORMAT_CONTENT(parser, name, PM_ERR_PARAMETER_CIRCULAR);
-                    }
-
                     context_pop(parser);
 
                     // If parsing the value of the parameter resulted in error recovery,
@@ -14476,10 +14469,6 @@ parse_parameters(
                             pm_constant_id_t name_id = pm_parser_constant_id_token(parser, &local);
                             uint32_t reads = pm_locals_reads(&parser->current_scope->locals, name_id);
                             pm_node_t *value = parse_value_expression(parser, binding_power, false, PM_ERR_PARAMETER_NO_DEFAULT_KW);
-
-                            if (pm_locals_reads(&parser->current_scope->locals, name_id) != reads) {
-                                PM_PARSER_ERR_TOKEN_FORMAT_CONTENT(parser, local, PM_ERR_PARAMETER_CIRCULAR);
-                            }
 
                             context_pop(parser);
                             param = (pm_node_t *) pm_optional_keyword_parameter_node_create(parser, &name, value);

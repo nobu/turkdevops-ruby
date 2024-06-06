@@ -1983,20 +1983,10 @@ module Prism
     end
 
     def test_circular_param
-      source = <<~RUBY
-        def foo(bar = bar) = 42
-        def foo(bar: bar) = 42
-        proc { |foo = foo| }
-        proc { |foo: foo| }
-      RUBY
-
-      assert_errors expression(source), source, [
-        ["circular argument reference - bar", 8..11],
-        ["circular argument reference - bar", 32..35],
-        ["circular argument reference - foo", 55..58],
-        ["circular argument reference - foo", 76..79]
-      ]
-
+      refute_error_messages("def foo(bar = bar) = 42")
+      refute_error_messages("def foo(bar: bar) = 42")
+      refute_error_messages("proc { |foo = foo| }")
+      refute_error_messages("proc { |foo: foo| }")
       refute_error_messages("def foo(bar: bar = 1); end")
     end
 
