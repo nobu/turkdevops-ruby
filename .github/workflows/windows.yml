@@ -177,7 +177,7 @@ jobs:
           ../src/win32/configure.bat --disable-install-doc
           --with-opt-dir=C:/vcpkg/installed/x64-windows
 
-      - run: nmake incs
+      - run: nmake incs srcs
 
       - run: nmake extract-extlibs
 
