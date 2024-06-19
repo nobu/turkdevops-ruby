@@ -134,6 +134,8 @@ jobs:
         run: |
           vcpkg --triplet x64-windows install
         working-directory: src
+        env:
+          VCPKG_BUILD_TYPE: release
 
       - name: setup env
         # Available Ruby versions: https://github.com/actions/runner-images/blob/main/images/windows/Windows2019-Readme.md#ruby
