@@ -86,6 +86,7 @@ class HTTPSProxyTest < Test::Unit::TestCase
           "[ruby-core:96672]")
       ensure
         sock.close
+        serv.close
       end
     }
     assert_join_threads([client_thread, server_thread])
