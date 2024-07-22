@@ -84,3 +84,5 @@ PREFIXED_SYMBOL(SYMBOL_PREFIX,coroutine_transfer):
 .long 0x0        /* 8-byte alignment padding */
 /* End descriptor */
 .popsection
+
+#include "../annobin-note.S"
