@@ -46,7 +46,7 @@ File.foreach("#{gem_dir}/bundled_gems") do |line|
       File.unlink(path) if File.exist?(path)
     end
 
-    test_command << " stdlib_test validate RBS_SKIP_TESTS=#{__dir__}/rbs_skip_tests SKIP_RBS_VALIDATION=true"
+    test_command = "#{ruby} -C #{gem_dir}/src/#{gem} #{rake} lexer test stdlib_test validate RBS_SKIP_TESTS=#{__dir__}/rbs_skip_tests SKIP_RBS_VALIDATION=true"
     first_timeout *= 3
 
   when "debug"
