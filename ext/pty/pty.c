@@ -120,17 +120,6 @@ chfunc(void *data, char *errbuf, size_t errbuf_len)
     if (drop_privilige(errbuf, errbuf_len))
         return -1;
 
-#ifdef __APPLE__
-    /*
-        In macOS, there is a problem where the Slave PTY output is lost after a child process exits.
-        As a workaround, we open /dev/tty, then close it.
-        https://bugs.ruby-lang.org/issues/20682
-
-        NOTE: The order of calling this function is important. Please be careful if you move this function to another place.
-    */
-    close(open("/dev/tty", O_WRONLY));
-#endif
-
     return rb_exec_async_signal_safe(carg->eargp, errbuf, errbuf_len);
 }
 
@@ -175,7 +164,15 @@ start_new_session(char *errbuf, size_t errbuf_len)
 static int
 obtain_ctty(int master, int slave, const char *slavename, char *errbuf, size_t errbuf_len)
 {
-#if defined(TIOCSCTTY)
+#if defined(TIOCSCTTY) && !defined(__APPLE__)
+    /*
+        In macOS, there is a problem where the Slave PTY output is lost after a child process exits.
+        As a workaround, we open /dev/tty, then close it.
+        https://bugs.ruby-lang.org/issues/20682
+
+        NOTE: The order of calling this function is important. Please be careful if you move this function to another place.
+    */
+
     close(master);
     (void) ioctl(slave, TIOCSCTTY, (char *)0);
     /* errors ignored for sun */
