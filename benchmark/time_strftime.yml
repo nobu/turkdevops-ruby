@@ -5,3 +5,9 @@ benchmark:
   - time.strftime("%FT%T")     # 19B
   - time.strftime("%FT%T.%3N") # 23B
   - time.strftime("%FT%T.%6N") # 26B
+  - time.strftime("%FT%T.%9N") # 29B
+  - time.strftime("%FT%T%z")
+  - time.strftime("%FT%T%:z")
+  - time.strftime("%FT%T%::z")
+  - time.strftime("%FT%T%20::z")
+  - time.strftime("%FT%T%_20::z")

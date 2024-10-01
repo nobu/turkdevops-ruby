@@ -227,6 +227,12 @@ format_value(VALUE val, int base)
 	return rb_big2str(val, base);
 }
 
+#define TO_DIGIT(c) ('0' + (char)(c))
+#define FILL_2DIGITS(ptr, n, pad) do { \
+		if (pad || (n) >= 10) *ptr++ = TO_DIGIT((n) / 10); \
+		*ptr++ = TO_DIGIT((n) % 10); \
+	} while (0)
+
 /*
  * enc is the encoding of the format. It is used as the encoding of resulted
  * string, but the name of the month and weekday are always US-ASCII. So it
@@ -251,9 +257,6 @@ rb_strftime_with_timespec(VALUE ftime, const char *format, size_t format_len,
 	long y;
 	int precision, flags, colons;
 	char padding;
-#ifdef MAILHEADER_EXT
-	int sign;
-#endif
 	VALUE zone = Qnil;
 
 	/* various tables, useful in North America */
@@ -543,7 +546,15 @@ rb_strftime_with_timespec(VALUE ftime, const char *format, size_t format_len,
 			continue;
 
 #ifdef MAILHEADER_EXT
-		case 'z':	/* time zone offset east of GMT e.g. -0600 */
+		case 'z': {	/* time zone offset east of GMT e.g. -0600 */
+# define ZONE_PRECISION(f) \
+			do { \
+				int fixed_width = (int)sizeof("+" f) - 1; \
+				precision = (precision <= fixed_width + 2 ? 2 : \
+					     precision - fixed_width); \
+				NEEDS(precision + fixed_width); \
+			} while (0)
+			char sign;
 			if (gmt) {
 				off = 0;
 			}
@@ -552,39 +563,33 @@ rb_strftime_with_timespec(VALUE ftime, const char *format, size_t format_len,
 			}
 			if (off < 0 || (gmt && (flags & BIT_OF(LEFT)))) {
 				off = -off;
-				sign = -1;
+				sign = '-';
 			}
 			else {
-				sign = +1;
+				sign = '+';
 			}
                         switch (colons) {
 			case 0: /* %z -> +hhmm */
-				precision = precision <= 5 ? 2 : precision-3;
-				NEEDS(precision + 3);
+				ZONE_PRECISION("mm");
 				break;
 
 			case 1: /* %:z -> +hh:mm */
-				precision = precision <= 6 ? 2 : precision-4;
-				NEEDS(precision + 4);
+				ZONE_PRECISION(":mm");
 				break;
 
 			case 2: /* %::z -> +hh:mm:ss */
-				precision = precision <= 9 ? 2 : precision-7;
-				NEEDS(precision + 7);
+				ZONE_PRECISION(":mm:ss");
 				break;
 
 			case 3: /* %:::z -> +hh[:mm[:ss]] */
 				if (off % 3600 == 0) {
-					precision = precision <= 3 ? 2 : precision-1;
-					NEEDS(precision + 3);
+					ZONE_PRECISION("");
 				}
 				else if (off % 60 == 0) {
-					precision = precision <= 6 ? 2 : precision-4;
-					NEEDS(precision + 4);
+					ZONE_PRECISION(":mm");
 				}
 				else {
-					precision = precision <= 9 ? 2 : precision-7;
-					NEEDS(precision + 9);
+					ZONE_PRECISION(":mm:ss");
 				}
 				break;
 
@@ -592,31 +597,29 @@ rb_strftime_with_timespec(VALUE ftime, const char *format, size_t format_len,
 				format--;
 				goto unknown;
                         }
-			i = snprintf(s, endp - s, (padding == ' ' ? "%+*ld" : "%+.*ld"),
-				     precision + (padding == ' '), sign * (off / 3600));
-			if (i < 0) goto err;
-			if (sign < 0 && off < 3600) {
-				*(padding == ' ' ? s + i - 2 : s) = '-';
+			w = (off < 10*3600 ? 1 : 2);
+			if (padding != ' ') *s++ = sign;
+			if (precision > w) {
+				memset(s, (padding == ' ' ? ' ' : '0'), precision - w);
+				s += precision - w;
 			}
-			s += i;
-                        off = off % 3600;
+			if (padding == ' ') *s++ = sign;
+			FILL_2DIGITS(s, off / 3600, FALSE);
+			off %= 3600;
 			if (colons == 3 && off == 0)
 				continue;
-                        if (1 <= colons)
-                            *s++ = ':';
-			i = snprintf(s, endp - s, "%02d", (int)(off / 60));
-			if (i < 0) goto err;
-			s += i;
-                        off = off % 60;
+			if (1 <= colons)
+				*s++ = ':';
+			FILL_2DIGITS(s, off / 60, TRUE);
+			off %= 60;
 			if (colons == 3 && off == 0)
 				continue;
-                        if (2 <= colons) {
-                            *s++ = ':';
-                            i = snprintf(s, endp - s, "%02d", (int)off);
-                            if (i < 0) goto err;
-                            s += i;
-                        }
+			if (2 <= colons) {
+				*s++ = ':';
+				FILL_2DIGITS(s, off, TRUE);
+			}
 			continue;
+		}
 #endif /* MAILHEADER_EXT */
 
 		case 'Z':	/* time zone name or abbreviation */
@@ -797,17 +800,17 @@ rb_strftime_with_timespec(VALUE ftime, const char *format, size_t format_len,
                         if (ts) {
                                 long subsec = ts->tv_nsec;
                                 if (9 < precision) {
-                                        snprintf(s, endp - s, "%09ld", subsec);
                                         memset(s+9, '0', precision-9);
-                                        s += precision;
+                                        w = 9;
                                 }
                                 else {
                                         int i;
                                         for (i = 0; i < 9-precision; i++)
                                                 subsec /= 10;
-                                        snprintf(s, endp - s, "%0*ld", precision, subsec);
-                                        s += precision;
+                                        w = precision;
                                 }
+                                do {s[--w] = TO_DIGIT(subsec % 10); subsec /= 10; } while (w);
+                                s += precision;
                         }
                         else {
                                 VALUE subsec = mod(timev, INT2FIX(1));
@@ -831,13 +834,15 @@ rb_strftime_with_timespec(VALUE ftime, const char *format, size_t format_len,
                                         s += precision;
                                 }
                                 else {
-                                        VALUE args[2], result;
-                                        args[0] = INT2FIX(precision);
-                                        args[1] = subsec;
-                                        result = rb_str_format(2, args,
-                                                      rb_fstring_lit("%0*d"));
-                                        (void)strlcpy(s, StringValueCStr(result), endp-s);
-                                        s += precision;
+                                        VALUE result = format_value(subsec, 10);
+                                        const char *subsec_str = StringValueCStr(result);
+                                        const long subsec_len = RSTRING_LEN(result);
+                                        if (precision > subsec_len) {
+                                                memset(s, '0', precision - subsec_len);
+                                                s += precision - subsec_len;
+                                        }
+                                        memcpy(s, subsec_str, subsec_len);
+                                        s += precision - subsec_len;
                                 }
 			}
 			continue;
