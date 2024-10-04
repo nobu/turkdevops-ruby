@@ -32,7 +32,7 @@ jobs:
           - test_task: check
             configure: '--disable-yjit'
           - test_task: check
-            configure: '--enable-shared --enable-load-relative'
+            configure: '--enable-shared --enable-load-relative --prefix=/.'
           - test_task: check
             shared_gc: true
             configure: '--with-shared-gc=/home/runner/ruby_gc'
@@ -89,7 +89,9 @@ jobs:
       - name: Run configure
         env:
           arch: ${{ matrix.arch }}
-          configure: ${{ matrix.configure }}
+          configure: >-
+            ${{ matrix.configure }}
+            ${{ !contains(matrix.configure, '--prefix') && '--prefix=/home/runner/built-ruby' }}
         run: >-
           $SETARCH ../src/configure -C --disable-install-doc ${configure:-cppflags=-DRUBY_DEBUG}
           ${arch:+--target=$arch-$OSTYPE --host=$arch-$OSTYPE}
@@ -153,6 +155,13 @@ jobs:
           RUBY_TESTOPTS: '-v --tty=no'
         if: ${{ matrix.test_task == 'check' && matrix.skipped_tests }}
         continue-on-error: ${{ matrix.continue-on-skipped_tests || false }}
+
+      - name: install
+        run: |
+          $SETARCH make -s install
+          /home/runner/built-ruby/bin/ruby -e 'puts RUBY_DESCRIPTION'
+        if: >-
+          ${{ contains(matrix.configure, 'enable-shared') }}
 
       - uses: ./.github/actions/slack
         with:
