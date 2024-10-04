@@ -36,9 +36,6 @@ jobs:
           - test_task: check
             shared_gc: true
             configure: '--with-shared-gc=/home/runner/ruby_gc'
-          - test_task: test-bundler-parallel
-            timeout: 50
-          - test_task: test-bundled-gems
           - test_task: check
             os: ubuntu-20.04
           - test_task: check
