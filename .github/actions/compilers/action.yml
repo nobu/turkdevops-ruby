@@ -102,11 +102,6 @@ runs:
         --env INPUT_STATIC_EXTS='${{ inputs.static_exts }}'
         'ghcr.io/ruby/ruby-ci-image:${{ inputs.tag }}'
 
-    - uses: ./.github/actions/setup/ubuntu
-      if: ${{ inputs.tag == '' }}
-      with:
-        compiler: clang-18
-
     - uses: ruby/setup-ruby@a6e6f86333f0a2523ece813039b8b4be04560854 # v1.190.0
       if: ${{ inputs.tag == '' }}
       with:
@@ -121,26 +116,34 @@ runs:
         builddir=$(mktemp -d build-XXXXXXXXXX)
         echo "builddir=${builddir}" | tee -a $GITHUB_OUTPUT
         cp -rv build/. "${builddir}"
-        export INPUT_WITH_GCC='${{ inputs.with_gcc || 'clang-18' }}'
-        export INPUT_CFLAGS='${{ inputs.CFLAGS }}'
-        export INPUT_CXXFLAGS='${{ inputs.CXXFLAGS }}'
-        export INPUT_OPTFLAGS='${{ inputs.OPTFLAGS }}'
-        export INPUT_CPPFLAGS='${{ inputs.cppflags }}'
-        export INPUT_APPEND_CONFIGURE='${{ inputs.append_configure }}'
-        export INPUT_CHECK='${{ inputs.check }}'
-        export INPUT_MSPECOPT='${{ inputs.mspecopt }}'
-        export INPUT_ENABLE_SHARED='${{ inputs.enable_shared }}'
-        export INPUT_STATIC_EXTS='${{ inputs.static_exts }}'
+        dummy_files=$(find "${builddir}" ! -type d)
+        [ -z "${INPUT_STATIC_EXTS}" ] || dummy_files="${dummy_files:+${dummy_files} }ext/Setup"
+        echo dummy_files="${dummy_files}" >> $GITHUB_OUTPUT
+        echo dummy_dirs=$(find "${builddir}" -depth -mindepth 1 -type d) >> $GITHUB_OUTPUT
         ./src/.github/actions/compilers/entrypoint.sh "${builddir}"
-        find build ! -type d -printf "%P\0" | xargs -0rv rm
-        find build -depth -mindepth 1 -type d -printf "%P\0" | xargs -0rv rmdir
+      env:
+        INPUT_WITH_GCC: ${{ inputs.with_gcc || 'clang-18' }}
+        INPUT_CFLAGS: ${{ inputs.CFLAGS }}
+        INPUT_CXXFLAGS: ${{ inputs.CXXFLAGS }}
+        INPUT_OPTFLAGS: ${{ inputs.OPTFLAGS }}
+        INPUT_CPPFLAGS: ${{ inputs.cppflags }}
+        INPUT_APPEND_CONFIGURE: ${{ inputs.append_configure }}
+        INPUT_CHECK: ${{ inputs.check }}
+        INPUT_MSPECOPT: ${{ inputs.mspecopt }}
+        INPUT_ENABLE_SHARED: ${{ inputs.enable_shared }}
+        INPUT_STATIC_EXTS: ${{ inputs.static_exts }}
 
     - name: distclean
       if: ${{ always() && steps.build.outcome != 'skipped' }}
       shell: bash
       run: |
+        set -x
         make -C ${builddir} distclean
-        ls -lA ${builddir}
+        ls -lAR ${builddir}
         rmdir ${builddir}
+        [ -z "${dummy_files:+set}" ] || rm -f ${dummy_files}
+        [ -z "${dummy_dirs:+set}" ] || rmdir ${dummy_dirs}
       env:
         builddir: ${{ steps.build.outputs.builddir }}
+        dummy_files: ${{ steps.build.outputs.dummy_files }}
+        dummy_dirs: ${{ steps.build.outputs.dummy_dirs }}
