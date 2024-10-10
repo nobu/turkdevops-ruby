@@ -31,7 +31,7 @@ permissions:
 jobs:
   compile4:
     name: 'omnibus compilations, #4'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: >-
       ${{!(false
       || contains(github.event.head_commit.message, '[DOC]')
