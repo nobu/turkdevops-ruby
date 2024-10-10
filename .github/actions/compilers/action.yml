@@ -5,7 +5,7 @@ description: >-
 inputs:
   tag:
     required: false
-    default: clang-18
+    default: ''
     description: >-
       container image tag to use in this run.
 
@@ -75,9 +75,11 @@ runs:
   using: composite
   steps:
     - shell: bash
+      if: ${{ inputs.tag }}
       run: docker pull --quiet 'ghcr.io/ruby/ruby-ci-image:${{ inputs.tag }}'
 
     - name: compile
+      if: ${{ inputs.tag }}
       shell: bash
       run: >-
         docker run
@@ -99,3 +101,32 @@ runs:
         --env INPUT_ENABLE_SHARED='${{ inputs.enable_shared }}'
         --env INPUT_STATIC_EXTS='${{ inputs.static_exts }}'
         'ghcr.io/ruby/ruby-ci-image:${{ inputs.tag }}'
+
+    - name: compile
+      if: ${{ inputs.tag == '' }}
+      shell: bash
+      id: build
+      run: |
+        builddir=$(mktemp -d build-XXXXXXXXXX)
+        echo "builddir=${builddir}" | tee -a $GITHUB_OUTPUT
+        export INPUT_WITH_GCC='${{ inputs.with_gcc || 'clang-18' }}'
+        export INPUT_CFLAGS='${{ inputs.CFLAGS }}'
+        export INPUT_CXXFLAGS='${{ inputs.CXXFLAGS }}'
+        export INPUT_OPTFLAGS='${{ inputs.OPTFLAGS }}'
+        export INPUT_CPPFLAGS='${{ inputs.cppflags }}'
+        export INPUT_APPEND_CONFIGURE='${{ inputs.append_configure }}'
+        export INPUT_CHECK='${{ inputs.check }}'
+        export INPUT_MSPECOPT='${{ inputs.mspecopt }}'
+        export INPUT_ENABLE_SHARED='${{ inputs.enable_shared }}'
+        export INPUT_STATIC_EXTS='${{ inputs.static_exts }}'
+        ./src/.github/actions/compilers/entrypoint.sh "${builddir}"
+
+    - name: distclean
+      if: ${{ always() && steps.build.outcome != 'skipped' }}
+      shell: bash
+      run: |
+        make -C ${builddir} distclean
+        ls -lA ${builddir}
+        rmdir ${builddir}
+      env:
+        builddir: ${{ steps.build.outputs.builddir }}

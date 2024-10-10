@@ -18,8 +18,12 @@ set -e
 set -u
 set -o pipefail
 
-srcdir="/github/workspace/src"
-builddir="$(mktemp -dt)"
+builddir="${1-$(mktemp -dt)}"
+case "${builddir}/" in
+/*|../*|*/../*) srcdir="$(pwd)";;
+*) srcdir="$(echo "${builddir}" | sed 's:[^/][^/]*:..:')";;
+esac
+srcdir="${srcdir}/src"
 
 export GITHUB_WORKFLOW='Compilations'
 export CONFIGURE_TTY='never'
@@ -73,7 +77,9 @@ pushd ${builddir}
 case "${INPUT_APPEND_CONFIGURE}" in
 *--with-shared-gc*)
     export RUBY_GC_LIBRARY='librubygc.default.so'
-    mkdir -p /home/runner/shared-gc
+    gcdir="${INPUT_APPEND_CONFIGURE#*--with-shared-gc=}"
+    gcdir="${gcdir%% *}"
+    mkdir -p "${gcdir}"
     grouped make shared-gc SHARED_GC=default
     ;;
 esac
