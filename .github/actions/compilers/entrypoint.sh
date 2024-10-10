@@ -67,7 +67,7 @@ if [[ -n "${INPUT_STATIC_EXTS}" ]]; then
         for ext in ${INPUT_STATIC_EXTS}; do
             echo "${ext}"
         done
-    ) >> ${builddir}/ext/Setup
+    ) > ${builddir}/ext/Setup
     set +x
     echo "::endgroup::"
 fi
@@ -100,3 +100,4 @@ grouped make install
 grouped make test-tool
 grouped make test-all TESTS="-- $tests"
 grouped env CHECK_LEAKS=true make test-spec MSPECOPT="$INPUT_MSPECOPT"
+${INPUT_STATIC_EXTS:+rm ext/Setup}
