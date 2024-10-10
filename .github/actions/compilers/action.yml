@@ -120,6 +120,7 @@ runs:
       run: |
         builddir=$(mktemp -d build-XXXXXXXXXX)
         echo "builddir=${builddir}" | tee -a $GITHUB_OUTPUT
+        cp -rv build/. "${builddir}"
         export INPUT_WITH_GCC='${{ inputs.with_gcc || 'clang-18' }}'
         export INPUT_CFLAGS='${{ inputs.CFLAGS }}'
         export INPUT_CXXFLAGS='${{ inputs.CXXFLAGS }}'
@@ -131,6 +132,8 @@ runs:
         export INPUT_ENABLE_SHARED='${{ inputs.enable_shared }}'
         export INPUT_STATIC_EXTS='${{ inputs.static_exts }}'
         ./src/.github/actions/compilers/entrypoint.sh "${builddir}"
+        find build ! -type d -printf "%P\0" | xargs -0rv rm
+        find build -depth -mindepth 1 -type d -printf "%P\0" | xargs -0rv rmdir
 
     - name: distclean
       if: ${{ always() && steps.build.outcome != 'skipped' }}
