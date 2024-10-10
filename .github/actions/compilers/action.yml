@@ -102,6 +102,17 @@ runs:
         --env INPUT_STATIC_EXTS='${{ inputs.static_exts }}'
         'ghcr.io/ruby/ruby-ci-image:${{ inputs.tag }}'
 
+    - uses: ./.github/actions/setup/ubuntu
+      if: ${{ inputs.tag == '' }}
+      with:
+        compiler: clang-18
+
+    - uses: ruby/setup-ruby@a6e6f86333f0a2523ece813039b8b4be04560854 # v1.190.0
+      if: ${{ inputs.tag == '' }}
+      with:
+        ruby-version: '3.0'
+        bundler: none
+
     - name: compile
       if: ${{ inputs.tag == '' }}
       shell: bash
