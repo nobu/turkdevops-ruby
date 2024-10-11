@@ -782,20 +782,26 @@ add_modules(VALUE *req_list, const char *mod)
 }
 
 static void
+require_library(VALUE self, VALUE feature)
+{
+    ID require;
+    CONST_ID(require, "require");
+    rb_funcallv(self, require, 1, &feature);
+}
+
+static void
 require_libraries(VALUE *req_list)
 {
     VALUE list = *req_list;
     VALUE self = rb_vm_top_self();
-    ID require;
     rb_encoding *extenc = rb_default_external_encoding();
 
-    CONST_ID(require, "require");
     while (list && RARRAY_LEN(list) > 0) {
         VALUE feature = rb_ary_shift(list);
         rb_enc_associate(feature, extenc);
         RBASIC_SET_CLASS_RAW(feature, rb_cString);
         OBJ_FREEZE(feature);
-        rb_funcallv(self, require, 1, &feature);
+        require_library(self, feature);
     }
     *req_list = 0;
 }
@@ -1700,6 +1706,26 @@ proc_options(long argc, char **argv, ruby_cmdline_options_t *opt, int envopt)
             if (!(s = proc_0_option(opt, s))) break;
             goto reswitch;
 
+          case 'R':
+            if (envopt) goto noenvopt;
+            if (opt->script) {
+                rb_raise(rb_eRuntimeError, "-R option given twice");
+            }
+            if (opt->e_script) {
+                rb_raise(rb_eRuntimeError, "-R option after script");
+            }
+            argc--, argv++;
+            if (*++s) {
+                opt->script = s;
+            }
+            else if (argc > 0) {
+                opt->script = argv[1];
+            }
+            else {
+                rb_raise(rb_eRuntimeError, "missing library name for -R");
+            }
+            goto switch_end;
+
           case '-':
             if (!s[1] || (s[1] == '\r' && !s[2])) {
                 argc--, argv++;
@@ -2276,9 +2302,11 @@ process_options_global_setup(const ruby_cmdline_options_t *opt, const rb_iseq_t 
         rb_vm_register_global_object(opt->e_script);
     }
 
-    rb_execution_context_t *ec = GET_EC();
-    VALUE script = (opt->e_script ? opt->e_script : Qnil);
-    rb_exec_event_hook_script_compiled(ec, iseq, script);
+    if (iseq) {
+        rb_execution_context_t *ec = GET_EC();
+        VALUE script = (opt->e_script ? opt->e_script : Qnil);
+        rb_exec_event_hook_script_compiled(ec, iseq, script);
+    }
 }
 
 static VALUE
@@ -2363,8 +2391,12 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
         return Qtrue;
     }
 
+    bool Rflag = false;
     if (!opt->e_script) {
-        if (argc <= 0) {	/* no more args */
+        if (opt->script) {
+            Rflag = true;
+        }
+        else if (argc <= 0) {	/* no more args */
             if (opt->verbose)
                 return Qtrue;
             opt->script = "-";
@@ -2434,10 +2466,11 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
         ienc = enc;
 #endif
     }
-    rb_enc_associate(opt->script_name, IF_UTF8_PATH(uenc, lenc));
+    rb_encoding *renc = Rflag ? rb_filesystem_encoding() : 0;
+    rb_enc_associate(opt->script_name, renc ? renc : IF_UTF8_PATH(uenc, lenc));
 #if UTF8_PATH
-    if (uenc != lenc) {
-        opt->script_name = str_conv_enc(opt->script_name, uenc, lenc);
+    if (uenc != (Rflag ? renc : lenc)) {
+        opt->script_name = str_conv_enc(opt->script_name, uenc, (renc ? renc : lenc));
         opt->script = RSTRING_PTR(opt->script_name);
     }
 #endif
@@ -2502,6 +2535,13 @@ process_options(int argc, char **argv, ruby_cmdline_options_t *opt)
     }
     ruby_set_argv(argc, argv);
     opt->sflag = process_sflag(opt->sflag);
+
+    if (Rflag) {
+        ruby_opt_init(opt);
+        require_library(rb_vm_top_self(), opt->script_name);
+        process_options_global_setup(opt, NULL);
+        return Qtrue;
+    }
 
     if (opt->e_script) {
         rb_encoding *eenc;

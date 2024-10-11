@@ -1250,6 +1250,7 @@ require_internal(rb_execution_context_t *ec, VALUE fname, int exception, bool wa
     VALUE realpath_map = get_loaded_features_realpath_map(th->vm);
     volatile bool reset_ext_config = false;
     struct rb_ext_config prev_ext_config;
+    const bool Rflag = fname == th->vm->progname;
 
     path = rb_str_encode_ospath(fname);
     RUBY_DTRACE_HOOK(REQUIRE_ENTRY, RSTRING_PTR(fname));
@@ -1282,6 +1283,9 @@ require_internal(rb_execution_context_t *ec, VALUE fname, int exception, bool wa
                 result = 0;
             }
             else {
+                if (Rflag) {
+                    th->vm->progname = path;
+                }
                 switch (found) {
                   case 'r':
                     load_iseq_eval(saved.ec, path);
