@@ -439,3 +439,7 @@ module UN # :nodoc:
     end
   end
 end
+
+if $0 == __FILE__
+  __send__(ARGV.shift || :help)
+end
