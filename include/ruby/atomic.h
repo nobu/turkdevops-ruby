@@ -72,8 +72,10 @@ typedef unsigned int rb_atomic_t;
 #elif defined(HAVE_GCC_SYNC_BUILTINS)
 typedef unsigned int rb_atomic_t;
 #elif defined(_WIN32)
+# ifdef _MSC_VER
 # include <winsock2.h>       // to prevent macro redefinitions
 # include <windows.h>        // for `LONG` and `Interlocked` functions
+# endif
 typedef LONG rb_atomic_t;
 #elif defined(__sun) && defined(HAVE_ATOMIC_H)
 typedef unsigned int rb_atomic_t;
