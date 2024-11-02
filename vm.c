@@ -51,7 +51,7 @@
 #include "probes_helper.h"
 
 #ifdef RUBY_ASSERT_CRITICAL_SECTION
-int ruby_assert_critical_section_entered = 0;
+rb_atomic_t ruby_assert_critical_section_entered = 0;
 #endif
 
 static void *native_main_thread_stack_top;

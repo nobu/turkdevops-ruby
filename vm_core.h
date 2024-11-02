@@ -51,6 +51,7 @@
 #include <signal.h>
 #include <stdarg.h>
 
+#include "ruby/atomic.h"
 #include "ruby_assert.h"
 
 #define RVALUE_SIZE (sizeof(struct RBasic) + sizeof(VALUE[RBIMPL_RVALUE_EMBED_LEN_MAX]))
@@ -94,12 +95,18 @@ RUBY_ASSERT_CRITICAL_SECTION_LEAVE();
 If `rb_vm_check_ints()` is called between the `RUBY_ASSERT_CRITICAL_SECTION_ENTER()` and
 `RUBY_ASSERT_CRITICAL_SECTION_LEAVE()`, a failed assertion will result.
 */
-extern int ruby_assert_critical_section_entered;
-#define RUBY_ASSERT_CRITICAL_SECTION_ENTER() do{ruby_assert_critical_section_entered += 1;}while(false)
-#define RUBY_ASSERT_CRITICAL_SECTION_LEAVE() do{VM_ASSERT(ruby_assert_critical_section_entered > 0);ruby_assert_critical_section_entered -= 1;}while(false)
+extern rb_atomic_t ruby_assert_critical_section_entered;
+#define RUBY_ASSERT_CRITICAL_SECTION_ENTER() \
+    RUBY_ATOMIC_INC(ruby_assert_critical_section_entered)
+#define RUBY_ASSERT_CRITICAL_SECTION_LEAVE() \
+    RUBY_ASSERT_ALWAYS(RUBY_ATOMIC_FETCH_SUB(ruby_assert_critical_section_entered, 1) > 0)
+#define RUBY_ASSERT_NOT_IN_CRITICAL_SECTION() \
+    VM_ASSERT(ruby_assert_critical_section_entered == 0, \
+              "ruby_assert_critical_section_entered: %d", ruby_assert_critical_section_entered);
 #else
 #define RUBY_ASSERT_CRITICAL_SECTION_ENTER()
 #define RUBY_ASSERT_CRITICAL_SECTION_LEAVE()
+#define RUBY_ASSERT_NOT_IN_CRITICAL_SECTION()
 #endif
 
 #if defined(__wasm__) && !defined(__EMSCRIPTEN__)
@@ -2110,10 +2117,7 @@ void rb_vm_cond_timedwait(rb_vm_t *vm, rb_nativethread_cond_t *cond, unsigned lo
 static inline void
 rb_vm_check_ints(rb_execution_context_t *ec)
 {
-#ifdef RUBY_ASSERT_CRITICAL_SECTION
-    VM_ASSERT(ruby_assert_critical_section_entered == 0);
-#endif
-
+    RUBY_ASSERT_NOT_IN_CRITICAL_SECTION();
     VM_ASSERT(ec == GET_EC());
 
     if (UNLIKELY(RUBY_VM_INTERRUPTED_ANY(ec))) {

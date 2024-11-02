@@ -1474,9 +1474,7 @@ static inline int
 blocking_region_begin(rb_thread_t *th, struct rb_blocking_region_buffer *region,
                       rb_unblock_function_t *ubf, void *arg, int fail_if_interrupted)
 {
-#ifdef RUBY_ASSERT_CRITICAL_SECTION
-    VM_ASSERT(ruby_assert_critical_section_entered == 0);
-#endif
+    RUBY_ASSERT_NOT_IN_CRITICAL_SECTION();
     VM_ASSERT(th == GET_THREAD());
 
     region->prev_status = th->status;
