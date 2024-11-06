@@ -527,19 +527,7 @@ struct driver {
     /// @tparam     U  The function in question
     template<int N, typename U>
     struct engine {
-
-        /* :TODO: Following deprecation attribute renders tons of warnings (one
-         * per  every  method  definitions),  which  is  annoying.   Of  course
-         * annoyance is the  core feature of deprecation  warnings...  But that
-         * could be  too much,  especially when the  warnings happen  inside of
-         * machine-generated programs.   And SWIG  is known  to do  such thing.
-         * The new  (granular) API was  introduced in  API version 2.7.   As of
-         * this writing the  version is 2.8.  Let's warn this  later, some time
-         * during 3.x.   Hopefully codes in  old (ANYARGS-ed) format  should be
-         * less than now. */
-#if (RUBY_API_VERSION_MAJOR * 100 + RUBY_API_VERSION_MINOR) >= 301
         RUBY_CXX_DEPRECATED("use of ANYARGS is deprecated")
-#endif
         /// @copydoc define(VALUE klass, T mid, U func)
         /// @deprecated  Pass correctly typed function instead.
         static inline void
