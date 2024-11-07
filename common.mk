@@ -1263,7 +1263,7 @@ incs: $(INSNS) {$(VPATH)}node_name.inc {$(VPATH)}known_errors.inc \
       {$(VPATH)}vm_call_iseq_optimized.inc $(srcdir)/revision.h \
       $(REVISION_H) \
       $(UNICODE_DATA_HEADERS) $(ENC_HEADERS) \
-      {$(VPATH)}id.h {$(VPATH)}probes.dmyh
+      {$(VPATH)}id.h {$(VPATH)}probes.dmyh {$(VPATH)}probes.h
 
 insns: $(INSNS)
 
