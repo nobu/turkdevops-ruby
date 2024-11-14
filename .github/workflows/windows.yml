@@ -126,6 +126,8 @@ jobs:
           set TEMP=%USERPROFILE%\AppData\Local\Temp
           set MAKEFLAGS=l
           set /a TEST_JOBS=(15 * %NUMBER_OF_PROCESSORS% / 10) > nul
+          ::- Drop VCPKG_ROOT for old vcpkg.exe bundled with VS.
+          set VCPKG_ROOT=
           set | C:\msys64\usr\bin\sort > new.env
           C:\msys64\usr\bin\comm -13 old.env new.env >> %GITHUB_ENV%
           del *.env
