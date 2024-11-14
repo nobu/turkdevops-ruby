@@ -25,10 +25,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - vc: 2015
-            vs: 2019
-            vcvars: '10.0.14393.0 -vcvars_ver=14.0' # The oldest Windows 10 SDK w/ VC++ 2015 toolset (v140)
-          - vs: 2019
           - vs: 2022
       fail-fast: false
 
@@ -150,65 +146,6 @@ jobs:
         working-directory: src
         env:
           VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-
-      # TODO: We should use `../src` instead of `D:/a/ruby/ruby/src`
-      - name: Configure
-        run: >-
-          ../src/win32/configure.bat --disable-install-doc
-          --with-opt-dir=D:/a/ruby/ruby/src/vcpkg_installed/%VCPKG_DEFAULT_TRIPLET%
-
-      - run: nmake prepare-vcpkg
-
-      - run: nmake incs
-
-      - run: nmake extract-extlibs
-
-      # On all other platforms, test-spec depending on extract-gems (in common.mk) is enough.
-      # But not for this Visual Studio workflow. So here we extract gems before building.
-      - run: nmake extract-gems
-
-      - run: nmake
-
-      - run: nmake test
-        timeout-minutes: 5
-
-      - run: nmake test-spec
-        timeout-minutes: 10
-
-      - name: Set up Launchable
-        uses: ./.github/actions/launchable/setup
-        with:
-          os: windows-${{ matrix.vs < 2022 && '2019' || matrix.vs }}
-          test-task: test-all
-          # If we support a new test task, we need to change this test-opts.
-          test-opts: -j${{ env.TEST_JOBS || 4 }} --job-status=normal
-          launchable-token: ${{ secrets.LAUNCHABLE_TOKEN }}
-          builddir: build
-          srcdir: src
-        continue-on-error: true
-
-      - run: nmake test-all
-        env:
-          RUBY_TESTOPTS: >-
-            -j${{ env.TEST_JOBS || 4 }}
-            --job-status=normal
-        timeout-minutes: 60
-
-      - uses: ./.github/actions/slack
-        with:
-          label: VS${{ matrix.vc || matrix.vs }} / ${{ matrix.test_task || 'check' }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SIMPLER_ALERTS_URL }} # ruby-lang slack: ruby/simpler-alerts-bot
-        if: ${{ failure() }}
-
-  result:
-    if: ${{ always() }}
-    name: ${{ github.workflow }} result
-    runs-on: windows-latest
-    needs: [make]
-    steps:
-      - run: exit 1
-        working-directory:
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
 
 defaults:
   run:
