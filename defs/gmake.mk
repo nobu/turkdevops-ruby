@@ -202,15 +202,11 @@ do-commit: $(if $(DOT_WAIT),,pre-commit)
 	@$(BASERUBY) -C "$(srcdir)" -I./tool/lib -rvcs -e 'VCS.detect(".").commit'
 post-commit: $(if $(DOT_WAIT),,do-commit)
 	+$(Q) \
-	{ \
-	  $(in-srcdir) \
-	  exec sed -f tool/prereq.status defs/gmake.mk template/Makefile.in common.mk; \
-	} | \
-	$(MAKE) $(mflags) Q=$(Q) ECHO=$(ECHO) \
-		top_srcdir="$(top_srcdir)" srcdir="$(srcdir)" srcs_vpath="" CHDIR="$(CHDIR)" \
-		BOOTSTRAPRUBY="$(BOOTSTRAPRUBY)" BOOTSTRAPRUBY_OPT="$(BOOTSTRAPRUBY_OPT)" \
-		MINIRUBY="$(BASERUBY)" BASERUBY="$(BASERUBY)" HAVE_BASERUBY="$(HAVE_BASERUBY)" \
-		VCSUP="" ENC_MK=.top-enc.mk REVISION_FORCE=PHONY CONFIGURE="$(CONFIGURE)" -f - \
+	$(in-srcdir) \
+	sed -e'/^include Makefile/{' -ertemplate/Makefile.in -ed -e'}' template/GNUmakefile.in | \
+	sed -f tool/prereq.status | \
+	$(MAKE) $(mflags) Q=$(Q) ENC_MK=.top-enc.mk REVISION_FORCE=PHONY -f - \
+		-oconfig.status -o.rbconfig.time \
 		update-src srcs all-incs
 
 GITHUB_RUBY_URL = https://github.com/ruby/ruby
@@ -404,9 +400,7 @@ $(srcdir)/gems/src:
 $(srcdir)/.bundle/gems:
 	$(MAKEDIRS) $@
 
-ifneq ($(DOT_WAIT),)
-up:: $(DOT_WAIT) after-update
-endif
+up:: $(if $(DOT_WAIT),$(DOT_WAIT) after-update)
 
 ifneq ($(filter update-bundled_gems refresh-gems,$(MAKECMDGOALS)),)
 update-gems: update-bundled_gems
