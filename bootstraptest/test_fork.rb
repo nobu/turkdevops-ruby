@@ -83,17 +83,26 @@ assert_equal 'ok', %q{
   end
 
   10.times do
-    pid = fork{ exit!(0) }
+    pid = fork{ exit!(true) }
+    signal = :SEGV
     deadline = now + 10
     until Process.waitpid(pid, Process::WNOHANG)
       if now > deadline
-        Process.kill(:KILL, pid)
-        raise "failed"
+        begin
+          Process.kill(signal, pid)
+        rescue Errno::EINVAL
+          signal = :KILL
+          retry
+        end
+        unless signal == :KILL
+          signal = :KILL
+          deadline += 1
+        end
       end
       sleep 0.001
     end
+    raise "failed" unless $?.success?
   rescue NotImplementedError
   end
   :ok
 }, '[Bug #20670]'
-
