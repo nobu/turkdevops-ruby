@@ -807,18 +807,31 @@ realclean-platform: distclean-platform
 realclean-spec: distclean-spec
 realclean-rubyspec: realclean-spec
 
-clean-ext:: ext/clean .bundle/clean timestamp/clean
-distclean-ext:: ext/distclean .bundle/distclean timestamp/distclean
-realclean-ext:: ext/realclean .bundle/realclean timestamp/realclean
+clean_exts = ext/clean gems/clean .bundle/clean
+clean-ext:: $(clean_exts) timestamp/clean
+distclean-ext:: $(clean_exts:/clean=/distclean) timestamp/distclean
+realclean-ext:: $(clean_exts:/clean=/realclean) timestamp/realclean
 
-ext/clean.mk ext/distclean.mk ext/realclean.mk::
-ext/clean:: ext/clean.mk
-ext/distclean:: ext/distclean.mk
-ext/realclean:: ext/realclean.mk
+$(clean_exts:/clean=/clean.mk)::
+$(clean_exts:/clean=/clean.sub):: ext/clean.mk
+$(clean_exts:/clean=/distclean.sub):: ext/distclean.mk
+$(clean_exts:/clean=/realclean.sub):: ext/realclean.mk
 
-timestamp/clean:: ext/clean .bundle/clean
-timestamp/distclean:: ext/distclean .bundle/distclean
-timestamp/realclean:: ext/realclean .bundle/realclean
+ext/clean:: ext/clean.sub
+ext/distclean:: ext/distclean.sub
+ext/realclean:: ext/realclean.sub
+
+gems/clean:: gems/clean.sub
+gems/distclean:: gems/distclean.sub
+gems/realclean:: gems/realclean.sub
+
+.bundle/clean:: .bundle/clean.sub
+.bundle/distclean:: .bundle/distclean.sub
+.bundle/realclean:: .bundle/realclean.sub
+
+timestamp/clean:: ext/clean gems/clean .bundle/clean
+timestamp/distclean:: ext/distclean gems/distclean .bundle/distclean
+timestamp/realclean:: ext/realclean gems/realclean .bundle/realclean
 
 timestamp/clean timestamp/distclean timestamp/realclean::
 	$(Q)$(RM) $(TIMESTAMPDIR)/.*.time $(TIMESTAMPDIR)/$(arch)/.time

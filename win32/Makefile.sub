@@ -1276,7 +1276,10 @@ distclean-local::
 ext/clean.mk ext/distclean.mk ext/realclean.mk::
 	$(Q)if exist $(EXTS_MK) $(MAKE) -k -f $(EXTS_MK) top_srcdir=$(srcdir) $(*F)
 
-ext/clean gems/clean ext/distclean gems/distclean ext/realclean gems/realclean::
+ext/clean ext/distclean ext/realclean \
+gems/clean gems/distclean gems/realclean \
+.bundle/clean .bundle/distclean .bundle/realclean \
+    ::
 		$(Q)cd $(@D) 2>nul && (for /R $(EXTS) %I in (.) \
 		do $(Q)if exist %I\Makefile ( \
 		    cd %I && ( \
@@ -1289,7 +1292,10 @@ ext/clean gems/clean ext/distclean gems/distclean ext/realclean gems/realclean::
 		    $(RMDIRS) %I \
 		))) || @
 
-ext/distclean gems/distclean ext/realclean gems/realclean::
+ext/distclean ext/realclean \
+gems/distclean gems/realclean \
+.bundle/distclean .bundle/realclean \
+    ::
 		$(Q)cd $(@D) 2>nul && (for /R $(EXTS) %I in (exts.mk*) \
 		do $(Q)(del %I & rmdir %~dpI)) || @
 		-$(Q)rmdir $(@D) 2> nul || @
