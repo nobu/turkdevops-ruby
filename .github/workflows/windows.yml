@@ -116,6 +116,8 @@ jobs:
         with:
           srcdir: src
           builddir: build
+          clean: true
+          make-command: nmake
 
       - name: setup env
         # Available Ruby versions: https://github.com/actions/runner-images/blob/main/images/windows/Windows2019-Readme.md#ruby

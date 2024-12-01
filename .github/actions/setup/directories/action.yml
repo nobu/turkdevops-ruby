@@ -56,6 +56,12 @@ inputs:
     description: >-
       If set to true, clean build directory.
 
+  make-command:
+    required: false
+    default: 'make'
+    description: >-
+      The make command to clean build directory.
+
 outputs: {} # nothing?
 
 runs:
@@ -160,7 +166,13 @@ runs:
       shell: bash
       id: clean
       run: |
-        echo distclean='make -C ${{ inputs.builddir }} distclean' >> $GITHUB_OUTPUT
+        make='${{ inputs.make-command }}'
+        if [ "$make" = make ]; then
+          make="$make -C ${{ inputs.builddir }}"
+        else
+          make="cd ${{ inputs.builddir }} && $make"
+        fi
+        echo distclean="$make distclean" >> $GITHUB_OUTPUT
         echo remained-files='find ${{ inputs.builddir }} -ls' >> $GITHUB_OUTPUT
         [ "${{ inputs.builddir }}" = "${{ inputs.srcdir }}" ] ||
         echo final='rmdir ${{ inputs.builddir }}' >> $GITHUB_OUTPUT
