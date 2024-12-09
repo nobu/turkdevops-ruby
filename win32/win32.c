@@ -629,7 +629,6 @@ init_env(void)
 
 static void init_stdhandle(void);
 
-#if RUBY_MSVCRT_VERSION >= 80
 /* License: Ruby's */
 static void
 invalid_parameter(const wchar_t *expr, const wchar_t *func, const wchar_t *file, unsigned int line, uintptr_t dummy)
@@ -659,7 +658,6 @@ rtc_error_handler(int e, const char *src, int line, const char *exe, const char 
     return 0;
 }
 # endif
-#endif
 
 static CRITICAL_SECTION select_mutex;
 
@@ -852,13 +850,11 @@ socklist_delete(SOCKET *sockp, int *flagp)
     return ret;
 }
 
-#if RUBY_MSVCRT_VERSION >= 80
 # ifdef __MINGW32__
 #  define _CrtSetReportMode(type,mode) ((void)0)
 #  define _RTC_SetErrorFunc(func) ((void)0)
 # endif
 static void set_pioinfo_extra(void);
-#endif
 static int w32_cmdvector(const WCHAR *, char ***, UINT, rb_encoding *);
 //
 // Initialization stuff
@@ -867,13 +863,10 @@ static int w32_cmdvector(const WCHAR *, char ***, UINT, rb_encoding *);
 void
 rb_w32_sysinit(int *argc, char ***argv)
 {
-#if RUBY_MSVCRT_VERSION >= 80
-
     _CrtSetReportMode(_CRT_ASSERT, 0);
     _set_invalid_parameter_handler(invalid_parameter);
     _RTC_SetErrorFunc(rtc_error_handler);
     set_pioinfo_extra();
-#endif
     SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
 
     get_version();
@@ -2493,10 +2486,8 @@ typedef struct	{
     char pipech;	/* one char buffer for handles opened on pipes */
     int lockinitflag;
     CRITICAL_SECTION lock;
-#if RUBY_MSVCRT_VERSION >= 80
     char textmode;
     char pipech2[2];
-#endif
 }	ioinfo;
 #endif
 
@@ -2521,7 +2512,6 @@ static inline ioinfo* _pioinfo(int);
 #define rb_acrt_lowio_lock_fh(i)   EnterCriticalSection(&_pioinfo(i)->lock)
 #define rb_acrt_lowio_unlock_fh(i) LeaveCriticalSection(&_pioinfo(i)->lock)
 
-#if RUBY_MSVCRT_VERSION >= 80
 static size_t pioinfo_extra = 0;	/* workaround for VC++8 SP1 */
 
 /* License: Ruby's */
@@ -2685,9 +2675,6 @@ set_pioinfo_extra(void)
         pioinfo_extra = 0;
     }
 }
-#else
-#define pioinfo_extra 0
-#endif
 
 static inline ioinfo*
 _pioinfo(int fd)
@@ -7551,20 +7538,6 @@ rb_w32_write_console(uintptr_t strarg, int fd)
     return (long)reslen;
 }
 
-#if RUBY_MSVCRT_VERSION < 80 && !defined(HAVE__GMTIME64_S)
-/* License: Ruby's */
-static int
-unixtime_to_filetime(time_t time, FILETIME *ft)
-{
-    ULARGE_INTEGER tmp;
-
-    tmp.QuadPart = ((LONG_LONG)time + (LONG_LONG)((1970-1601)*365.2425) * 24 * 60 * 60) * 10 * 1000 * 1000;
-    ft->dwLowDateTime = tmp.LowPart;
-    ft->dwHighDateTime = tmp.HighPart;
-    return 0;
-}
-#endif
-
 /* License: Ruby's */
 static int
 timespec_to_filetime(const struct timespec *ts, FILETIME *ft)
@@ -7941,23 +7914,6 @@ rb_w32_isatty(int fd)
     return 1;
 }
 
-#if defined(_MSC_VER) && RUBY_MSVCRT_VERSION <= 60
-extern long _ftol(double);
-/* License: Ruby's */
-long
-_ftol2(double d)
-{
-    return _ftol(d);
-}
-
-/* License: Ruby's */
-long
-_ftol2_sse(double d)
-{
-    return _ftol(d);
-}
-#endif
-
 #ifndef signbit
 /* License: Ruby's */
 int
@@ -7989,68 +7945,6 @@ rb_w32_fd_is_text(int fd)
     return _osfile(fd) & FTEXT;
 }
 
-#if RUBY_MSVCRT_VERSION < 80 && !defined(HAVE__GMTIME64_S)
-/* License: Ruby's */
-static int
-unixtime_to_systemtime(const time_t t, SYSTEMTIME *st)
-{
-    FILETIME ft;
-    if (unixtime_to_filetime(t, &ft)) return -1;
-    if (!FileTimeToSystemTime(&ft, st)) return -1;
-    return 0;
-}
-
-/* License: Ruby's */
-static void
-systemtime_to_tm(const SYSTEMTIME *st, struct tm *t)
-{
-    int y = st->wYear, m = st->wMonth, d = st->wDay;
-    t->tm_sec  = st->wSecond;
-    t->tm_min  = st->wMinute;
-    t->tm_hour = st->wHour;
-    t->tm_mday = st->wDay;
-    t->tm_mon  = st->wMonth - 1;
-    t->tm_year = y - 1900;
-    t->tm_wday = st->wDayOfWeek;
-    switch (m) {
-      case 1:
-        break;
-      case 2:
-        d += 31;
-        break;
-      default:
-        d += 31 + 28 + (!(y % 4) && ((y % 100) || !(y % 400)));
-        d += ((m - 3) * 153 + 2) / 5;
-        break;
-    }
-    t->tm_yday = d - 1;
-}
-
-/* License: Ruby's */
-static int
-systemtime_to_localtime(TIME_ZONE_INFORMATION *tz, SYSTEMTIME *gst, SYSTEMTIME *lst)
-{
-    TIME_ZONE_INFORMATION stdtz;
-    SYSTEMTIME sst;
-
-    if (!SystemTimeToTzSpecificLocalTime(tz, gst, lst)) return -1;
-    if (!tz) {
-        GetTimeZoneInformation(&stdtz);
-        tz = &stdtz;
-    }
-    if (tz->StandardBias == tz->DaylightBias) return 0;
-    if (!tz->StandardDate.wMonth) return 0;
-    if (!tz->DaylightDate.wMonth) return 0;
-    if (tz != &stdtz) stdtz = *tz;
-
-    stdtz.StandardDate.wMonth = stdtz.DaylightDate.wMonth = 0;
-    if (!SystemTimeToTzSpecificLocalTime(&stdtz, gst, &sst)) return 0;
-    if (lst->wMinute == sst.wMinute && lst->wHour == sst.wHour)
-        return 0;
-    return 1;
-}
-#endif
-
 #ifdef HAVE__GMTIME64_S
 # ifndef HAVE__LOCALTIME64_S
 /* assume same as _gmtime64_s() */
@@ -8074,17 +7968,8 @@ gmtime_r(const time_t *tp, struct tm *rp)
         errno = e;
         return NULL;
     }
-#if RUBY_MSVCRT_VERSION >= 80 || defined(HAVE__GMTIME64_S)
     e = gmtime_s(rp, tp);
     if (e != 0) goto error;
-#else
-    {
-        SYSTEMTIME st;
-        if (unixtime_to_systemtime(*tp, &st)) goto error;
-        rp->tm_isdst = 0;
-        systemtime_to_tm(&st, rp);
-    }
-#endif
     return rp;
 }
 
@@ -8098,17 +7983,8 @@ localtime_r(const time_t *tp, struct tm *rp)
         errno = e;
         return NULL;
     }
-#if RUBY_MSVCRT_VERSION >= 80 || defined(HAVE__LOCALTIME64_S)
     e = localtime_s(rp, tp);
     if (e) goto error;
-#else
-    {
-        SYSTEMTIME gst, lst;
-        if (unixtime_to_systemtime(*tp, &gst)) goto error;
-        rp->tm_isdst = systemtime_to_localtime(NULL, &gst, &lst);
-        systemtime_to_tm(&lst, rp);
-    }
-#endif
     return rp;
 }
 
