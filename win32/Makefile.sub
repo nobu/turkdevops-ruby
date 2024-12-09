@@ -174,7 +174,7 @@ PLATFORM = mswin32
 !endif
 !if !defined(RT)
 !error RT not defined.  Retry from configure pass.
-!else if $(RT_VER) < 90
+!else if $(RT_VER) < 120
 ! error Runtime library $(RT_VER) is not supported
 !endif
 !ifndef NTVER
