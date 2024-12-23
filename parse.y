@@ -7122,6 +7122,14 @@ is_identchar(struct parser_params *p, const char *ptr, const char *MAYBE_UNUSED(
     return rb_enc_isalnum((unsigned char)*ptr, enc) || *ptr == '_' || !ISASCII(*ptr);
 }
 
+static inline bool
+peek_ident_p(struct parser_params *p, size_t n)
+{
+    const char *ptr = p->lex.pcur + n;
+    if (lex_eol_ptr_p(p, ptr)) return false;
+    return is_identchar(p, ptr, p->lex.pend, p->enc);
+}
+
 static inline int
 parser_is_identchar(struct parser_params *p)
 {
@@ -10686,15 +10694,36 @@ parser_yylex(struct parser_params *p)
                     token_flush(p);
                 }
                 goto retry;
+              case 'a':
+                dispatch_delayed_token(p, tIGNORED_NL);
+                if (peek_n(p, 'n', 0) && peek_n(p, 'd', 1) && !peek_ident_p(p, 2)) {
+                    goto fluent;
+                }
+                goto bol;
+              case 'o':
+                dispatch_delayed_token(p, tIGNORED_NL);
+                if (peek_n(p, 'r', 0) && !peek_ident_p(p, 1)) {
+                    goto fluent;
+                }
+                goto bol;
+
+              case '|':
+                dispatch_delayed_token(p, tIGNORED_NL);
+                if (peek(p, '|')) {
+                    goto fluent;
+                }
+                goto bol;
               case '&':
               case '.': {
                 dispatch_delayed_token(p, tIGNORED_NL);
-                if (peek(p, '.') == (c == '&')) {
+                if (peek(p, '.') == (c == '&') || ((c == '&') && peek(p, '&'))) {
+                  fluent:
                     pushback(p, c);
                     dispatch_scan_event(p, tSP);
                     goto retry;
                 }
               }
+              bol:
               default:
                 p->ruby_sourceline--;
                 p->lex.nextline = p->lex.lastline;
