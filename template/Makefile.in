@@ -348,12 +348,6 @@ $(ruby_pc): config.status Makefile
 	$(Q)pkg_config=${PKG_CONFIG} && PKG_CONFIG_PATH=. $${pkg_config:-:} --print-errors ruby.tmp
 	$(Q)$(MV) -f ruby.tmp.pc $(ruby_pc)
 
-modular-gc-precheck:
-	$(Q) if test -z $(modular_gc_dir); then \
-	    echo "You must configure with --with-modular-gc to use modular GC"; \
-	    exit 1; \
-	fi
-
 pre-install-local:: pkgconfig-data
 
 ruby-runner.h: template/ruby-runner.h.in config.status

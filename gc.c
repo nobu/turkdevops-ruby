@@ -714,6 +714,10 @@ ruby_modular_gc_init(void)
 {
     // Assert that the directory path ends with a /
     RUBY_ASSERT_ALWAYS(MODULAR_GC_DIR[sizeof(MODULAR_GC_DIR) - 2] == '/');
+#ifndef LOAD_RELATIVE
+    // Should be prefixed with "$(prefix)" in ruby_modular_gc.m4
+    RUBY_ASSERT_ALWAYS(MODULAR_GC_DIR[0] == '/');
+#endif
 
     const char *gc_so_file = getenv(RUBY_GC_LIBRARY);
 
