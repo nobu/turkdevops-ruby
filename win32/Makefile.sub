@@ -1496,7 +1496,7 @@ rubyspec-capiext: $(RUBYSPEC_CAPIEXT_EXTS)
 	$(Q)$(MAKEDIRS) $(@D)
 	$(Q)echo> $*.def EXPORTS
 	$(Q)echo>> $*.def Init_$(*F)
-	$(Q)$(LDSHARED) -Fe$(@) $(INCFLAGS) $(CFLAGS) $(CPPFLAGS) $< $(LIBRUBYARG) -link $(DLDFLAGS) $(XLDFLAGS) $(LIBS) $(LOCAL_LIBS) -implib:$*.lib -pdb:$*.pdb -def:$*.def
+	$(Q)$(LDSHARED) -Fe$(@) -Fo$*.$(OBJEXT) $(INCFLAGS) $(CFLAGS) $(CPPFLAGS) $< $(LIBRUBYARG) -link $(DLDFLAGS) $(XLDFLAGS) $(LIBS) $(LOCAL_LIBS) -implib:$*.lib -pdb:$*.pdb -def:$*.def
 !if defined(LDSHARED_0)
 	$(Q)$(LDSHARED_0)
 	$(Q)$(LDSHARED_1)
