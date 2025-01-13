@@ -189,6 +189,20 @@ class TestEnv < Test::Unit::TestCase
     end
   end
 
+  unless windows
+    def test_world_writable_path
+      Dir.mktmpdir do |dir|
+        path = ENV[PATH_ENV]
+        File.chmod(0o777, dir)
+        assert_warn(/Insecure world writable dir/) do
+          ENV[PATH_ENV] = dir
+        ensure
+          ENV[PATH_ENV] = path
+        end
+      end
+    end
+  end
+
   def test_keys
     a = ENV.keys
     assert_kind_of(Array, a)
