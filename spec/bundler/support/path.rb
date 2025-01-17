@@ -106,7 +106,7 @@ module Spec
     end
 
     def tmp_root(scope)
-      source_root.join("tmp", "#{test_env_version}.#{scope}")
+      (ruby_core? && (tmpdir = ENV["TMPDIR"]) ? Pathname(tmpdir) : source_root.join("tmp")).join("#{test_env_version}.#{scope}")
     end
 
     # Bump this version whenever you make a breaking change to the spec setup
