@@ -95,6 +95,7 @@ jobs:
           ruby-version: '3.0'
           bundler: none
           windows-toolchain: none
+        if : ${{ !endsWith(matrix.vs, '2025') }}
 
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v7
