@@ -33,6 +33,8 @@ jobs:
             test_task: check
           - vs: 2022
             test_task: check
+          - vs: 2025
+            test_task: check
           - vs: 2022
             test_task: test-bundled-gems
       fail-fast: false
